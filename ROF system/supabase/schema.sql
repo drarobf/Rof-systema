@@ -1,0 +1,95 @@
+-- ══════════════════════════════════════════════════════════════
+-- Sistema ROF™ — Schema Supabase
+-- Execute este arquivo no SQL Editor do Supabase
+-- ══════════════════════════════════════════════════════════════
+
+-- Habilitar extensão UUID
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- ──────────────────────────────────────────────────────────────
+-- Tabela principal de dados (key-value JSONB)
+-- Armazena: pacientes, agenda, estoque, procedimentos
+-- ──────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS rof_store (
+  key        TEXT PRIMARY KEY,
+  data       JSONB NOT NULL DEFAULT '[]'::jsonb,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Inserir linhas base para cada coleção (evita erro na primeira leitura)
+INSERT INTO rof_store (key, data) VALUES
+  ('rof_pts',   '[]'::jsonb),
+  ('rof_apts',  '[]'::jsonb),
+  ('rof_stk',   '[]'::jsonb),
+  ('rof_procs', '[]'::jsonb)
+ON CONFLICT (key) DO NOTHING;
+
+-- ──────────────────────────────────────────────────────────────
+-- Tabela de arquivos (fotos, Rx, documentos)
+-- Os arquivos em si ficam no Supabase Storage (bucket "rof-files")
+-- Esta tabela guarda os metadados e URLs
+-- ──────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS rof_files (
+  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  patient_id   INTEGER NOT NULL,
+  file_type    TEXT NOT NULL CHECK (file_type IN ('foto', 'xray', 'doc')),
+  storage_path TEXT NOT NULL,
+  url          TEXT NOT NULL,
+  name         TEXT,
+  cat          TEXT,
+  titulo       TEXT,
+  date_ref     TEXT,
+  obs          TEXT,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_rof_files_patient ON rof_files (patient_id);
+CREATE INDEX IF NOT EXISTS idx_rof_files_type    ON rof_files (file_type);
+
+-- ──────────────────────────────────────────────────────────────
+-- Row Level Security — acesso via chave anon (frontend direto)
+-- A chave anon é segura pois o banco é privado e a senha de
+-- acesso ao sistema fica no próprio HTML (APP_PASSWORD).
+-- ──────────────────────────────────────────────────────────────
+ALTER TABLE rof_store ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rof_files ENABLE ROW LEVEL SECURITY;
+
+-- Permitir tudo para anon (acesso controlado pela senha no frontend)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'rof_store' AND policyname = 'allow_anon'
+  ) THEN
+    CREATE POLICY allow_anon ON rof_store FOR ALL TO anon USING (true) WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'rof_files' AND policyname = 'allow_anon'
+  ) THEN
+    CREATE POLICY allow_anon ON rof_files FOR ALL TO anon USING (true) WITH CHECK (true);
+  END IF;
+END $$;
+
+-- ──────────────────────────────────────────────────────────────
+-- Storage bucket (execute manualmente no painel Supabase Storage)
+-- ──────────────────────────────────────────────────────────────
+-- 1. Vá em Storage > New bucket
+-- 2. Nome: rof-files
+-- 3. Public bucket: SIM (para servir URLs de fotos diretamente)
+-- 4. Allowed MIME types: image/*, application/pdf
+-- 5. Max file size: 10 MB
+
+-- ──────────────────────────────────────────────────────────────
+-- Função de atualização do timestamp (trigger)
+-- ──────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_rof_store_updated ON rof_store;
+CREATE TRIGGER trg_rof_store_updated
+  BEFORE UPDATE ON rof_store
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();

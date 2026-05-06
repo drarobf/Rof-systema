@@ -1,0 +1,34 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+  command = "npm install"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Rota da IA (ai.js separado — proxy Anthropic)
+[[redirects]]
+  from = "/api/ai"
+  to = "/.netlify/functions/ai"
+  status = 200
+
+# Redireciona /api/* para a Netlify Function principal
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+# Redireciona a raiz para o sistema principal
+[[redirects]]
+  from = "/"
+  to = "/Sistema-ROF.html"
+  status = 301
+
+# SPA fallback — garante que o index.html seja servido para qualquer rota
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[build.environment]
+  NODE_VERSION = "20"

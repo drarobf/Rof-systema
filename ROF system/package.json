@@ -1,0 +1,13 @@
+{
+  "name": "sistema-rof",
+  "version": "1.0.0",
+  "description": "Sistema de Gestão ROF™ — Dra. Rossana Batista Fucks",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
+    "jsonwebtoken": "^9.0.2"
+  }
+}
