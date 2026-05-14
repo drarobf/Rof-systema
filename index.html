@@ -1643,12 +1643,24 @@ window.renderContrato=function(p){
 
     <div class="card" style="margin-bottom:10px">
       <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px">Cláusula 1ª — Procedimentos Contratados</div>
-      ${etapas.length===0
-        ?`<div style="color:#333;font-size:12px">Nenhum procedimento no Plano de Tratamento.<br/><span style="color:#222;font-size:11px">Acesse a aba 🗂️ Plano Tto. para adicionar.</span></div>`
-        :etapas.map((e,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(198,164,109,0.07)">
-          <span style="color:#bbb;font-size:12px">${i+1}. ${e.proc||"Procedimento"}</span>
-          <span style="color:#E2C99A;font-weight:700;font-size:12px;flex-shrink:0;margin-left:10px">R$ ${(e.valor||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</span>
-        </div>`).join("")+`<div style="text-align:right;margin-top:10px"><span style="color:#C6A46D;font-weight:900;font-size:14px">Total: R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})}</span></div>`}
+      ${etapas.map((e,i)=>`
+        <div style="display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid rgba(198,164,109,0.07)">
+          <input value="${(e.proc||"").replace(/"/g,"&quot;")}" oninput="updEtapa(${p.id},${i},'proc',this.value)" class="inp" style="font-size:12px;padding:4px 8px" placeholder="Procedimento..."/>
+          <div style="display:flex;align-items:center;gap:4px">
+            <span style="color:#555;font-size:11px">R$</span>
+            <input type="number" value="${e.valor||0}" oninput="updEtapa(${p.id},${i},'valor',parseFloat(this.value)||0)" class="inp" style="width:90px;font-size:12px;padding:4px 8px;text-align:right"/>
+          </div>
+          <button onclick="delContratoProc(${p.id},${i})" style="background:none;border:none;color:#ef444466;cursor:pointer;font-size:16px;padding:0 4px">✕</button>
+        </div>`).join("")}
+      ${etapas.length>0?`<div style="text-align:right;margin-top:10px;margin-bottom:8px"><span style="color:#C6A46D;font-weight:900;font-size:14px">Total: R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})}</span></div>`:""}
+      <div style="display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;margin-top:8px;padding-top:8px;border-top:1px dashed rgba(198,164,109,0.2)">
+        <input id="ct-proc-nome-${p.id}" class="inp" style="font-size:12px;padding:6px 8px" placeholder="Descrição do procedimento..."/>
+        <div style="display:flex;align-items:center;gap:4px">
+          <span style="color:#555;font-size:11px">R$</span>
+          <input id="ct-proc-val-${p.id}" type="number" class="inp" style="width:90px;font-size:12px;padding:6px 8px;text-align:right" placeholder="0"/>
+        </div>
+        <button onclick="addContratoProc(${p.id})" class="bp" style="font-size:18px;padding:4px 10px;line-height:1">+</button>
+      </div>
     </div>
 
     <div class="card" style="margin-bottom:10px">
@@ -1737,6 +1749,29 @@ window.confirmSigDraText=function(ptId){
   const pts=ST.pts.map(p=>p.id!==ptId?p:{...p,contratoDraSig:{type:"typed",value:v},contratoDraSigDate:todayFmt()});
   set({pts});save("rof_pts",pts);
   toast("✅ Assinatura da Dra. Rossana confirmada!","success");
+};
+
+// ── Procedimentos direto no contrato ──────────────────────────
+window.addContratoProc=function(ptId){
+  const nomeEl=document.getElementById("ct-proc-nome-"+ptId);
+  const valEl=document.getElementById("ct-proc-val-"+ptId);
+  const nome=(nomeEl?.value||"").trim();
+  const val=parseFloat(valEl?.value||0)||0;
+  if(!nome){toast("Digite o nome do procedimento","error");return;}
+  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  const novaEtapa={id:Date.now(),proc:nome,valor:val,status:"Pendente",dataPrev:"",obs:""};
+  const planoTto=[...(p.planoTto||[]),novaEtapa];
+  const pts=ST.pts.map(x=>x.id===ptId?{...x,planoTto}:x);
+  ST.pts=pts;save("rof_pts",pts);
+  if(nomeEl)nomeEl.value="";
+  if(valEl)valEl.value="";
+  set({pts});
+};
+window.delContratoProc=function(ptId,idx){
+  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  const planoTto=(p.planoTto||[]).filter((_,i)=>i!==idx);
+  const pts=ST.pts.map(x=>x.id===ptId?{...x,planoTto}:x);
+  ST.pts=pts;save("rof_pts",pts);set({pts});
 };
 
 // ── WhatsApp do contrato ───────────────────────────────────────
