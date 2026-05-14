@@ -389,6 +389,99 @@ pre { white-space: pre-wrap; font-family: var(--font-body); }
 }
 .print-only { display: none; }
 
+/* ── SCROLLBAR MELHORADA ───────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: rgba(198,164,109,0.25); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(198,164,109,0.45); }
+* { scrollbar-width: thin; scrollbar-color: rgba(198,164,109,0.2) transparent; }
+
+/* ── MODAL MELHORADO (scroll interno) ─────────────────────────── */
+.mbg {
+  padding: 16px 12px;
+  align-items: flex-start;
+  overflow-y: auto;
+}
+.mbx {
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+}
+.mbd {
+  flex: 1;
+  overflow-y: auto;
+  max-height: none;
+  padding: 20px 22px;
+}
+
+/* ── CONTENT — SCROLL SUAVE ───────────────────────────────────── */
+#content {
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+}
+
+/* ── TABS PACIENTE — SCROLL HORIZONTAL ───────────────────────── */
+.pt-tabs-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.pt-tabs-wrap::-webkit-scrollbar { display: none; }
+
+/* ── CARDS — SEM OVERFLOW CORTADO ────────────────────────────── */
+.card { overflow: visible; }
+.card.scroll-inner { overflow: hidden; }
+
+/* ── FUNIL CRM ────────────────────────────────────────────────── */
+.crm-funnel-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* ── TABELAS RESPONSIVAS ──────────────────────────────────────── */
+.tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
+
+/* ── BOTÃO WHATSAPP FLUTUANTE NO PERFIL ──────────────────────── */
+.whats-fab {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 12px; border-radius: 50px;
+  background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3);
+  color: #22c55e; font-size: 11px; font-weight: 600;
+  cursor: pointer; transition: var(--transition);
+  font-family: var(--font-body);
+}
+.whats-fab:hover { background: rgba(34,197,94,0.22); }
+
+/* ── ALERTA BADGE ─────────────────────────────────────────────── */
+.alert-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3);
+  color: #ef4444; padding: 3px 8px; border-radius: 50px;
+  font-size: 10px; font-weight: 700;
+}
+
+/* ── MOBILE MELHORADO ─────────────────────────────────────────── */
+@media (max-width: 768px) {
+  #content { padding: 12px; }
+  .mbx { max-width: 100% !important; }
+  .mbd { padding: 16px; }
+  .g2 { grid-template-columns: 1fr !important; }
+  .hdr-menu-btn { width: 32px; height: 32px; font-size: 13px; }
+  #ptitle { font-size: 14px; }
+}
+
+/* ── TABLET ────────────────────────────────────────────────────── */
+@media (min-width: 769px) and (max-width: 1024px) {
+  #sidebar { width: 200px; }
+  #content { padding: 18px; }
+}
+
+/* ── NOTEBOOK/DESKTOP ─────────────────────────────────────────── */
+@media (min-width: 1025px) {
+  #content { padding: 24px 28px; }
+}
+
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    APP LAYOUT
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
@@ -894,16 +987,24 @@ const LOGO_B64="iVBORw0KGgoAAAANSUhEUgAAAG4AAABuCAYAAADGWyb7AAAgpklEQVR42u2deZhd
 // ── SUPABASE DIRETO (drag-and-drop Netlify) ───────────────────
 // PREENCHA COM OS DADOS DO SEU PROJETO SUPABASE:
 // Supabase → Settings → API → Project URL e anon/public key
-const SUPABASE_URL      = 'https://dhgfoxdxihjkhzmctaea.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_tn4i8425nfjfR5gKkWFb-A_wNwBd6Ec';
+// ══════════════════════════════════════════════════════════════════
+// CONFIGURAÇÃO — preencha com seus dados do Supabase se quiser
+// sincronização em nuvem. Deixe em branco para usar só localStorage.
+// ══════════════════════════════════════════════════════════════════
+const SUPABASE_URL      = '';   // ex: 'https://xyzxyz.supabase.co'
+const SUPABASE_ANON_KEY = '';   // ex: 'eyJhbGci...'
 const APP_PASSWORD      = 'rof2024';
 
-const _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Cria cliente Supabase somente se as credenciais forem válidas
+const _sbEnabled = SUPABASE_URL.startsWith('https://') && SUPABASE_ANON_KEY.length > 20;
+const _sb = _sbEnabled
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : { from: () => ({ select: () => Promise.resolve({data:[],error:null}), upsert: () => Promise.resolve({error:null}) }) };
 
 const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_stk','rof_procs','rof_caixa','rof_leads']);
 const _syncQ = JSON.parse(localStorage.getItem("rof_sync_q")||"[]");
 const _flushQ = async () => {
-  if(!navigator.onLine||!_syncQ.length)return;
+  if(!_sbEnabled||!navigator.onLine||!_syncQ.length)return;
   while(_syncQ.length){
     const {k,v}=_syncQ[0];
     try{
@@ -916,10 +1017,14 @@ const _flushQ = async () => {
 };
 function _setSyncBadge(ok){
   const el=document.getElementById("sync-badge");
-  if(el){el.classList.remove("sync-spin");el.textContent=ok?"● Nuvem":"○ Offline";el.style.color=ok?"#22c55e":"#6B6B6B";}
+  if(!el)return;
+  if(!_sbEnabled){el.textContent="💾 Local";el.style.color="#6B6B6B";el.classList.remove("sync-spin");return;}
+  el.classList.remove("sync-spin");
+  el.textContent=ok?"● Nuvem":"○ Offline";
+  el.style.color=ok?"#22c55e":"#6B6B6B";
 }
 async function syncFromCloud(){
-  if(!navigator.onLine)return;
+  if(!_sbEnabled||!navigator.onLine)return;
   const el=document.getElementById("sync-badge");
   if(el){el.textContent="↻ Sincronizando...";el.style.color="var(--gold)";el.classList.add("sync-spin");}
   try{
@@ -937,7 +1042,7 @@ async function syncFromCloud(){
     if(typeof checkBirthdays==="function")checkBirthdays();
   }catch{_setSyncBadge(false);}
 }
-window.addEventListener("online",()=>{_flushQ();syncFromCloud();});
+window.addEventListener("online",()=>{if(_sbEnabled){_flushQ();syncFromCloud();}});
 window.addEventListener("offline",()=>_setSyncBadge(false));
 
 // ══════════════════════════════════════════════════════════════════
@@ -1313,12 +1418,17 @@ function buildNotifications(){
       items.push({ic:"🎂",title:`Aniversário em ${diff} dia(s): ${p.name}`,sub:p.birthday,action:`set({page:'patients',selPt:${p.id}})`,priority:4});
   });
 
-  // Leads sem follow-up há 3+ dias
+  // Leads sem follow-up há 3+ dias (exclui fechados, perdidos e retorno futuro)
   const leads=load("rof_leads",[]);
-  leads.filter(l=>l.status!=="Convertido"&&l.status!=="Perdido").forEach(l=>{
-    if(!l.updatedAt)return;
-    const diff=Math.ceil((now-new Date(l.updatedAt+"T12:00:00"))/86400000);
-    if(diff>=3)items.push({ic:"🎯",title:`Lead sem contato: ${l.name}`,sub:`${diff} dias sem atualização`,action:`set({page:'crm'})`,priority:5});
+  const _ativos=new Set(["Novo Lead","Em Conversa","Avaliação Marcada","Orçamento Enviado","Aguardando Retorno"]);
+  leads.filter(l=>_ativos.has(l.status)).forEach(l=>{
+    const dias=_leadDiasSemContato(l);
+    if(dias>=3)items.push({ic:"🎯",title:`Lead sem contato: ${l.name}`,sub:`${dias} dia${dias>1?"s":""} sem resposta — ${l.status}`,action:`set({page:'crm'})`,priority:5});
+  });
+
+  // Próximos contatos agendados (proxContato = hoje ou passado)
+  leads.filter(l=>l.proxContato&&l.proxContato<=today&&_ativos.has(l.status)).forEach(l=>{
+    items.push({ic:"📅",title:`Contato agendado: ${l.name}`,sub:`Previsto para ${fmtDate(l.proxContato)}`,action:`set({page:'crm'})`,priority:2});
   });
 
   return items.sort((a,b)=>a.priority-b.priority);
@@ -1384,7 +1494,7 @@ window.renderPlanoTto=function(p){
                 <div style="display:flex;gap:6px;flex-wrap:wrap">
                   ${["Pendente","Em_andamento","Concluído","Cancelado"].map(s=>{
                     const sc=STATUS_COLORS[s]||"#888";
-                    return`<button onclick="updEtapa(${p.id},${i},'status','${s}')" class="bg" style="font-size:10px;padding:3px 10px;border-radius:50px;background:${et.status===s?sc+"22":"transparent"};color:${et.status===s?sc:"#555"};border-color:${et.status===s?sc+"55":"rgba(198,164,109,0.1)"}">${s.replace("_"," ")}</button>`;
+                    return`<button onclick="updEtapa(${p.id},${i},'status','${s}',true)" class="bg" style="font-size:10px;padding:3px 10px;border-radius:50px;background:${et.status===s?sc+"22":"transparent"};color:${et.status===s?sc:"#555"};border-color:${et.status===s?sc+"55":"rgba(198,164,109,0.1)"}">${s.replace("_"," ")}</button>`;
                   }).join("")}
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">
@@ -1414,13 +1524,17 @@ window.addEtapaPlano=function(ptId){
   });
   set({pts});save("rof_pts",pts);
 };
-window.updEtapa=function(ptId,idx,field,val){
+var _updEtapaTimer=null;
+window.updEtapa=function(ptId,idx,field,val,immediate){
   const pts=ST.pts.map(p=>{
     if(p.id!==ptId)return p;
     const planoTto=(p.planoTto||[]).map((e,i)=>i===idx?{...e,[field]:val}:e);
     return{...p,planoTto};
   });
-  set({pts});save("rof_pts",pts);
+  ST.pts=pts;save("rof_pts",pts);
+  if(immediate){set({pts});return;}
+  clearTimeout(_updEtapaTimer);
+  _updEtapaTimer=setTimeout(()=>set({pts}),600);
 };
 window.delEtapa=function(ptId,idx){
   const pts=ST.pts.map(p=>{
@@ -1510,7 +1624,7 @@ window.renderContrato=function(p){
     <div class="card" style="margin-bottom:10px">
       <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px">Forma de pagamento</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-        ${["À vista","Parcelado","Convênio","Permuta"].map(f=>`<button onclick="updPt(${p.id},'contratoForma','${f}')" class="bg" style="font-size:11px;padding:5px 12px;border-radius:50px;background:${forma===f?"#C6A46D22":"transparent"};color:${forma===f?"#C6A46D":"#555"};border-color:${forma===f?"rgba(198,164,109,0.4)":"rgba(198,164,109,0.1)"}">${f}</button>`).join("")}
+        ${["À vista","Parcelado","Convênio","Permuta"].map(f=>`<button onclick="updPt(${p.id},'contratoForma','${f}',true)" class="bg" style="font-size:11px;padding:5px 12px;border-radius:50px;background:${forma===f?"#C6A46D22":"transparent"};color:${forma===f?"#C6A46D":"#555"};border-color:${forma===f?"rgba(198,164,109,0.4)":"rgba(198,164,109,0.1)"}">${f}</button>`).join("")}
       </div>
       ${forma==="Parcelado"?`<div style="display:flex;align-items:center;gap:8px">
         <span style="color:#666;font-size:12px">Parcelas:</span>
@@ -1698,40 +1812,137 @@ window.printRecibo=function(ptId,pgIdx){
 // ══════════════════════════════════════════════════════════════════
 // CRM / LEADS
 // ══════════════════════════════════════════════════════════════════
-const LEAD_STATUS=["Novo","Contatado","Agendado","Convertido","Perdido"];
-const LEAD_STATUS_COLORS={Novo:"#60a5fa",Contatado:"#f59e0b",Agendado:"#c084fc",Convertido:"#22c55e",Perdido:"#ef4444"};
+const LEAD_STATUS=["Novo Lead","Em Conversa","Avaliação Marcada","Orçamento Enviado","Aguardando Retorno","Fechado","Perdido","Retorno Futuro"];
+const LEAD_STATUS_COLORS={"Novo Lead":"#60a5fa","Em Conversa":"#f59e0b","Avaliação Marcada":"#c084fc","Orçamento Enviado":"#fb923c","Aguardando Retorno":"#a78bfa","Fechado":"#22c55e","Perdido":"#ef4444","Retorno Futuro":"#94a3b8"};
+const LEAD_STATUS_ICONS={"Novo Lead":"🆕","Em Conversa":"💬","Avaliação Marcada":"📅","Orçamento Enviado":"💰","Aguardando Retorno":"⏳","Fechado":"✅","Perdido":"❌","Retorno Futuro":"🔄"};
+
+function _leadDiasSemContato(l){
+  const ref=l.dataUltContato||l.updatedAt||l.createdAt;
+  if(!ref)return 999;
+  const ms=new Date()-new Date(ref+"T12:00:00");
+  return Math.floor(ms/86400000);
+}
 
 function pageCRM(){
   const leads=load("rof_leads",[]);
   const filtroStatus=ST.crmStatus||"Todos";
-  const filtrados=leads.filter(l=>filtroStatus==="Todos"||l.status===filtroStatus);
-  const total=leads.length,conv=leads.filter(l=>l.status==="Convertido").length;
-  return stitle("CRM / Leads")
-    +`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
-      <div class="card" style="text-align:center;border-top:2px solid #60a5fa"><div style="color:#444;font-size:9px;text-transform:uppercase;letter-spacing:1px">Total de leads</div><div style="color:#60a5fa;font-size:24px;font-weight:900;margin-top:4px">${total}</div></div>
-      <div class="card" style="text-align:center;border-top:2px solid #22c55e"><div style="color:#444;font-size:9px;text-transform:uppercase;letter-spacing:1px">Convertidos</div><div style="color:#22c55e;font-size:24px;font-weight:900;margin-top:4px">${conv}</div></div>
-      <div class="card" style="text-align:center;border-top:2px solid #C6A46D"><div style="color:#444;font-size:9px;text-transform:uppercase;letter-spacing:1px">Taxa conversão</div><div style="color:#C6A46D;font-size:24px;font-weight:900;margin-top:4px">${total>0?Math.round(conv/total*100):0}%</div></div>
+  const filtroOrigem=ST.crmOrigem||"Todos";
+  const filtroProc=ST.crmProc||"Todos";
+  const busca=(ST.crmBusca||"").toLowerCase();
+
+  let filtrados=leads.filter(l=>{
+    if(filtroStatus!=="Todos"&&l.status!==filtroStatus)return false;
+    if(filtroOrigem!=="Todos"&&l.origem!==filtroOrigem)return false;
+    if(filtroProc!=="Todos"&&l.interesse!==filtroProc)return false;
+    if(busca&&!l.name.toLowerCase().includes(busca)&&!(l.phone||"").includes(busca))return false;
+    return true;
+  });
+
+  // Ordenar: alertas (sem contato >3 dias em status ativo) primeiro
+  const ativos=new Set(["Novo Lead","Em Conversa","Avaliação Marcada","Orçamento Enviado","Aguardando Retorno"]);
+  filtrados.sort((a,b)=>{
+    const aAlerta=ativos.has(a.status)&&_leadDiasSemContato(a)>=3;
+    const bAlerta=ativos.has(b.status)&&_leadDiasSemContato(b)>=3;
+    if(aAlerta&&!bAlerta)return-1;if(!aAlerta&&bAlerta)return 1;
+    return new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt);
+  });
+
+  const total=leads.length;
+  const fechados=leads.filter(l=>l.status==="Fechado").length;
+  const emAndamento=leads.filter(l=>ativos.has(l.status)).length;
+  const alertas=leads.filter(l=>ativos.has(l.status)&&_leadDiasSemContato(l)>=3).length;
+  const origensAll=["Todos",...new Set(leads.map(l=>l.origem).filter(Boolean))];
+  const procsAll=["Todos",...new Set(leads.map(l=>l.interesse).filter(Boolean))];
+
+  // Funil visual
+  const funnelStages=["Novo Lead","Em Conversa","Avaliação Marcada","Orçamento Enviado","Aguardando Retorno","Fechado"];
+  const funnelHTML=`<div class="card" style="margin-bottom:14px;overflow-x:auto">
+    <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px">🎯 Funil de Pacientes</div>
+    <div style="display:flex;gap:4px;min-width:460px">
+      ${funnelStages.map(s=>{
+        const cnt=leads.filter(l=>l.status===s).length;
+        const c=LEAD_STATUS_COLORS[s];
+        const ic=LEAD_STATUS_ICONS[s];
+        const pct=total>0?Math.round(cnt/total*100):0;
+        return`<div onclick="set({crmStatus:'${s}'})" style="flex:1;cursor:pointer;text-align:center;padding:8px 4px;border-radius:8px;background:${filtroStatus===s?c+"22":"#0D0D0D"};border:1px solid ${filtroStatus===s?c+"55":"rgba(198,164,109,0.07)"};transition:all .2s">
+          <div style="font-size:14px">${ic}</div>
+          <div style="color:${c};font-size:18px;font-weight:900;line-height:1.1">${cnt}</div>
+          <div style="color:#555;font-size:8px;line-height:1.3;margin-top:2px">${s.replace(" ","\n")}</div>
+          <div style="margin-top:4px;height:2px;border-radius:2px;background:${c}${pct>0?"":"22"};opacity:${pct>0?0.7+pct/300:0.15}"></div>
+        </div>`;
+      }).join("")}
     </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+  </div>`;
+
+  // Painel resumo
+  const resumoHTML=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
+    <div class="card" style="text-align:center;padding:12px 8px;border-top:2px solid #60a5fa">
+      <div style="color:#60a5fa;font-size:22px;font-weight:900">${total}</div>
+      <div style="color:#444;font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-top:2px">Total</div>
+    </div>
+    <div class="card" style="text-align:center;padding:12px 8px;border-top:2px solid #f59e0b">
+      <div style="color:#f59e0b;font-size:22px;font-weight:900">${emAndamento}</div>
+      <div style="color:#444;font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-top:2px">Em Andamento</div>
+    </div>
+    <div class="card" style="text-align:center;padding:12px 8px;border-top:2px solid #22c55e">
+      <div style="color:#22c55e;font-size:22px;font-weight:900">${fechados}</div>
+      <div style="color:#444;font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-top:2px">Fechados</div>
+    </div>
+    <div class="card" style="text-align:center;padding:12px 8px;border-top:2px solid ${alertas>0?"#ef4444":"#333"}">
+      <div style="color:${alertas>0?"#ef4444":"#555"};font-size:22px;font-weight:900">${alertas}</div>
+      <div style="color:#444;font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-top:2px">Sem Resposta</div>
+    </div>
+  </div>`;
+
+  // Alerta destaque
+  const alertaBanner=alertas>0?`<div style="background:#ef444410;border:1px solid #ef444433;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px;cursor:pointer" onclick="set({crmStatus:'Todos',crmAlerta:true})">
+    <span style="font-size:18px">🔔</span>
+    <div><div style="color:#ef4444;font-weight:700;font-size:12px">${alertas} lead${alertas>1?"s":""} sem resposta há mais de 3 dias</div>
+    <div style="color:#888;font-size:10px">Clique para ver e retomar contato</div></div>
+  </div>`:"";
+
+  return stitle("CRM / Leads")
+    +resumoHTML
+    +funnelHTML
+    +alertaBanner
+    +`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+      <input value="${ST.crmBusca||""}" oninput="set({crmBusca:this.value})" class="inp" placeholder="🔍 Buscar por nome ou telefone..." style="flex:2;min-width:160px;font-size:12px"/>
+      <select onchange="set({crmOrigem:this.value})" class="inp" style="flex:1;min-width:110px;font-size:11px">
+        ${origensAll.map(o=>`<option value="${o}" ${filtroOrigem===o?"selected":""}>${o==="Todos"?"Todas as origens":o}</option>`).join("")}
+      </select>
+      <select onchange="set({crmProc:this.value})" class="inp" style="flex:1;min-width:110px;font-size:11px">
+        ${procsAll.map(p=>`<option value="${p}" ${filtroProc===p?"selected":""}>${p==="Todos"?"Todos procedimentos":p}</option>`).join("")}
+      </select>
+      <button onclick="addLead()" class="bp" style="font-size:12px;padding:7px 16px;white-space:nowrap;flex-shrink:0">+ Novo Lead</button>
+    </div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">
       ${["Todos",...LEAD_STATUS].map(s=>{
         const active=filtroStatus===s;
-        const c=LEAD_STATUS_COLORS[s]||"#888";
-        return`<button onclick="set({crmStatus:'${s}'})" class="bg" style="padding:4px 12px;font-size:11px;border-radius:50px;background:${active?c+"22":"transparent"};color:${active?c:"#555"};border-color:${active?c+"44":"rgba(198,164,109,0.1)"}">${s}</button>`;
+        const c=LEAD_STATUS_COLORS[s]||"#C6A46D";
+        const cnt=s==="Todos"?leads.length:leads.filter(l=>l.status===s).length;
+        return`<button onclick="set({crmStatus:'${s}'})" class="bg" style="padding:4px 10px;font-size:10px;border-radius:50px;background:${active?c+"22":"transparent"};color:${active?c:"#555"};border-color:${active?c+"44":"rgba(198,164,109,0.1)"}">${LEAD_STATUS_ICONS[s]||""} ${s} <span style="opacity:.6">${cnt}</span></button>`;
       }).join("")}
-      <button onclick="addLead()" class="bp" style="margin-left:auto;font-size:12px;padding:5px 16px">+ Novo Lead</button>
     </div>
     <div class="card" style="padding:0;overflow:hidden">
       ${filtrados.length===0
         ?emptyState("🎯","Nenhum lead encontrado","Clique em '+ Novo Lead' para começar o acompanhamento.")
-        :filtrados.map((l,i)=>{
+        :filtrados.map(l=>{
           const c=LEAD_STATUS_COLORS[l.status]||"#888";
-          return`<div class="lead-card" onclick="openLead(${l.id})">
+          const dias=_leadDiasSemContato(l);
+          const isAlerta=ativos.has(l.status)&&dias>=3;
+          const proxContato=l.proxContato?`<span style="color:#f59e0b;font-size:9px">📅 Próx: ${fmtDate(l.proxContato)}</span>`:"";
+          const orcLabel=l.orcamento?`<span style="color:#fb923c;font-size:9px">💰 ${l.orcamento}</span>`:"";
+          return`<div class="lead-card" style="${isAlerta?"border-left:3px solid #ef4444;":""}" onclick="openLead(${l.id})">
             ${ptAvatar(l.name,38)}
             <div style="flex:1;min-width:0">
               <div style="color:#E2C99A;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.name}</div>
-              <div style="color:#555;font-size:10px">${l.phone||"—"} &nbsp;·&nbsp; ${l.origem||"Sem origem"} &nbsp;·&nbsp; ${l.interesse||"Sem interesse"}</div>
+              <div style="color:#555;font-size:10px;margin-bottom:3px">${l.phone||"—"} · ${l.origem||"Sem origem"} · ${l.interesse||"—"}</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">${proxContato}${orcLabel}${isAlerta?`<span style="color:#ef4444;font-size:9px">⚠️ ${dias}d sem contato</span>`:""}</div>
             </div>
-            <span class="lead-status-pill" style="background:${c}22;color:${c};border:1px solid ${c}44">${l.status}</span>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
+              <span class="lead-status-pill" style="background:${c}22;color:${c};border:1px solid ${c}44">${l.status}</span>
+              <button onclick="event.stopPropagation();whatsLead(${l.id})" style="background:none;border:1px solid #22c55e44;border-radius:6px;color:#22c55e;cursor:pointer;font-size:10px;padding:3px 7px" title="WhatsApp">📱</button>
+            </div>
           </div>`;
         }).join("")}
     </div>`;
@@ -1739,7 +1950,7 @@ function pageCRM(){
 
 window.addLead=function(){
   const leads=load("rof_leads",[]);
-  const novo={id:Date.now(),name:"Novo Lead",phone:"",email:"",origem:"",interesse:"",status:"Novo",obs:"",createdAt:todayISO(),updatedAt:todayISO()};
+  const novo={id:Date.now(),name:"Novo Lead",phone:"",email:"",origem:"Instagram",interesse:"",status:"Novo Lead",obs:"",historico:[],orcamento:"",proxContato:"",dataUltContato:"",procedimento:"",createdAt:todayISO(),updatedAt:todayISO()};
   leads.unshift(novo);
   save("rof_leads",leads);
   set({crmStatus:"Todos"});
@@ -1749,60 +1960,102 @@ window.addLead=function(){
 window.openLead=function(lid){
   const leads=load("rof_leads",[]);
   const l=leads.find(x=>x.id===lid);if(!l)return;
-  const c=LEAD_STATUS_COLORS[l.status]||"#888";
+  const historico=(l.historico||[]).slice().reverse();
   const modal=document.createElement("div");
   modal.className="mbg";
-  modal.innerHTML=`<div class="mbx" style="max-width:480px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-      <div style="color:#E2C99A;font-weight:800;font-size:14px">🎯 Lead</div>
-      <button onclick="this.closest('.mbg').remove()" style="background:none;border:none;color:#555;font-size:20px;cursor:pointer">✕</button>
+  modal.id="lead-modal";
+  modal.innerHTML=`<div class="mbx" style="max-width:560px">
+    <div class="mhd">
+      <div class="mhd-title">🎯 Lead — ${l.name}</div>
+      <button onclick="document.getElementById('lead-modal').remove()" style="background:none;border:none;color:#555;font-size:22px;cursor:pointer;line-height:1">✕</button>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      <div style="grid-column:1/-1"><label class="lbl">Nome</label>
-        <input id="ld-name" value="${(l.name||"").replace(/"/g,"&quot;")}" class="inp"/></div>
-      <div><label class="lbl">Telefone / WhatsApp</label>
-        <input id="ld-phone" value="${(l.phone||"").replace(/"/g,"&quot;")}" class="inp"/></div>
-      <div><label class="lbl">E-mail</label>
-        <input id="ld-email" value="${(l.email||"").replace(/"/g,"&quot;")}" class="inp"/></div>
-      <div><label class="lbl">Origem do lead</label>
-        <select id="ld-origem" class="inp">
-          ${["Instagram","Facebook","Indicação","Google","WhatsApp","Outro"].map(o=>`<option value="${o}" ${l.origem===o?"selected":""}>${o}</option>`).join("")}
-        </select></div>
-      <div><label class="lbl">Interesse</label>
-        <select id="ld-interesse" class="inp">
-          ${["Clareamento","Implante","Ortodontia","Lentes","Prótese","Restauração","Outro"].map(o=>`<option value="${o}" ${l.interesse===o?"selected":""}>${o}</option>`).join("")}
-        </select></div>
-      <div style="grid-column:1/-1"><label class="lbl">Status</label>
-        <div style="display:flex;gap:5px;flex-wrap:wrap">
-          ${LEAD_STATUS.map(s=>{const sc=LEAD_STATUS_COLORS[s];return`<button id="ld-st-${s}" onclick="document.querySelectorAll('[id^=ld-st-]').forEach(b=>b.style.background='transparent');this.style.background='${sc}22';this._sel=true" style="padding:4px 11px;font-size:11px;border-radius:50px;background:${l.status===s?sc+"22":"transparent"};color:${sc};border:1px solid ${sc}44;cursor:pointer;font-family:var(--font-body)">${s}</button>`;}).join("")}
+    <div class="mbd">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div style="grid-column:1/-1"><label class="lbl">Nome completo</label>
+          <input id="ld-name" value="${(l.name||"").replace(/"/g,"&quot;")}" class="inp"/></div>
+        <div><label class="lbl">Telefone / WhatsApp</label>
+          <input id="ld-phone" value="${(l.phone||"").replace(/"/g,"&quot;")}" class="inp" placeholder="(47) 99999-9999"/></div>
+        <div><label class="lbl">E-mail</label>
+          <input id="ld-email" value="${(l.email||"").replace(/"/g,"&quot;")}" class="inp"/></div>
+        <div><label class="lbl">Origem do lead</label>
+          <select id="ld-origem" class="inp">
+            ${["Instagram","Facebook","Indicação","Google","WhatsApp","TikTok","Site","Outro"].map(o=>`<option value="${o}" ${l.origem===o?"selected":""}>${o}</option>`).join("")}
+          </select></div>
+        <div><label class="lbl">Procedimento de interesse</label>
+          <select id="ld-interesse" class="inp">
+            ${["Clareamento","Implante","Ortodontia","Lentes de Contato","Prótese","Restauração","Harmonização Facial","Botox","Preenchimento","Peeling","Outro"].map(o=>`<option value="${o}" ${l.interesse===o?"selected":""}>${o}</option>`).join("")}
+          </select></div>
+        <div><label class="lbl">Orçamento enviado</label>
+          <input id="ld-orcamento" value="${(l.orcamento||"").replace(/"/g,"&quot;")}" class="inp" placeholder="Ex: R$ 3.500,00 — implante"/></div>
+        <div><label class="lbl">Próximo contato</label>
+          <input id="ld-prox" type="date" value="${l.proxContato||""}" class="inp"/></div>
+      </div>
+      <div style="margin-bottom:10px"><label class="lbl">Status do atendimento</label>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${LEAD_STATUS.map(s=>{const sc=LEAD_STATUS_COLORS[s];const ic=LEAD_STATUS_ICONS[s];const sel=l.status===s;return`<button id="ld-st-${s.replace(/\s/g,"_")}" data-status="${s}" onclick="(function(btn){document.querySelectorAll('[id^=ld-st-]').forEach(b=>{b.style.background='transparent';b.removeAttribute('data-sel');});btn.style.background='${sc}22';btn.setAttribute('data-sel','1');})(this)" style="padding:5px 10px;font-size:10px;border-radius:50px;background:${sel?sc+"22":"transparent"};color:${sc};border:1px solid ${sc}44;cursor:pointer;font-family:var(--font-body)">${ic} ${s}</button>`;}).join("")}
         </div></div>
-      <div style="grid-column:1/-1"><label class="lbl">Observações / Histórico</label>
-        <textarea id="ld-obs" rows="3" class="inp" style="resize:vertical">${l.obs||""}</textarea></div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:14px">
-      <button onclick="saveLead(${lid})" class="bp" style="flex:1">💾 Salvar</button>
-      ${l.status==="Convertido"?"":l.status!=="Convertido"?`<button onclick="convertLead(${lid})" class="bg" style="color:#22c55e;border-color:#22c55e44;font-size:12px">✅ Converter em paciente</button>`:""}
-      <button onclick="delLead(${lid})" class="bg" style="color:#ef4444;border-color:#ef444444;font-size:12px">🗑</button>
+      <div style="margin-bottom:10px"><label class="lbl">Observações / Histórico de conversas</label>
+        <textarea id="ld-obs" rows="3" class="inp" style="resize:vertical" placeholder="Anote observações, o que o paciente disse, dúvidas...">${l.obs||""}</textarea></div>
+      <div style="margin-bottom:6px"><label class="lbl">Adicionar entrada no histórico</label>
+        <div style="display:flex;gap:6px">
+          <input id="ld-hist-txt" class="inp" style="flex:1;font-size:12px" placeholder="Registrar contato feito, resposta recebida..."/>
+          <button onclick="addHistLead(${lid})" class="bp" style="padding:8px 12px;font-size:12px;flex-shrink:0">+ Registrar</button>
+        </div></div>
+      ${historico.length>0?`<div style="background:#0a0a0a;border-radius:8px;padding:8px 10px;max-height:140px;overflow-y:auto;margin-bottom:10px">
+        ${historico.map(h=>`<div style="border-bottom:1px solid #1a1a1a;padding:5px 0;font-size:11px">
+          <span style="color:#555;font-size:10px">${fmtDate(h.date)} ${h.hora||""}</span>
+          <span style="color:#bbb;margin-left:6px">${h.texto}</span>
+        </div>`).join("")}
+      </div>`:""}
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+        <button onclick="saveLead(${lid})" class="bp" style="flex:1;min-width:100px">💾 Salvar</button>
+        <button onclick="whatsLead(${lid},true)" class="bg" style="color:#22c55e;border-color:#22c55e44;font-size:12px">📱 WhatsApp</button>
+        ${l.status!=="Fechado"?`<button onclick="convertLead(${lid})" class="bg" style="color:#22c55e;border-color:#22c55e44;font-size:12px">✅ Converter em paciente</button>`:""}
+        <button onclick="delLead(${lid})" class="bg" style="color:#ef4444;border-color:#ef444444;font-size:12px">🗑</button>
+      </div>
     </div>
   </div>`;
+  document.getElementById("lead-modal")?.remove();
   document.body.appendChild(modal);
+};
+
+window.addHistLead=function(lid){
+  const txt=document.getElementById("ld-hist-txt")?.value?.trim();
+  if(!txt)return;
+  const leads=load("rof_leads",[]);
+  const now=new Date();
+  const hora=now.getHours().toString().padStart(2,"0")+":"+now.getMinutes().toString().padStart(2,"0");
+  const updated=leads.map(l=>l.id!==lid?l:{...l,
+    historico:[...(l.historico||[]),{date:todayISO(),hora,texto:txt}],
+    dataUltContato:todayISO(),
+    updatedAt:todayISO()
+  });
+  save("rof_leads",updated);
+  const inp=document.getElementById("ld-hist-txt");if(inp)inp.value="";
+  toast("📝 Registrado!","success");
+  // Refresh modal
+  document.getElementById("lead-modal")?.remove();
+  setTimeout(()=>openLead(lid),50);
 };
 
 window.saveLead=function(lid){
   const leads=load("rof_leads",[]);
-  const selBtn=document.querySelector('[id^="ld-st-"][style*="22"]');
-  const status=selBtn?selBtn.id.replace("ld-st-",""):(leads.find(x=>x.id===lid)||{}).status||"Novo";
+  const selBtn=document.querySelector('[id^="ld-st-"][data-sel="1"]');
+  const cur=leads.find(x=>x.id===lid)||{};
+  const status=selBtn?selBtn.getAttribute("data-status"):cur.status||"Novo Lead";
   const updated=leads.map(l=>l.id!==lid?l:{...l,
     name:document.getElementById("ld-name")?.value||l.name,
     phone:document.getElementById("ld-phone")?.value||l.phone,
     email:document.getElementById("ld-email")?.value||l.email,
     origem:document.getElementById("ld-origem")?.value||l.origem,
     interesse:document.getElementById("ld-interesse")?.value||l.interesse,
+    orcamento:document.getElementById("ld-orcamento")?.value||l.orcamento||"",
+    proxContato:document.getElementById("ld-prox")?.value||l.proxContato||"",
     obs:document.getElementById("ld-obs")?.value||l.obs,
     status,updatedAt:todayISO()
   });
   save("rof_leads",updated);
-  document.querySelector(".mbg")?.remove();
+  document.getElementById("lead-modal")?.remove();
   set({});
   toast("✅ Lead salvo!","success");
 };
@@ -1810,12 +2063,10 @@ window.saveLead=function(lid){
 window.convertLead=function(lid){
   const leads=load("rof_leads",[]);
   const l=leads.find(x=>x.id===lid);if(!l)return;
-  document.querySelector(".mbg")?.remove();
-  // Mark as converted
-  const updLeads=leads.map(x=>x.id===lid?{...x,status:"Convertido",updatedAt:todayISO()}:x);
+  document.getElementById("lead-modal")?.remove();
+  const updLeads=leads.map(x=>x.id===lid?{...x,status:"Fechado",updatedAt:todayISO()}:x);
   save("rof_leads",updLeads);
-  // Create patient
-  const newPt={id:Date.now(),name:l.name,phone:l.phone,email:l.email,status:"Ativo",tipo:"particular",tags:[],notes:`Convertido de lead em ${todayISO()}. Interesse: ${l.interesse||"—"}. Origem: ${l.origem||"—"}.`};
+  const newPt={id:Date.now(),name:l.name,phone:l.phone,email:l.email,status:"Ativo",tipo:"particular",tags:[],notes:`Convertido de lead em ${todayISO()}. Interesse: ${l.interesse||"—"}. Origem: ${l.origem||"—"}.${l.orcamento?" Orçamento: "+l.orcamento:""}${l.obs?"\n"+l.obs:""}`};
   const pts=[...ST.pts,newPt];
   set({pts,page:"patients",selPt:newPt.id});
   save("rof_pts",pts);
@@ -1825,9 +2076,78 @@ window.convertLead=function(lid){
 window.delLead=function(lid){
   const leads=load("rof_leads",[]).filter(l=>l.id!==lid);
   save("rof_leads",leads);
-  document.querySelector(".mbg")?.remove();
+  document.getElementById("lead-modal")?.remove();
   set({});
   toast("Lead removido","success");
+};
+
+window.whatsLead=function(lid,fromModal){
+  const leads=load("rof_leads",[]);
+  const l=leads.find(x=>x.id===lid);if(!l)return;
+  let phone=(l.phone||"").replace(/\D/g,"");
+  if(!phone){toast("Lead sem telefone cadastrado.","warning");return;}
+  if(phone.length===10||phone.length===11)phone="55"+phone;
+  // Registrar contato no histórico
+  const now=new Date();
+  const hora=now.getHours().toString().padStart(2,"0")+":"+now.getMinutes().toString().padStart(2,"0");
+  const updated=leads.map(x=>x.id!==lid?x:{...x,dataUltContato:todayISO(),updatedAt:todayISO(),historico:[...(x.historico||[]),{date:todayISO(),hora,texto:"Contato via WhatsApp iniciado."}]});
+  save("rof_leads",updated);
+  if(fromModal){document.getElementById("lead-modal")?.remove();}
+  openWhatsMsgTemplates(phone,l.name,l.interesse);
+};
+
+// ══════════════════════════════════════════════════════════════════
+// WHATSAPP — MENSAGENS PRONTAS
+// ══════════════════════════════════════════════════════════════════
+window.openWhatsMsgTemplates=function(phone,nome,interesse){
+  if(!phone){toast("Telefone não cadastrado.","warning");return;}
+  let fmtPhone=phone.replace(/\D/g,"");
+  if(fmtPhone.length===10||fmtPhone.length===11)fmtPhone="55"+fmtPhone;
+  const primeiroNome=(nome||"").split(" ")[0];
+  const templates=[
+    {ic:"👋",titulo:"Primeiro contato",msg:`Olá, ${primeiroNome}! 😊\n\nTudo bem? Vi que você entrou em contato conosco!\n\nSou a Dra. Rossana, especialista em Método ROF™ — Reabilitação Oral & Facial Integrada.\n\nPodemos agendar uma avaliação gratuita? Quando você teria disponibilidade? 🗓️`},
+    {ic:"📅",titulo:"Confirmação de consulta",msg:`Olá, ${primeiroNome}! 😊\n\nPassando para confirmar sua consulta amanhã no Método ROF™.\n\nQualquer dúvida ou precisar reagendar, é só me avisar!\n\nDra. Rossana — CRO/SC 21403`},
+    {ic:"💰",titulo:"Orçamento enviado",msg:`Olá, ${primeiroNome}! 😊\n\nConforme conversamos, segue o orçamento do seu tratamento${interesse?" de "+interesse:""}.\n\nTemos condições especiais de parcelamento! 💳\n\nQualquer dúvida estou à disposição.\n\nDra. Rossana Batista Fucks — Método ROF™`},
+    {ic:"⏳",titulo:"Lembrete de retorno",msg:`Olá, ${primeiroNome}! Tudo bem? 😊\n\nPassando para lembrar que está na hora do seu retorno!\n\nVamos agendar? Tenho horários disponíveis esta semana. 📅\n\nDra. Rossana — Método ROF™`},
+    {ic:"🎉",titulo:"Pós-procedimento",msg:`Olá, ${primeiroNome}! 😊\n\nEspero que esteja se sentindo bem após o procedimento de hoje!\n\nLembre-se das orientações que passei. Qualquer desconforto ou dúvida, pode me chamar a qualquer hora. 💛\n\nDra. Rossana — Método ROF™`},
+    {ic:"🌟",titulo:"Avaliação / Feedback",msg:`Olá, ${primeiroNome}! Tudo bem? 😊\n\nFoi um prazer atendê-la(o)! ✨\n\nSua opinião é muito importante para mim. Se quiser, pode deixar uma avaliação no Google — leva só 1 minuto e ajuda muito!\n\nGrande abraço 💛\nDra. Rossana — Método ROF™`},
+    {ic:"📋",titulo:"Orientações pós-procedimento",msg:`Olá, ${primeiroNome}! 😊\n\nSegue um resumo das orientações pós-procedimento:\n\n• Evite alimentos quentes nas próximas 2h\n• Não fume ou consuma álcool por 24h\n• Tome a medicação conforme prescrito\n• Em caso de dor intensa ou inchaço, me avise\n\nQualquer dúvida estou aqui! 💛\nDra. Rossana — Método ROF™`},
+    {ic:"📆",titulo:"Reagendamento",msg:`Olá, ${primeiroNome}! 😊\n\nVi que sua consulta não pôde ser realizada. Sem problema!\n\nVamos remarcar? Qual dia fica melhor para você esta semana? 📅\n\nDra. Rossana — Método ROF™`},
+  ];
+  const modal=document.createElement("div");
+  modal.className="mbg";modal.id="whats-tpl-modal";
+  modal.innerHTML=`<div class="mbx" style="max-width:520px">
+    <div class="mhd">
+      <div class="mhd-title">📱 WhatsApp — Mensagens Prontas</div>
+      <button onclick="document.getElementById('whats-tpl-modal').remove()" style="background:none;border:none;color:#555;font-size:22px;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <div class="mbd">
+      <div style="color:#888;font-size:11px;margin-bottom:12px">Clique em uma mensagem para editar e enviar para <strong style="color:#E2C99A">${nome}</strong></div>
+      <div style="margin-bottom:12px">
+        <label class="lbl">Mensagem personalizada</label>
+        <textarea id="whats-custom-txt" rows="4" class="inp" style="resize:vertical;font-size:12px" placeholder="Digite ou edite uma mensagem personalizada..."></textarea>
+        <button onclick="(function(){var t=document.getElementById('whats-custom-txt').value.trim();if(!t){toast('Digite uma mensagem.','warning');return;}window.open('https://wa.me/${fmtPhone}?text='+encodeURIComponent(t),'_blank');document.getElementById('whats-tpl-modal').remove();})()" class="bp" style="width:100%;margin-top:8px;font-size:12px;padding:9px">📱 Enviar WhatsApp</button>
+      </div>
+      <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px">Templates rápidos</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${templates.map(t=>`<div onclick="document.getElementById('whats-custom-txt').value=${JSON.stringify(t.msg)}" style="padding:9px 12px;background:#0D0D0D;border:1px solid rgba(198,164,109,0.12);border-radius:8px;cursor:pointer;transition:border-color .15s" onmouseenter="this.style.borderColor='rgba(198,164,109,0.35)'" onmouseleave="this.style.borderColor='rgba(198,164,109,0.12)'">
+          <div style="font-size:12px;color:#E2C99A;font-weight:600">${t.ic} ${t.titulo}</div>
+          <div style="font-size:10px;color:#555;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.msg.substring(0,80)}...</div>
+        </div>`).join("")}
+      </div>
+    </div>
+  </div>`;
+  document.getElementById("whats-tpl-modal")?.remove();
+  document.body.appendChild(modal);
+};
+
+// Atalho rápido para WhatsApp a partir de um paciente
+window.whatsPatient=function(ptId){
+  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  let phone=(p.phone||"").replace(/\D/g,"");
+  if(!phone){toast("Paciente sem telefone cadastrado.","warning");return;}
+  if(phone.length===10||phone.length===11)phone="55"+phone;
+  openWhatsMsgTemplates(phone,p.name,p.treatment||"");
 };
 
 // ── CARD MOUSE TRACKING — gradiente segue o cursor ────────────
@@ -2133,6 +2453,13 @@ function pageAgenda(){
   const next=agView==="dia"?addDays(date,1):agView==="semana"?addDays(date,7):addDays(date,30);
   const agStatus=ST.agStatus||"Todos";
   const dayApts=apts.filter(a=>a.date===date&&(agStatus==="Todos"||a.status===agStatus));
+
+  // Calcular dias da semana (Dom–Sáb) e dias do mês para as views semana/mês
+  const _agD=new Date(date+"T12:00:00");
+  const _dow=_agD.getDay();
+  const weekDays=Array.from({length:7},(_,i)=>{const d=new Date(_agD);d.setDate(_agD.getDate()-_dow+i);return d.toISOString().slice(0,10);});
+  const _lastDay=new Date(_agD.getFullYear(),_agD.getMonth()+1,0).getDate();
+  const monthDays=Array.from({length:_lastDay},(_,i)=>String(_agD.getFullYear())+"-"+String(_agD.getMonth()+1).padStart(2,"0")+"-"+String(i+1).padStart(2,"0"));
 
   // mapa de ocupação (cada slot de 30min)
   const occ={};
@@ -2817,7 +3144,7 @@ window.clickTooth=t=>{
   const face=ST.odFace||"O";
   const faces=face==="todas"?["V","O","M","D","L"]:[face];
   od[t]={...(od[t]||{}),...Object.fromEntries(faces.map(f=>[f,sel]))};
-  updPt(ST.selPt,"odontogram",od);
+  updPt(ST.selPt,"odontogram",od,true);
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -2863,10 +3190,10 @@ function pagePts(){
         <div style="grid-column:1/-1">
           <label class="lbl">Tipo de atendimento</label>
           <div style="display:flex;gap:8px;margin-bottom:8px">
-            <button onclick="updPt(${p.id},'tipo','particular')" class="bg" style="flex:1;padding:7px;font-size:11px;
+            <button onclick="updPt(${p.id},'tipo','particular',true)" class="bg" style="flex:1;padding:7px;font-size:11px;
               background:${(p.tipo||"particular")==="particular"?"#C6A46D22":"transparent"};
               color:${(p.tipo||"particular")==="particular"?GL:"#555"}">💰 Particular</button>
-            <button onclick="updPt(${p.id},'tipo','convenio')" class="bg" style="flex:1;padding:7px;font-size:11px;
+            <button onclick="updPt(${p.id},'tipo','convenio',true)" class="bg" style="flex:1;padding:7px;font-size:11px;
               background:${p.tipo==="convenio"?"#3b82f622":"transparent"};
               color:${p.tipo==="convenio"?"#60a5fa":"#555"}">🏥 Convênio</button>
           </div>
@@ -2885,7 +3212,7 @@ function pagePts(){
         <div style="grid-column:1/-1"><label class="lbl">Notas clínicas e observações</label>
           <textarea oninput="updPt(${p.id},'notes',this.value)" rows="3" class="inp" style="resize:vertical">${p.notes||""}</textarea></div>
         <div style="grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap">
-          ${["Ativo","Pendente","Inativo"].map(s=>`<button onclick="updPt(${p.id},'status','${s}')" class="bg"
+          ${["Ativo","Pendente","Inativo"].map(s=>`<button onclick="updPt(${p.id},'status','${s}',true)" class="bg"
             style="padding:6px 14px;font-size:11px;
             background:${p.status===s?"#C6A46D22":"transparent"};
             color:${p.status===s?GL:"#555"}">${s}</button>`).join("")}
@@ -3004,6 +3331,10 @@ function pagePts(){
           ${p.anamFacial?`<span class="bdg" style="background:#22c55e22;color:#22c55e;border:1px solid #22c55e44">✓ Facial</span>`:""}
           ${(p.tags||[]).map(tag=>{const tagColors={"VIP":"#C6A46D","Ortodontia":"#60a5fa","Implante":"#c084fc","Clareamento":"#f59e0b","Urgência":"#ef4444","Inativo":"#6B6B6B","Retorno":"#22c55e","Convênio":"#3b82f6"};const c=tagColors[tag]||"#888";return`<span class="pt-tag" style="color:${c};background:${c}22;border-color:${c}44;font-size:9px;padding:1px 7px">${tag}</span>`;}).join("")}
         </div>
+        ${p.phone?`<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+          <button onclick="whatsPatient(${p.id})" class="whats-fab">📱 WhatsApp</button>
+          <a href="tel:${(p.phone||"").replace(/\D/g,"")}" style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:50px;background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;font-size:11px;font-weight:600;text-decoration:none">📞 Ligar</a>
+        </div>`:""}
       </div>
     </div>
     <div style="display:flex;border-bottom:1px solid rgba(198,164,109,0.12);margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none">${tabBtns}</div>
@@ -3283,11 +3614,7 @@ function renderHOF(p){
     +formHtml+empty+cardsHtml+"</div>";
 }
 
-window.hofToggle=function(key,val){
-  var fd=ST.hofData||{};var arr=(fd[key]||[]).slice();var i=arr.indexOf(val);
-  if(i>=0)arr.splice(i,1);else arr.push(val);
-  var nd=Object.assign({},fd);nd[key]=arr;ST.hofData=nd;render();
-};
+// window.hofToggle já definido acima (dedupado)
 window.saveHOF=function(ptId){
   var fd=ST.hofData||{};
   if(!fd.date){toast("Informe a data do procedimento.","warning");return;}
@@ -3391,7 +3718,8 @@ function renderPlano(p){
     // BOTÕES
     +"<div style='display:flex;gap:8px;flex-wrap:wrap'>"
     +"<button onclick='printPlano("+p.id+")' class='bp' style='flex:1;padding:11px'>🖨️ Imprimir / Salvar PDF</button>"
-    +"<button onclick='clearPlano("+p.id+")' class='bg' style='border-color:#ef444444;color:#ef4444;padding:11px'>🗑 Limpar</button>"
+    +"<button onclick='sendWhats("+p.id+",\"orcamento\",0)' class='bg' style='padding:11px;color:#22c55e;border-color:#22c55e44'>📱 WhatsApp</button>"
+    +"<button onclick='clearPlano("+p.id+")' class='bg' style='border-color:#ef444444;color:#ef4444;padding:11px'>🗑</button>"
     +"</div>"
     +"</div>";
 }
@@ -3867,7 +4195,15 @@ window.addPt=()=>{
     photo:null,xrays:[],notes:"",docs:[],odontogram:{},anamBucal:null,anamFacial:null};
   const nps=[...ST.pts,np];save("rof_pts",nps);set({pts:nps,selPt:np.id,ptTab:"info"});
 };
-window.updPt=(id,key,val)=>{const nps=ST.pts.map(x=>x.id===id?{...x,[key]:val}:x);save("rof_pts",nps);set({pts:nps});};
+var _updPtTimer=null;
+window.updPt=(id,key,val,immediate)=>{
+  const nps=ST.pts.map(x=>x.id===id?{...x,[key]:val}:x);
+  ST.pts=nps;save("rof_pts",nps);
+  if(immediate){set({pts:nps});return;}
+  // Debounce: re-renderiza só 600ms após última mudança (evita freeze ao digitar)
+  clearTimeout(_updPtTimer);
+  _updPtTimer=setTimeout(()=>set({pts:nps}),600);
+};
 window.setPtPhoto=(id,inp)=>{const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>updPt(id,"photo",ev.target.result);r.readAsDataURL(f);};
 window.addXray=(id,inp)=>{Array.from(inp.files).forEach(file=>{const r=new FileReader();r.onload=ev=>{const p=ST.pts.find(x=>x.id===id);updPt(id,"xrays",[...(p.xrays||[]),{name:file.name,data:ev.target.result}]);};r.readAsDataURL(file);});};
 window.delXray=(id,i)=>{const p=ST.pts.find(x=>x.id===id);updPt(id,"xrays",p.xrays.filter((_,j)=>j!==i));};
