@@ -5313,25 +5313,18 @@ window.delReceita=function(ptId,rcId){
   },"Excluir Receita");
 };
 
-function buildReceitaHTML(p,rc,via){
+function buildReceitaBody(p,rc,via){
   var logo="data:image/png;base64,"+LOGO_B64;
   var isCtrl=rc.controlado;
-  var linhas=rc.texto.split("\n").map(function(l,i){
+  var linhas=rc.texto.split("\n").map(function(l){
     if(!l.trim())return "<div style='height:8px'></div>";
-    if(i===0||rc.texto.split("\n").slice(0,i).every(function(x){return x.trim();})){}
     return "<div style='padding:4px 0;font-size:13px;color:"+(l.match(/^\d+\.|\•/)?'#8B6914':'#333')+"'>"+l+"</div>";
   }).join("");
-  var doc="<!DOCTYPE html><html><head><meta charset='UTF-8'/><title>Receituário"+(isCtrl?" de Controle Especial":""+(via?" — "+via+"ª via":""))+"</title>"
-    +"<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;background:#fff;padding:28px;max-width:680px;margin:0 auto;font-size:13px}"
-    +".gold{background:linear-gradient(135deg,#8B6914,#E2C99A,#C6A46D)}"
-    +"@media print{body{padding:12px}}</style></head><body>"
-    // Header
-    +(isCtrl?"<div style='background:#f59e0b;color:#000;text-align:center;padding:6px;font-weight:800;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:0'>RECEITA DE CONTROLE ESPECIAL"+(via?" — "+via+"ª VIA — "+(via===1?"FARMÁCIA":"PACIENTE"):"")+"</div>":"")
+  return (isCtrl?"<div style='background:#f59e0b;color:#000;text-align:center;padding:6px;font-weight:800;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:0'>RECEITA DE CONTROLE ESPECIAL"+(via?" — "+via+"ª VIA — "+(via===1?"FARMÁCIA":"PACIENTE"):"")+"</div>":"")
     +"<div style='background:linear-gradient(135deg,#8B6914,#E2C99A,#C6A46D);padding:16px 24px;display:flex;align-items:center;gap:14px;margin-bottom:0'>"
     +"<img src='"+logo+"' style='width:44px;height:44px;object-fit:contain;border-radius:6px'/>"
     +"<div><div style='color:#000;font-size:15px;font-weight:900;letter-spacing:1.5px'>RECEITUÁRIO ODONTOLÓGICO</div>"
     +"<div style='color:#000;font-size:10px;opacity:.7'>Método ROF™ · Dra. Rossana Batista Fucks · CRO/SC 21403 · Itapema/SC</div></div></div>"
-    // Paciente
     +"<div style='border:1px solid #e5e5e5;padding:10px 16px;display:flex;justify-content:space-between;background:#f9f5e8;margin-bottom:0'>"
     +"<div><div style='color:#888;font-size:9px;text-transform:uppercase;letter-spacing:1px'>Paciente</div>"
     +"<div style='color:#111;font-weight:800;font-size:15px'>"+p.name+"</div>"
@@ -5340,24 +5333,27 @@ function buildReceitaHTML(p,rc,via){
     +"<div style='text-align:right'><div style='color:#888;font-size:9px;text-transform:uppercase;letter-spacing:1px'>Data</div>"
     +"<div style='color:#555;font-weight:700'>"+fmtDate(rc.date)+"</div>"
     +"<div style='color:#888;font-size:10px'>"+rc.hora+"</div></div></div>"
-    // Conteúdo
     +"<div style='border:1px solid #e5e5e5;border-top:none;padding:16px;min-height:280px'>"
     +"<div style='color:#8B6914;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:12px;border-bottom:2px solid #C6A46D;padding-bottom:6px'>Prescrição</div>"
     +linhas+"</div>"
-    // Obs
     +(rc.obs?"<div style='border:1px solid #e5e5e5;border-top:none;padding:10px 16px;background:#fffbeb'>"
     +"<div style='color:#888;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px'>Observações</div>"
     +"<div style='color:#555;font-size:12px'>"+rc.obs+"</div></div>":"")
-    // Assinatura
     +"<div style='border:1px solid #e5e5e5;border-top:none;padding:14px 16px;display:flex;justify-content:space-between;align-items:flex-end'>"
     +"<div><div style='color:#888;font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:30px'>Assinatura e Carimbo</div>"
     +"<div style='border-top:1px solid #999;padding-top:6px;color:#888;font-size:11px'>Dra. Rossana Batista Fucks<br/><span style='color:#C6A46D;font-weight:700'>CRO/SC 21403</span><br/>Itapema — SC</div></div>"
     +"<div style='text-align:right;color:#888;font-size:10px'>Itapema/SC<br/>"+fmtDate(rc.date)+"</div></div>"
-    // Rodapé controlado
     +(isCtrl?"<div style='border:1px solid #f59e0b;border-top:none;padding:8px 16px;background:#fff8e8;font-size:10px;color:#8B6914;text-align:center'>"
-    +"Receita válida por 30 dias · Identificação do comprador obrigatória · "+(via===1?"1ª VIA — FARMÁCIA":"2ª VIA — PACIENTE")+"</div>":"")
-    +"</body></html>";
-  return doc;
+    +"Receita válida por 30 dias · Identificação do comprador obrigatória · "+(via===1?"1ª VIA — FARMÁCIA":"2ª VIA — PACIENTE")+"</div>":"");
+}
+
+function buildReceitaHTML(p,rc,via){
+  var body=buildReceitaBody(p,rc,via);
+  return "<!DOCTYPE html><html><head><meta charset='UTF-8'/><title>Receituário"+(rc.controlado?" de Controle Especial":""+(via?" — "+via+"ª via":""))+"</title>"
+    +"<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;background:#fff;padding:28px;max-width:680px;margin:0 auto;font-size:13px}"
+    +".gold{background:linear-gradient(135deg,#8B6914,#E2C99A,#C6A46D)}"
+    +"@media print{body{padding:12px}}</style></head><body>"
+    +body+"</body></html>";
 }
 
 window.viewReceita=function(ptId,rcId){
@@ -5365,12 +5361,17 @@ window.viewReceita=function(ptId,rcId){
   var rc=(p.receitas||[]).find(function(x){return x.id===rcId;});
   if(!p||!rc)return;
   if(rc.controlado){
-    // Open two windows for controlled prescription
-    [1,2].forEach(function(via){
-      var doc=buildReceitaHTML(p,rc,via);
-      var w=window.open("","_blank","width=720,height=900");
-      if(w){w.document.write(doc);w.document.close();setTimeout(function(){w.print();},via===1?400:800);}
-    });
+    // Single window with both vias separated by page-break
+    var doc="<!DOCTYPE html><html><head><meta charset='UTF-8'/><title>Receita de Controle Especial</title>"
+      +"<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;background:#fff}"
+      +".via{padding:28px;max-width:680px;margin:0 auto;font-size:13px;page-break-after:always}"
+      +".via:last-child{page-break-after:auto}"
+      +"@media print{.via{padding:12px;page-break-after:always}.via:last-child{page-break-after:auto}}</style></head><body>"
+      +"<div class='via'>"+buildReceitaBody(p,rc,1)+"</div>"
+      +"<div class='via'>"+buildReceitaBody(p,rc,2)+"</div>"
+      +"</body></html>";
+    var w=window.open("","_blank","width=720,height=900");
+    if(w){w.document.write(doc);w.document.close();setTimeout(function(){w.print();},400);}
   }else{
     var doc=buildReceitaHTML(p,rc,null);
     var w=window.open("","_blank","width=720,height=900");
@@ -5408,33 +5409,66 @@ function renderAtestado(p){
 
 window.openAtestado=function(ptId){
   var p=ST.pts.find(function(x){return x.id===ptId;});
+  var finsOpts=["Trabalho","Escola","Acompanhante","Outros fins"];
+  var finsHtml=finsOpts.map(function(f){
+    return "<button type='button' id='at-fin-"+f.replace(/\s/g,"_")+"' onclick='atToggleFin(this)' data-val='"+f+"' style='padding:5px 12px;border-radius:50px;border:1px solid rgba(198,164,109,0.2);background:transparent;color:#555;cursor:pointer;font-size:11px;font-family:Georgia,serif;transition:all 0.15s'>"+f+"</button>";
+  }).join("");
   var m=document.createElement("div");m.className="mbg";m.id="at-modal";
-  m.innerHTML="<div class='mbx' style='max-width:460px'><div class='mhd'>"
+  m.innerHTML="<div class='mbx' style='max-width:480px'><div class='mhd'>"
     +"<div style='color:#E2C99A;font-weight:800;font-size:14px'>📄 Novo Atestado — "+p.name+"</div>"
     +"<button onclick=\"document.getElementById('at-modal').remove()\" style='background:none;border:none;color:#555;cursor:pointer;font-size:22px'>✕</button>"
     +"</div><div class='mbd'>"
+    // Data + Horário
     +"<div class='g2' style='margin-bottom:10px'>"
     +"<div><label class='lbl'>Data do atendimento</label><input id='at-date' type='date' value='"+todayISO()+"' class='inp'/></div>"
-    +"<div><label class='lbl'>Horas de afastamento</label><input id='at-horas' type='number' min='0' max='720' class='inp' placeholder='Ex: 2'/></div>"
+    +"<div><label class='lbl'>Horário de atendimento</label><input id='at-hora' type='time' class='inp'/></div>"
     +"</div>"
+    // Finalidade
+    +"<div style='margin-bottom:10px'><label class='lbl'>Finalidade (para quais fins)</label>"
+    +"<div style='display:flex;gap:6px;flex-wrap:wrap;margin-top:4px'>"+finsHtml+"</div></div>"
+    // Procedimento
     +"<div style='margin-bottom:10px'><label class='lbl'>Procedimento / Motivo</label>"
     +"<input id='at-motivo' class='inp' placeholder='Ex: Tratamento odontológico cirúrgico — exodontia'/></div>"
+    // Afastamento
+    +"<div class='g2' style='margin-bottom:10px'>"
+    +"<div><label class='lbl'>Período de afastamento</label>"
+    +"<input id='at-qtd' type='number' min='0' max='365' class='inp' placeholder='Ex: 2'/></div>"
+    +"<div><label class='lbl'>Unidade</label>"
+    +"<select id='at-unidade' class='inp'><option value='hora'>hora(s)</option><option value='dia'>dia(s)</option></select></div>"
+    +"</div>"
+    // Obs
     +"<div style='margin-bottom:12px'><label class='lbl'>Observações / Restrições</label>"
-    +"<textarea id='at-obs' rows='3' class='inp' style='resize:vertical' placeholder='Repouso, dieta, medicação, outras restrições...'></textarea></div>"
+    +"<textarea id='at-obs' rows='2' class='inp' style='resize:vertical' placeholder='Repouso, dieta, medicação...'></textarea></div>"
     +"<div style='display:flex;gap:8px'>"
     +"<button onclick='saveAtestado("+ptId+")' class='bp' style='flex:1'>💾 Salvar Atestado</button>"
     +"<button onclick=\"document.getElementById('at-modal').remove()\" class='bg' style='color:#555'>Cancelar</button>"
     +"</div></div></div>";
   document.getElementById("at-modal")?.remove();document.body.appendChild(m);
 };
+window.atToggleFin=function(btn){
+  var active=btn.getAttribute("data-active")==="1";
+  btn.setAttribute("data-active",active?"0":"1");
+  btn.style.background=active?"transparent":"#C6A46D22";
+  btn.style.color=active?"#555":"#C6A46D";
+  btn.style.borderColor=active?"rgba(198,164,109,0.2)":"rgba(198,164,109,0.5)";
+};
 
 window.saveAtestado=function(ptId){
   var date=document.getElementById("at-date")?.value;
-  var horas=document.getElementById("at-horas")?.value||"";
+  var hora=document.getElementById("at-hora")?.value||"";
   var motivo=document.getElementById("at-motivo")?.value.trim()||"";
   var obs=document.getElementById("at-obs")?.value.trim()||"";
+  var qtd=document.getElementById("at-qtd")?.value||"";
+  var unidade=document.getElementById("at-unidade")?.value||"hora";
+  var afastamento=qtd?(qtd+" "+unidade+(Number(qtd)>1?"s":"")):"";
+  // coletar finalidades marcadas
+  var fins=[];
+  ["Trabalho","Escola","Acompanhante","Outros_fins"].forEach(function(f){
+    var el=document.getElementById("at-fin-"+f);
+    if(el&&el.getAttribute("data-active")==="1")fins.push(f.replace("_"," "));
+  });
   if(!date){toast("Informe a data.","warning");return;}
-  var at={id:Date.now(),date,horas,motivo,obs};
+  var at={id:Date.now(),date,hora,motivo,obs,fins:fins.join(", "),afastamento,qtd,unidade};
   var nps=ST.pts.map(function(p){if(p.id!==ptId)return p;return Object.assign({},p,{atestados:(p.atestados||[]).concat([at])});});
   save("rof_pts",nps);document.getElementById("at-modal")?.remove();set({pts:nps});
 };
@@ -5467,8 +5501,10 @@ function buildAtestadoHTML(p,at){
     +"Atesto, para os devidos fins, que o(a) paciente <strong>"+p.name+"</strong>"
     +(p.cpf?", portador(a) do CPF nº <strong>"+p.cpf+"</strong>,":"")
     +" esteve sob meus cuidados profissionais na data de <strong>"+fmtDate(at.date)+"</strong>"
+    +(at.hora?", no horário de <strong>"+at.hora+"</strong>":"")
     +(at.motivo?", sendo submetido(a) a <strong>"+at.motivo+"</strong>":"")
-    +(at.horas?", necessitando de afastamento de suas atividades pelo período de <strong>"+at.horas+" ("+at.horas+" hora"+(Number(at.horas)>1?"s":"")+")</strong>":"")
+    +(at.fins?". Finalidade: <strong>"+at.fins+"</strong>":"")
+    +((at.afastamento||at.horas)?", necessitando de afastamento de suas atividades pelo período de <strong>"+(at.afastamento||(at.horas+" hora"+(Number(at.horas)>1?"s":"")))+"</strong>":"")
     +".</div>"
     +(at.obs?"<div style='background:#f9f9f9;border-radius:6px;padding:10px 14px;font-size:12px;color:#555;margin-bottom:28px;border:1px solid #e5e5e5'><strong>Observações:</strong> "+at.obs+"</div>":"")
     +"<div style='display:flex;justify-content:space-between;align-items:flex-end;margin-top:50px;padding-top:20px;border-top:1px solid #e5e5e5'>"
