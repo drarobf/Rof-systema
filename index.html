@@ -1546,96 +1546,154 @@ window.delEtapa=function(ptId,idx){
 // CONTRATO DE PRESTAÇÃO DE SERVIÇOS
 // ══════════════════════════════════════════════════════════════════
 window.renderContrato=function(p){
-  const etapas=p.planoTto||[];
-  const total=etapas.reduce((s,e)=>s+(e.valor||0),0);
-  const forma=p.contratoForma||"À vista";
-  const parcelas=p.contratoParcelas||1;
-  const sig=p.contratoSig||null;
-  const sigMode=ST.ctSigMode||"draw";
+  var etapas=p.planoTto||[];
+  var total=etapas.reduce(function(s,e){return s+(e.valor||0);},0);
+  var forma=p.contratoForma||"À vista";
+  var parcelas=p.contratoParcelas||1;
+  var prazo=p.contratoPrazo||"";
+  var sigPt=p.contratoSig||null;
+  var sigDra=p.contratoDraSig||null;
+  var sigPtMode=ST.ctSigMode||"draw";
+  var sigDraMode=ST.ctDraSigMode||"draw";
+  var ambos=!!(sigPt&&sigDra);
 
-  const sigSection=sig
-    ?`<div class="card" style="margin-bottom:14px;border:1px solid #22c55e44">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <span style="color:#22c55e;font-size:11px;font-weight:700">✅ CONTRATO ASSINADO</span>
-          <span style="color:#555;font-size:10px">${p.contratoSigDate||""}</span>
+  var sigPtHtml=sigPt
+    ?`<div style="background:#071407;border:1px solid #22c55e44;border-radius:10px;padding:12px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="color:#22c55e;font-size:11px;font-weight:700">✅ Assinado pelo Paciente em ${p.contratoSigDate||""}</span>
+          <button onclick="updPt(${p.id},'contratoSig',null,true)" class="bg" style="font-size:10px;padding:3px 8px;color:#555">↺ Refazer</button>
         </div>
-        <div style="background:#f9f9f9;border-radius:8px;padding:10px;text-align:center;min-height:60px;display:flex;align-items:center;justify-content:center">
-          ${sig.type==="canvas"
-            ?`<img src="${sig.value}" style="max-height:56px;max-width:100%;filter:invert(0) brightness(0.2)"/>`
-            :`<div style="font-family:cursive;color:#333;font-size:26px">${sig.value}</div>`}
+        <div style="text-align:center;padding:10px 0;border-top:1px solid rgba(198,164,109,0.12)">
+          ${sigPt.type==="canvas"
+            ?`<img src="${sigPt.value}" style="max-height:54px;max-width:220px"/>`
+            :`<div style="font-family:cursive;color:#E2C99A;font-size:24px">${sigPt.value}</div>`}
         </div>
-        <div style="display:flex;gap:8px;margin-top:10px">
-          <button onclick="printContrato(${p.id})" class="bp" style="flex:1;font-size:12px;padding:8px">🖨️ Imprimir / Salvar PDF</button>
-          <button onclick="whatsContrato(${p.id})" class="bg" style="flex:1;font-size:12px;padding:8px;color:#22c55e;border-color:#22c55e44">📱 WhatsApp</button>
-          <button onclick="updPt(${p.id},'contratoSig',null);set({ctSigMode:'draw'})" class="bg" style="font-size:11px;padding:8px;color:#555">↺</button>
-        </div>
+        <div style="color:#555;font-size:10px;text-align:center;margin-top:6px">${p.name} — Contratante</div>
       </div>`
-    :`<div class="card" style="margin-bottom:14px">
-        <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:12px">✍️ Assinatura Digital do Paciente</div>
-        <div style="display:flex;gap:8px;margin-bottom:10px">
-          <button onclick="set({ctSigMode:'draw'})" class="bg" style="padding:5px 12px;font-size:11px;border-radius:50px;background:${sigMode==="draw"?"#C6A46D22":"transparent"};color:${sigMode==="draw"?"#C6A46D":"#555"}">✍️ Desenhar</button>
-          <button onclick="set({ctSigMode:'type'})" class="bg" style="padding:5px 12px;font-size:11px;border-radius:50px;background:${sigMode==="type"?"#C6A46D22":"transparent"};color:${sigMode==="type"?"#C6A46D":"#555"}">⌨️ Digitar nome</button>
+    :`<div class="card" style="margin-bottom:10px">
+        <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px">✍️ Assinatura Digital — Paciente</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <button onclick="set({ctSigMode:'draw'})" class="bg" style="padding:4px 12px;font-size:11px;border-radius:50px;background:${sigPtMode==="draw"?"#C6A46D22":"transparent"};color:${sigPtMode==="draw"?"#C6A46D":"#555"}">✍️ Desenhar</button>
+          <button onclick="set({ctSigMode:'type'})" class="bg" style="padding:4px 12px;font-size:11px;border-radius:50px;background:${sigPtMode==="type"?"#C6A46D22":"transparent"};color:${sigPtMode==="type"?"#C6A46D":"#555"}">⌨️ Digitar nome</button>
         </div>
-        ${sigMode==="draw"
-          ?`<canvas id="sc-ct" width="400" height="100"
-              style="border:2px dashed rgba(198,164,109,0.4);border-radius:10px;background:#0a0a0a;
-                     cursor:crosshair;display:block;touch-action:none;width:100%;max-width:100%"></canvas>
+        ${sigPtMode==="draw"
+          ?`<canvas id="sc-ct" width="400" height="90" style="border:2px dashed rgba(198,164,109,0.4);border-radius:10px;background:#0a0a0a;cursor:crosshair;display:block;touch-action:none;width:100%;max-width:100%"></canvas>
             <div style="display:flex;gap:8px;margin-top:8px">
               <button onclick="clearSigCt()" class="bg" style="font-size:11px;padding:5px 12px">🗑 Limpar</button>
               <button id="scb-ct" onclick="confirmSigCt(${p.id})" class="bp" style="font-size:11px;padding:5px 16px;display:none">✅ Confirmar assinatura</button>
             </div>`
-          :`<input id="sti-ct" placeholder="Digite o nome completo do paciente"
-              class="inp" style="font-family:cursive;font-size:18px;color:#E2C99A;letter-spacing:1px;margin-bottom:10px"/>
+          :`<input id="sti-ct" placeholder="Digite o nome completo do paciente" class="inp" style="font-family:cursive;font-size:18px;color:#E2C99A;letter-spacing:1px;margin-bottom:10px"/>
             <button onclick="confirmSigCtText(${p.id})" class="bp" style="width:100%;font-size:12px;padding:10px">✅ Confirmar Assinatura</button>`}
+      </div>`;
+
+  var sigDraHtml=sigDra
+    ?`<div style="background:#071407;border:1px solid #22c55e44;border-radius:10px;padding:12px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="color:#22c55e;font-size:11px;font-weight:700">✅ Assinado pela Dra. Rossana em ${p.contratoDraSigDate||""}</span>
+          <button onclick="updPt(${p.id},'contratoDraSig',null,true)" class="bg" style="font-size:10px;padding:3px 8px;color:#555">↺ Refazer</button>
+        </div>
+        <div style="text-align:center;padding:10px 0;border-top:1px solid rgba(198,164,109,0.12)">
+          ${sigDra.type==="canvas"
+            ?`<img src="${sigDra.value}" style="max-height:54px;max-width:220px"/>`
+            :`<div style="font-family:cursive;color:#C6A46D;font-size:24px">${sigDra.value}</div>`}
+        </div>
+        <div style="color:#555;font-size:10px;text-align:center;margin-top:6px">Dra. Rossana Batista Fucks — CRO/SC 21403 — Contratada</div>
+      </div>`
+    :`<div class="card" style="margin-bottom:10px;border-color:rgba(198,164,109,0.25)">
+        <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px">✍️ Assinatura Digital — Dra. Rossana</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <button onclick="set({ctDraSigMode:'draw'})" class="bg" style="padding:4px 12px;font-size:11px;border-radius:50px;background:${sigDraMode==="draw"?"#C6A46D22":"transparent"};color:${sigDraMode==="draw"?"#C6A46D":"#555"}">✍️ Desenhar</button>
+          <button onclick="set({ctDraSigMode:'type'})" class="bg" style="padding:4px 12px;font-size:11px;border-radius:50px;background:${sigDraMode==="type"?"#C6A46D22":"transparent"};color:${sigDraMode==="type"?"#C6A46D":"#555"}">⌨️ Digitar nome</button>
+        </div>
+        ${sigDraMode==="draw"
+          ?`<canvas id="sc-dra" width="400" height="90" style="border:2px dashed rgba(198,164,109,0.4);border-radius:10px;background:#0a0a0a;cursor:crosshair;display:block;touch-action:none;width:100%;max-width:100%"></canvas>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button onclick="clearSigDra()" class="bg" style="font-size:11px;padding:5px 12px">🗑 Limpar</button>
+              <button id="scb-dra" onclick="confirmSigDra(${p.id})" class="bp" style="font-size:11px;padding:5px 16px;display:none">✅ Confirmar assinatura</button>
+            </div>`
+          :`<input id="sti-dra" placeholder="Dra. Rossana Batista Fucks" class="inp" style="font-family:cursive;font-size:18px;color:#C6A46D;letter-spacing:1px;margin-bottom:10px"/>
+            <button onclick="confirmSigDraText(${p.id})" class="bp" style="width:100%;font-size:12px;padding:10px">✅ Confirmar Assinatura</button>`}
       </div>`;
 
   return`<div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <div style="color:#E2C99A;font-weight:800;font-size:13px">📝 Contrato de Serviços</div>
-      ${sig?`<span style="color:#22c55e;font-size:11px;font-weight:700">✅ Assinado</span>`:`<span style="color:#f59e0b;font-size:11px">Aguardando assinatura</span>`}
+      <div style="color:#E2C99A;font-weight:800;font-size:13px">📝 Contrato de Prestação de Serviços</div>
+      <span style="color:${ambos?"#22c55e":sigPt?"#f59e0b":"#ef4444"};font-size:11px;font-weight:700">${ambos?"✅ Ambos assinaram":sigPt?"⏳ Aguard. Dra.":"⚠️ Não assinado"}</span>
     </div>
 
     <div class="card" style="margin-bottom:10px">
-      <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px">Contratante</div>
-      <div style="color:#888;font-size:12px;line-height:1.8">
-        <b style="color:#ddd">${p.name}</b><br/>
-        CPF: ${p.cpf||"—"} &nbsp;·&nbsp; RG: ${p.rg||"—"}<br/>
-        ${p.endereco||"Endereço não informado"}<br/>
-        Tel: ${p.phone||"—"}
+      <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px">CONTRATANTE — Paciente</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:12px;color:#888">
+        <div style="grid-column:1/-1;margin-bottom:4px"><span style="color:#555;font-size:10px;display:block">Nome completo</span><b style="color:#ddd;font-size:13px">${p.name}</b></div>
+        <div><span style="color:#555;font-size:10px;display:block">CPF</span>${p.cpf||"___________________"}</div>
+        <div><span style="color:#555;font-size:10px;display:block">RG</span>${p.rg||"___________________"}</div>
+        <div style="grid-column:1/-1"><span style="color:#555;font-size:10px;display:block">Endereço / Bairro / Cidade / Estado</span>${p.endereco||"____________________________"}</div>
+        <div><span style="color:#555;font-size:10px;display:block">Telefone</span>${p.phone||"—"}</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:10px;border-color:rgba(198,164,109,0.3)">
+      <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px">CONTRATADO — Prestador de Serviços</div>
+      <div style="font-size:12px;color:#888;line-height:2">
+        <b style="color:#E2C99A;font-size:13px">Dra. Rossana Batista Fucks</b> — Cirurgiã-Dentista<br/>
+        CPF: 546.313.190-20 &nbsp;·&nbsp; CRO/SC 21403<br/>
+        R. 220, nº 200 - Sala 02, Bairro Meia Praia — Itapema/SC
       </div>
     </div>
 
     <div class="card" style="margin-bottom:10px">
-      <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px">Procedimentos contratados</div>
+      <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px">Cláusula 1ª — Procedimentos Contratados</div>
       ${etapas.length===0
-        ?`<div style="color:#333;font-size:12px">Nenhum procedimento no Plano de Tratamento.<br/><span style="font-size:11px;color:#222">Acesse a aba 🗂️ Plano Tto. para cadastrar.</span></div>`
-        :`${etapas.map((e,i)=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #2a1f0a">
+        ?`<div style="color:#333;font-size:12px">Nenhum procedimento no Plano de Tratamento.<br/><span style="color:#222;font-size:11px">Acesse a aba 🗂️ Plano Tto. para adicionar.</span></div>`
+        :etapas.map((e,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(198,164,109,0.07)">
           <span style="color:#bbb;font-size:12px">${i+1}. ${e.proc||"Procedimento"}</span>
-          <span style="color:#E2C99A;font-weight:700;font-size:12px">R$ ${(e.valor||0).toLocaleString("pt-BR")}</span>
-        </div>`).join("")}
-        <div style="display:flex;justify-content:flex-end;margin-top:8px">
-          <span style="color:#C6A46D;font-weight:900;font-size:14px">Total: R$ ${total.toLocaleString("pt-BR")}</span>
-        </div>`}
+          <span style="color:#E2C99A;font-weight:700;font-size:12px;flex-shrink:0;margin-left:10px">R$ ${(e.valor||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</span>
+        </div>`).join("")+`<div style="text-align:right;margin-top:10px"><span style="color:#C6A46D;font-weight:900;font-size:14px">Total: R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})}</span></div>`}
     </div>
 
     <div class="card" style="margin-bottom:10px">
-      <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px">Forma de pagamento</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-        ${["À vista","Parcelado","Convênio","Permuta"].map(f=>`<button onclick="updPt(${p.id},'contratoForma','${f}',true)" class="bg" style="font-size:11px;padding:5px 12px;border-radius:50px;background:${forma===f?"#C6A46D22":"transparent"};color:${forma===f?"#C6A46D":"#555"};border-color:${forma===f?"rgba(198,164,109,0.4)":"rgba(198,164,109,0.1)"}">${f}</button>`).join("")}
+      <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px">Cláusula 2ª — Prazo de Execução</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="color:#888;font-size:12px">Os serviços serão realizados em aprox.</span>
+        <input type="number" min="1" max="60" value="${prazo}" oninput="updPt(${p.id},'contratoPrazo',parseInt(this.value)||1)" class="inp" style="width:65px;font-size:14px;padding:6px 8px;text-align:center"/>
+        <span style="color:#888;font-size:12px">meses</span>
       </div>
-      ${forma==="Parcelado"?`<div style="display:flex;align-items:center;gap:8px">
-        <span style="color:#666;font-size:12px">Parcelas:</span>
+      <div style="color:#444;font-size:10px;margin-top:8px;line-height:1.6">Podendo sofrer prorrogação conforme complexidade do caso, resposta biológica do(a) paciente, assiduidade às consultas e seguimento das orientações fornecidas.</div>
+    </div>
+
+    <div class="card" style="margin-bottom:10px">
+      <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px">Cláusula 3ª — Preço e Condições de Pagamento</div>
+      <div style="color:#888;font-size:12px;margin-bottom:10px">Valor total dos serviços: <b style="color:#E2C99A;font-size:15px">R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})}</b></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+        ${["À vista","Parcelado","Convênio","Permuta"].map(f=>`<button onclick="updPt(${p.id},'contratoForma','${f}',true)" class="bg" style="font-size:11px;padding:5px 14px;border-radius:50px;background:${forma===f?"#C6A46D22":"transparent"};color:${forma===f?"#C6A46D":"#555"};border-color:${forma===f?"rgba(198,164,109,0.4)":"rgba(198,164,109,0.1)"}">${f}</button>`).join("")}
+      </div>
+      ${forma==="Parcelado"?`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <span style="color:#666;font-size:12px">Nº de parcelas:</span>
         <input type="number" min="1" max="48" value="${parcelas}" oninput="updPt(${p.id},'contratoParcelas',parseInt(this.value)||1)" class="inp" style="width:70px;font-size:12px;padding:5px 8px"/>
-        <span style="color:#C6A46D;font-size:12px;font-weight:700">${total>0?`R$ ${(total/parcelas).toLocaleString("pt-BR",{minimumFractionDigits:2})} × ${parcelas}x`:""}</span>
+        <span style="color:#C6A46D;font-size:13px;font-weight:700">${total>0?"R$ "+(total/parcelas).toLocaleString("pt-BR",{minimumFractionDigits:2})+" × "+parcelas+"x":""}</span>
       </div>`:""}
+      <textarea oninput="updPt(${p.id},'contratoObs',this.value)" rows="2" class="inp" style="resize:vertical;margin-top:4px" placeholder="Detalhes do pagamento: datas, vencimentos, conta bancária...">${p.contratoObs||""}</textarea>
+      <div style="color:#444;font-size:10px;margin-top:8px;line-height:1.6">Pagamentos vencidos sujeitos a atualização monetária, multa moratória de 2% e juros de 0,1% ao dia. No parcelamento, juros legais de 1% ao mês já inclusos nas parcelas.</div>
     </div>
 
-    <div class="card" style="margin-bottom:14px">
-      <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px">Observações</div>
-      <textarea oninput="updPt(${p.id},'contratoObs',this.value)" rows="2" class="inp" style="resize:vertical" placeholder="Observações adicionais...">${p.contratoObs||""}</textarea>
+    <div class="card" style="margin-bottom:14px;background:rgba(198,164,109,0.02)">
+      <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px">Cláusula 5ª — Obrigações do Contratante</div>
+      <div style="color:#444;font-size:11px;line-height:1.8">
+        • Prestar informações verdadeiras na anamnese, especialmente sobre saúde e medicamentos em uso.<br/>
+        • Comparecer pontualmente às consultas. Ausência sem aviso com 24h de antecedência sujeita a cobrança da consulta.<br/>
+        • Seguir rigorosamente as prescrições e orientações fornecidas pela CONTRATADA.<br/>
+        • Informar insatisfações ou dúvidas ao longo do tratamento.<br/>
+        • Manter os dados cadastrais sempre atualizados.
+      </div>
     </div>
 
-    ${sigSection}
+    ${sigPtHtml}
+    ${sigDraHtml}
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+      <button onclick="printContrato(${p.id})" class="bp" style="flex:1;font-size:12px;padding:10px">🖨️ Imprimir / PDF</button>
+      <button onclick="whatsContrato(${p.id})" class="bg" style="flex:1;font-size:12px;padding:10px;color:#22c55e;border-color:#22c55e44">📱 WhatsApp</button>
+    </div>
   </div>`;
 };
 
@@ -1658,6 +1716,27 @@ window.confirmSigCtText=function(ptId){
   const pts=ST.pts.map(p=>p.id!==ptId?p:{...p,contratoSig:{type:"typed",value:v},contratoSigDate:todayFmt()});
   set({pts});save("rof_pts",pts);
   toast("✅ Contrato assinado!","success");
+};
+
+// ── Assinatura da Dra. Rossana ─────────────────────────────────
+window.clearSigDra=function(){
+  const c=document.getElementById("sc-dra");
+  if(c){c.getContext("2d").clearRect(0,0,c.width,c.height);}
+  const b=document.getElementById("scb-dra");if(b)b.style.display="none";
+};
+window.confirmSigDra=function(ptId){
+  const c=document.getElementById("sc-dra");if(!c)return;
+  const sigVal=c.toDataURL();
+  const pts=ST.pts.map(p=>p.id!==ptId?p:{...p,contratoDraSig:{type:"canvas",value:sigVal},contratoDraSigDate:todayFmt()});
+  set({pts});save("rof_pts",pts);
+  toast("✅ Assinatura da Dra. Rossana confirmada!","success");
+};
+window.confirmSigDraText=function(ptId){
+  const v=(document.getElementById("sti-dra")?.value||"").trim();
+  if(!v){toast("Digite o nome para confirmar","error");return;}
+  const pts=ST.pts.map(p=>p.id!==ptId?p:{...p,contratoDraSig:{type:"typed",value:v},contratoDraSigDate:todayFmt()});
+  set({pts});save("rof_pts",pts);
+  toast("✅ Assinatura da Dra. Rossana confirmada!","success");
 };
 
 // ── WhatsApp do contrato ───────────────────────────────────────
@@ -1694,76 +1773,89 @@ window.printContrato=function(ptId){
   const total=etapas.reduce((s,e)=>s+(e.valor||0),0);
   const forma=p.contratoForma||"À vista";
   const parcelas=p.contratoParcelas||1;
-  const sig=p.contratoSig||null;
-  const sigHtml=sig
-    ?(sig.type==="canvas"
-      ?`<img src="${sig.value}" style="max-height:56px;max-width:220px;filter:brightness(0)"/>`
-      :`<div style="font-family:cursive;font-size:28px;color:#111">${sig.value}</div>`)
-    :`<div style="color:#aaa;font-size:12px;font-style:italic">Não assinado</div>`;
-  const w=window.open("","_blank","width=820,height=960");
+  const prazo=p.contratoPrazo||"___";
+  const sigPt=p.contratoSig||null;
+  const sigDra=p.contratoDraSig||null;
+  const hoje=new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"});
+  const pgtoTexto=forma==="Parcelado"&&total>0
+    ?`${parcelas}x de R$ ${(total/parcelas).toLocaleString("pt-BR",{minimumFractionDigits:2})} (total R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})})`
+    :`${forma} — R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})}`;
+  const procsHtml=etapas.length>0
+    ?etapas.map((e,i)=>`<tr><td>${i+1}. ${e.proc||"Procedimento"}</td><td style="text-align:right;font-weight:700;white-space:nowrap">R$ ${(e.valor||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</td></tr>`).join("")
+      +`<tr style="border-top:2px solid #C6A46D"><td style="font-weight:700;padding-top:6px">TOTAL</td><td style="text-align:right;font-weight:900;color:#8B6914;font-size:14px;padding-top:6px">R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})}</td></tr>`
+    :`<tr><td colspan="2" style="color:#999;font-style:italic">Procedimentos a definir.</td></tr>`;
+
+  function buildSig(sig,nome,cargo,sigDate){
+    const imgHtml=sig
+      ?(sig.type==="canvas"
+        ?`<img src="${sig.value}" style="max-height:54px;max-width:180px"/>`
+        :`<div style="font-family:cursive;font-size:26px;color:#111">${sig.value}</div>`)
+      :`<div style="height:50px"></div>`;
+    const label=sig?`<span style="color:#22a05a;font-size:10px">✓ Assinado digitalmente em ${sigDate||""}</span>`:`<span style="color:#aaa;font-size:10px">Não assinado</span>`;
+    return`<div style="flex:1;text-align:center">
+      <div style="min-height:60px;display:flex;align-items:flex-end;justify-content:center;border-bottom:1.5px solid #333;padding-bottom:6px;margin-bottom:8px">${imgHtml}</div>
+      <div style="font-size:11px;color:#333;line-height:1.7"><b>${nome}</b><br/>${cargo}<br/>${label}</div>
+    </div>`;
+  }
+
+  const w=window.open("","_blank","width=820,height=1100");
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
   <title>Contrato — ${p.name}</title>
   <style>
     *{box-sizing:border-box}
-    body{font-family:Georgia,serif;color:#111;max-width:740px;margin:36px auto;padding:0 32px;font-size:13px;line-height:1.75}
-    h1{font-size:19px;text-align:center;margin-bottom:3px;letter-spacing:1px;text-transform:uppercase}
-    .subtitle{text-align:center;font-size:11px;color:#666;margin-bottom:24px;font-family:Arial,sans-serif}
-    h2{font-size:12px;margin:22px 0 6px;border-bottom:2px solid #C6A46D;padding-bottom:4px;
-       color:#8B6914;text-transform:uppercase;letter-spacing:1.5px;font-family:Arial,sans-serif}
-    .row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #eee;font-size:12.5px}
-    .row span:last-child{font-weight:700}
-    .total-line{display:flex;justify-content:flex-end;margin-top:10px;font-size:15px;font-weight:900;color:#8B6914}
-    p{margin:5px 0;font-size:12.5px}
-    .info-box{background:#fafafa;border:1px solid #e5d9c3;border-radius:6px;padding:10px 14px;margin-bottom:6px}
-    .sig-block{display:flex;gap:40px;margin-top:56px;page-break-inside:avoid}
-    .sig-col{flex:1;text-align:center}
-    .sig-img{min-height:64px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:6px;padding-bottom:6px;border-bottom:1.5px solid #333}
-    .sig-label{font-size:11px;color:#666;font-family:Arial,sans-serif;margin-top:4px}
-    .stamp{text-align:center;margin-top:24px;font-size:10px;color:#999;font-family:Arial,sans-serif;border-top:1px solid #eee;padding-top:10px}
-    @media print{body{margin:16px auto}@page{margin:1.4cm}}
+    body{font-family:Georgia,serif;color:#111;max-width:760px;margin:32px auto;padding:0 36px;font-size:12.5px;line-height:1.8}
+    h1{font-size:16px;text-align:center;margin-bottom:2px;letter-spacing:2px;text-transform:uppercase;font-weight:900}
+    .sub{text-align:center;font-size:10.5px;color:#666;margin-bottom:28px;font-family:Arial,sans-serif}
+    h2{font-size:11.5px;margin:20px 0 8px;border-bottom:2px solid #C6A46D;padding-bottom:3px;color:#8B6914;text-transform:uppercase;letter-spacing:1.5px;font-family:Arial,sans-serif}
+    .box{background:#fafafa;border:1px solid #e0d5c0;border-radius:6px;padding:10px 14px;margin-bottom:8px;font-size:12px}
+    .box b{color:#333}
+    table{width:100%;border-collapse:collapse;margin:6px 0}
+    td{padding:5px 4px;border-bottom:1px solid #eee;font-size:12px}
+    p{margin:6px 0;font-size:12.5px;text-align:justify}
+    .sig-row{display:flex;gap:48px;margin-top:60px;page-break-inside:avoid}
+    .stamp{text-align:center;margin-top:20px;font-size:9.5px;color:#bbb;font-family:Arial,sans-serif;border-top:1px solid #eee;padding-top:10px}
+    @media print{body{margin:10px auto}@page{margin:1.5cm;size:A4}}
   </style></head><body>
+
   <h1>Contrato de Prestação de Serviços Odontológicos</h1>
-  <div class="subtitle">Clínica Dra. Rossana Fucks &nbsp;·&nbsp; CRO/SC 21403 &nbsp;·&nbsp; Itapema/SC</div>
+  <div class="sub">CRO/SC 21403 &nbsp;·&nbsp; R. 220, nº 200 - Sala 02, Meia Praia — Itapema/SC</div>
 
-  <h2>1. Partes</h2>
-  <div class="info-box">
-    <p><b>Prestadora de Serviços:</b> Dra. Rossana Batista Fucks, Cirurgiã-Dentista, CRO/SC 21403, Itapema/SC</p>
-    <p><b>Paciente / Contratante:</b> ${p.name}</p>
-    <p>CPF: ${p.cpf||"—"} &nbsp;·&nbsp; RG: ${p.rg||"—"} &nbsp;·&nbsp; Telefone: ${p.phone||"—"}</p>
-    <p>Endereço: ${p.endereco||"—"}</p>
+  <h2>Partes</h2>
+  <div class="box">
+    <b>CONTRATANTE:</b> ${p.name}, inscrito(a) no CPF ${p.cpf||"___________________"},
+    residente e domiciliado(a) ${p.endereco||"____________________________"}.
+  </div>
+  <div class="box">
+    <b>CONTRATADO(A):</b> Dra. Rossana Batista Fucks, Cirurgiã-Dentista, inscrita no CPF 546.313.190-20 e CRO/SC 21403,
+    situada na R. 220, nº 200 - Sala 02, Bairro Meia Praia, Itapema/SC.
   </div>
 
-  <h2>2. Objeto do Contrato</h2>
-  <p>A PRESTADORA compromete-se a realizar os seguintes procedimentos odontológicos no PACIENTE identificado acima:</p>
-  ${etapas.length>0
-    ?etapas.map((e,i)=>`<div class="row"><span>${i+1}. ${e.proc||"Procedimento"}</span><span>R$ ${(e.valor||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</span></div>`).join("")+`<div class="total-line">Total: R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>`
-    :`<p style="color:#999;font-style:italic">Procedimentos a definir.</p>`}
+  <h2>Cláusula Primeira — Do Objeto</h2>
+  <p>O objeto do presente contrato é a prestação de serviços odontológicos, a partir do plano de tratamento proposto e aprovado pelo(a) paciente, que inclui a realização dos seguintes procedimentos:</p>
+  <table>${procsHtml}</table>
 
-  <h2>3. Honorários e Forma de Pagamento</h2>
-  <div class="info-box">
-    <p><b>Valor total:</b> R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})}</p>
-    <p><b>Forma:</b> ${forma}${forma==="Parcelado"&&total>0?` — ${parcelas}x de R$ ${(total/parcelas).toLocaleString("pt-BR",{minimumFractionDigits:2})}`:""}.</p>
-  </div>
+  <h2>Cláusula Segunda — Do Prazo</h2>
+  <p>Os serviços odontológicos serão realizados em <b>${prazo} meses</b>, podendo sofrer prorrogação ou alteração de acordo com a eventual complexidade que o caso apresentar no decorrer do tratamento, bem como pela resposta biológica do(a) CONTRATANTE à técnica empregada, assiduidade às consultas e seguimento das orientações fornecidas pelo(a) CONTRATADO(A).</p>
 
-  <h2>4. Direitos e Deveres</h2>
-  <p>O PACIENTE declara ter recebido informações claras sobre os procedimentos, riscos, benefícios e alternativas de tratamento, estando ciente e de acordo com o plano proposto. A PRESTADORA compromete-se a realizar os procedimentos com ética, diligência e conforme as normas do CFO.</p>
+  <h2>Cláusula Terceira — Preço e Condições de Pagamento</h2>
+  <p>O valor dos serviços odontológicos contratados é de <b>R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})}</b> e seu pagamento será efetuado da seguinte forma: <b>${pgtoTexto}</b>.</p>
+  ${p.contratoObs?`<p>${p.contratoObs}</p>`:""}
 
-  <h2>5. Rescisão</h2>
-  <p>Qualquer das partes pode rescindir este contrato mediante aviso prévio de 15 dias, ficando devidos os honorários pelos serviços já realizados.</p>
+  <h2>Cláusula Quarta — Das Observações sobre Preço e Pagamento</h2>
+  <p>O valor ora estipulado poderá sofrer alteração caso seja necessário modificar o plano de tratamento inicialmente aprovado, em face de constatação de questões técnicas ou intercorrências que inviabilizem sua execução.</p>
+  <p>Em caso de pagamento parcelado, poderá haver atualização monetária e cobrança de juros legais de 1% (um por cento) ao mês. Os pagamentos vencidos e efetuados fora dos prazos previstos estarão sujeitos a atualização monetária, multa moratória de 2% e juros de 0,1% ao dia.</p>
 
-  ${p.contratoObs?`<h2>6. Observações</h2><p>${p.contratoObs}</p>`:""}
+  <h2>Cláusula Quinta — Das Obrigações do(a) Contratante</h2>
+  <p><b>5.1</b> Prestar informações verdadeiras no preenchimento da ficha de anamnese, especialmente quanto às condições de saúde geral e bucal, uso de medicamentos e doenças pré-existentes.</p>
+  <p><b>5.2</b> Comparecer pontualmente às consultas previamente agendadas. A ausência sem aviso prévio de 24 (vinte e quatro) horas acarretará cobrança de uma consulta pelo valor vigente.</p>
+  <p><b>5.3</b> Seguir rigorosamente as prescrições, encaminhamentos e orientações fornecidas pelo(a) CONTRATADO(A), sob pena de o tratamento ser declarado como interrompido.</p>
+  <p><b>5.4</b> Informar ao(à) CONTRATADO(A) qualquer alteração decorrente do tratamento, insatisfações ou dúvidas sobre o tratamento em execução, bem como manter seus dados cadastrais sempre atualizados.</p>
 
-  <p style="margin-top:20px">Itapema/SC, ${new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"})}</p>
+  <p style="margin-top:28px">Itapema/SC, ${hoje}.</p>
 
-  <div class="sig-block">
-    <div class="sig-col">
-      <div class="sig-img"><div style="font-family:cursive;font-size:22px;color:#8B6914">Rossana Fucks</div></div>
-      <div class="sig-label"><b>Dra. Rossana Batista Fucks</b><br/>CRO/SC 21403 — Prestadora</div>
-    </div>
-    <div class="sig-col">
-      <div class="sig-img">${sigHtml}</div>
-      <div class="sig-label"><b>${p.name}</b><br/>Paciente / Contratante${sig?`<br/><span style="color:#22a05a">✓ Assinado digitalmente em ${p.contratoSigDate||""}</span>`:"<br/><span style='color:#999'>Assinar no sistema ROF™</span>"}</div>
-    </div>
+  <div class="sig-row">
+    ${buildSig(sigDra,"Dra. Rossana Batista Fucks","CRO/SC 21403 — Contratado(a)",p.contratoDraSigDate)}
+    ${buildSig(sigPt,p.name,"Contratante",p.contratoSigDate)}
   </div>
 
   <div class="stamp">Documento gerado pelo Sistema ROF™ &nbsp;·&nbsp; ${new Date().toLocaleString("pt-BR")}</div>
@@ -5757,6 +5849,7 @@ function render(){
   }
   initSigCanvas("sc","scb",GL);
   initSigCanvas("sc-ct","scb-ct","#1a1a1a");
+  initSigCanvas("sc-dra","scb-dra","#1a1a1a");
   const aiM=document.getElementById("ai-msgs");if(aiM)aiM.scrollTop=aiM.scrollHeight;
 }
 
