@@ -79,7 +79,7 @@ exports.handler = async (event) => {
   // GET /data  — carrega todas as coleções de uma vez (bootstrap)
   // ────────────────────────────────────────────────────────────
   if (path === '/data' && method === 'GET') {
-    const keys = ['rof_pts', 'rof_apts', 'rof_stk', 'rof_procs', 'rof_caixa'];
+    const keys = ['rof_pts', 'rof_apts', 'rof_stk', 'rof_procs', 'rof_caixa', 'rof_leads'];
     const { data, error } = await supabase
       .from('rof_store')
       .select('key, data')
@@ -94,6 +94,7 @@ exports.handler = async (event) => {
       if (row.key === 'rof_stk')   result.inventory    = row.data;
       if (row.key === 'rof_procs') result.procedures   = row.data;
       if (row.key === 'rof_caixa') result.finance      = row.data;
+      if (row.key === 'rof_leads') result.leads        = row.data;
     });
     return ok(result);
   }
@@ -107,6 +108,7 @@ exports.handler = async (event) => {
     '/inventory':    'rof_stk',
     '/procedures':   'rof_procs',
     '/finance':      'rof_caixa',
+    '/leads':        'rof_leads',
   };
 
   const storeKey = COLLECTION_MAP[path];

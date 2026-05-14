@@ -21,7 +21,9 @@ INSERT INTO rof_store (key, data) VALUES
   ('rof_pts',   '[]'::jsonb),
   ('rof_apts',  '[]'::jsonb),
   ('rof_stk',   '[]'::jsonb),
-  ('rof_procs', '[]'::jsonb)
+  ('rof_procs', '[]'::jsonb),
+  ('rof_caixa', '[]'::jsonb),
+  ('rof_leads', '[]'::jsonb)
 ON CONFLICT (key) DO NOTHING;
 
 -- ──────────────────────────────────────────────────────────────
