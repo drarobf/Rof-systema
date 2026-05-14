@@ -1524,7 +1524,6 @@ window.addEtapaPlano=function(ptId){
   });
   set({pts});save("rof_pts",pts);
 };
-var _updEtapaTimer=null;
 window.updEtapa=function(ptId,idx,field,val,immediate){
   const pts=ST.pts.map(p=>{
     if(p.id!==ptId)return p;
@@ -1532,9 +1531,7 @@ window.updEtapa=function(ptId,idx,field,val,immediate){
     return{...p,planoTto};
   });
   ST.pts=pts;save("rof_pts",pts);
-  if(immediate){set({pts});return;}
-  clearTimeout(_updEtapaTimer);
-  _updEtapaTimer=setTimeout(()=>set({pts}),600);
+  if(immediate)set({pts});
 };
 window.delEtapa=function(ptId,idx){
   const pts=ST.pts.map(p=>{
@@ -2585,6 +2582,7 @@ function pageAgenda(){
     </div>
   </div>`:""}
 
+  ${agView==='dia'?`
   <!-- FILTRO DE STATUS -->
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
     ${["Todos","Agendado","Confirmado","Concluído","Cancelado"].map(s=>{
@@ -2623,7 +2621,7 @@ function pageAgenda(){
         </tr>`).join("")}
       `).join("")}
     </table>
-  </div>`;
+  </div>`:''}`;
 }
 
 
@@ -4195,14 +4193,10 @@ window.addPt=()=>{
     photo:null,xrays:[],notes:"",docs:[],odontogram:{},anamBucal:null,anamFacial:null};
   const nps=[...ST.pts,np];save("rof_pts",nps);set({pts:nps,selPt:np.id,ptTab:"info"});
 };
-var _updPtTimer=null;
 window.updPt=(id,key,val,immediate)=>{
   const nps=ST.pts.map(x=>x.id===id?{...x,[key]:val}:x);
   ST.pts=nps;save("rof_pts",nps);
-  if(immediate){set({pts:nps});return;}
-  // Debounce: re-renderiza só 600ms após última mudança (evita freeze ao digitar)
-  clearTimeout(_updPtTimer);
-  _updPtTimer=setTimeout(()=>set({pts:nps}),600);
+  if(immediate)set({pts:nps});
 };
 window.setPtPhoto=(id,inp)=>{const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>updPt(id,"photo",ev.target.result);r.readAsDataURL(f);};
 window.addXray=(id,inp)=>{Array.from(inp.files).forEach(file=>{const r=new FileReader();r.onload=ev=>{const p=ST.pts.find(x=>x.id===id);updPt(id,"xrays",[...(p.xrays||[]),{name:file.name,data:ev.target.result}]);};r.readAsDataURL(file);});};
