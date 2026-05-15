@@ -389,6 +389,99 @@ pre { white-space: pre-wrap; font-family: var(--font-body); }
 }
 .print-only { display: none; }
 
+/* ── SCROLLBAR MELHORADA ───────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: rgba(198,164,109,0.25); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(198,164,109,0.45); }
+* { scrollbar-width: thin; scrollbar-color: rgba(198,164,109,0.2) transparent; }
+
+/* ── MODAL MELHORADO (scroll interno) ─────────────────────────── */
+.mbg {
+  padding: 16px 12px;
+  align-items: flex-start;
+  overflow-y: auto;
+}
+.mbx {
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+}
+.mbd {
+  flex: 1;
+  overflow-y: auto;
+  max-height: none;
+  padding: 20px 22px;
+}
+
+/* ── CONTENT — SCROLL SUAVE ───────────────────────────────────── */
+#content {
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+}
+
+/* ── TABS PACIENTE — SCROLL HORIZONTAL ───────────────────────── */
+.pt-tabs-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.pt-tabs-wrap::-webkit-scrollbar { display: none; }
+
+/* ── CARDS — SEM OVERFLOW CORTADO ────────────────────────────── */
+.card { overflow: visible; }
+.card.scroll-inner { overflow: hidden; }
+
+/* ── FUNIL CRM ────────────────────────────────────────────────── */
+.crm-funnel-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* ── TABELAS RESPONSIVAS ──────────────────────────────────────── */
+.tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
+
+/* ── BOTÃO WHATSAPP FLUTUANTE NO PERFIL ──────────────────────── */
+.whats-fab {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 12px; border-radius: 50px;
+  background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3);
+  color: #22c55e; font-size: 11px; font-weight: 600;
+  cursor: pointer; transition: var(--transition);
+  font-family: var(--font-body);
+}
+.whats-fab:hover { background: rgba(34,197,94,0.22); }
+
+/* ── ALERTA BADGE ─────────────────────────────────────────────── */
+.alert-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3);
+  color: #ef4444; padding: 3px 8px; border-radius: 50px;
+  font-size: 10px; font-weight: 700;
+}
+
+/* ── MOBILE MELHORADO ─────────────────────────────────────────── */
+@media (max-width: 768px) {
+  #content { padding: 12px; }
+  .mbx { max-width: 100% !important; }
+  .mbd { padding: 16px; }
+  .g2 { grid-template-columns: 1fr !important; }
+  .hdr-menu-btn { width: 32px; height: 32px; font-size: 13px; }
+  #ptitle { font-size: 14px; }
+}
+
+/* ── TABLET ────────────────────────────────────────────────────── */
+@media (min-width: 769px) and (max-width: 1024px) {
+  #sidebar { width: 200px; }
+  #content { padding: 18px; }
+}
+
+/* ── NOTEBOOK/DESKTOP ─────────────────────────────────────────── */
+@media (min-width: 1025px) {
+  #content { padding: 24px 28px; }
+}
+
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    APP LAYOUT
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
@@ -894,16 +987,24 @@ const LOGO_B64="iVBORw0KGgoAAAANSUhEUgAAAG4AAABuCAYAAADGWyb7AAAgpklEQVR42u2deZhd
 // ── SUPABASE DIRETO (drag-and-drop Netlify) ───────────────────
 // PREENCHA COM OS DADOS DO SEU PROJETO SUPABASE:
 // Supabase → Settings → API → Project URL e anon/public key
-const SUPABASE_URL      = 'COLE_A_URL_DO_SUPABASE_AQUI';
-const SUPABASE_ANON_KEY = 'COLE_A_CHAVE_ANON_AQUI';
+// ══════════════════════════════════════════════════════════════════
+// CONFIGURAÇÃO — preencha com seus dados do Supabase se quiser
+// sincronização em nuvem. Deixe em branco para usar só localStorage.
+// ══════════════════════════════════════════════════════════════════
+const SUPABASE_URL      = '';   // ex: 'https://xyzxyz.supabase.co'
+const SUPABASE_ANON_KEY = '';   // ex: 'eyJhbGci...'
 const APP_PASSWORD      = 'rof2024';
 
-const _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Cria cliente Supabase somente se as credenciais forem válidas
+const _sbEnabled = SUPABASE_URL.startsWith('https://') && SUPABASE_ANON_KEY.length > 20;
+const _sb = _sbEnabled
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : { from: () => ({ select: () => Promise.resolve({data:[],error:null}), upsert: () => Promise.resolve({error:null}) }) };
 
 const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_stk','rof_procs','rof_caixa','rof_leads']);
 const _syncQ = JSON.parse(localStorage.getItem("rof_sync_q")||"[]");
 const _flushQ = async () => {
-  if(!navigator.onLine||!_syncQ.length)return;
+  if(!_sbEnabled||!navigator.onLine||!_syncQ.length)return;
   while(_syncQ.length){
     const {k,v}=_syncQ[0];
     try{
@@ -916,10 +1017,14 @@ const _flushQ = async () => {
 };
 function _setSyncBadge(ok){
   const el=document.getElementById("sync-badge");
-  if(el){el.classList.remove("sync-spin");el.textContent=ok?"● Nuvem":"○ Offline";el.style.color=ok?"#22c55e":"#6B6B6B";}
+  if(!el)return;
+  if(!_sbEnabled){el.textContent="💾 Local";el.style.color="#6B6B6B";el.classList.remove("sync-spin");return;}
+  el.classList.remove("sync-spin");
+  el.textContent=ok?"● Nuvem":"○ Offline";
+  el.style.color=ok?"#22c55e":"#6B6B6B";
 }
 async function syncFromCloud(){
-  if(!navigator.onLine)return;
+  if(!_sbEnabled||!navigator.onLine)return;
   const el=document.getElementById("sync-badge");
   if(el){el.textContent="↻ Sincronizando...";el.style.color="var(--gold)";el.classList.add("sync-spin");}
   try{
@@ -937,7 +1042,7 @@ async function syncFromCloud(){
     if(typeof checkBirthdays==="function")checkBirthdays();
   }catch{_setSyncBadge(false);}
 }
-window.addEventListener("online",()=>{_flushQ();syncFromCloud();});
+window.addEventListener("online",()=>{if(_sbEnabled){_flushQ();syncFromCloud();}});
 window.addEventListener("offline",()=>_setSyncBadge(false));
 
 // ══════════════════════════════════════════════════════════════════
@@ -1313,12 +1418,17 @@ function buildNotifications(){
       items.push({ic:"🎂",title:`Aniversário em ${diff} dia(s): ${p.name}`,sub:p.birthday,action:`set({page:'patients',selPt:${p.id}})`,priority:4});
   });
 
-  // Leads sem follow-up há 3+ dias
+  // Leads sem follow-up há 3+ dias (exclui fechados, perdidos e retorno futuro)
   const leads=load("rof_leads",[]);
-  leads.filter(l=>l.status!=="Convertido"&&l.status!=="Perdido").forEach(l=>{
-    if(!l.updatedAt)return;
-    const diff=Math.ceil((now-new Date(l.updatedAt+"T12:00:00"))/86400000);
-    if(diff>=3)items.push({ic:"🎯",title:`Lead sem contato: ${l.name}`,sub:`${diff} dias sem atualização`,action:`set({page:'crm'})`,priority:5});
+  const _ativos=new Set(["Novo Lead","Em Conversa","Avaliação Marcada","Orçamento Enviado","Aguardando Retorno"]);
+  leads.filter(l=>_ativos.has(l.status)).forEach(l=>{
+    const dias=_leadDiasSemContato(l);
+    if(dias>=3)items.push({ic:"🎯",title:`Lead sem contato: ${l.name}`,sub:`${dias} dia${dias>1?"s":""} sem resposta — ${l.status}`,action:`set({page:'crm'})`,priority:5});
+  });
+
+  // Próximos contatos agendados (proxContato = hoje ou passado)
+  leads.filter(l=>l.proxContato&&l.proxContato<=today&&_ativos.has(l.status)).forEach(l=>{
+    items.push({ic:"📅",title:`Contato agendado: ${l.name}`,sub:`Previsto para ${fmtDate(l.proxContato)}`,action:`set({page:'crm'})`,priority:2});
   });
 
   return items.sort((a,b)=>a.priority-b.priority);
@@ -1384,7 +1494,7 @@ window.renderPlanoTto=function(p){
                 <div style="display:flex;gap:6px;flex-wrap:wrap">
                   ${["Pendente","Em_andamento","Concluído","Cancelado"].map(s=>{
                     const sc=STATUS_COLORS[s]||"#888";
-                    return`<button onclick="updEtapa(${p.id},${i},'status','${s}')" class="bg" style="font-size:10px;padding:3px 10px;border-radius:50px;background:${et.status===s?sc+"22":"transparent"};color:${et.status===s?sc:"#555"};border-color:${et.status===s?sc+"55":"rgba(198,164,109,0.1)"}">${s.replace("_"," ")}</button>`;
+                    return`<button onclick="updEtapa(${p.id},${i},'status','${s}',true)" class="bg" style="font-size:10px;padding:3px 10px;border-radius:50px;background:${et.status===s?sc+"22":"transparent"};color:${et.status===s?sc:"#555"};border-color:${et.status===s?sc+"55":"rgba(198,164,109,0.1)"}">${s.replace("_"," ")}</button>`;
                   }).join("")}
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">
@@ -1414,13 +1524,14 @@ window.addEtapaPlano=function(ptId){
   });
   set({pts});save("rof_pts",pts);
 };
-window.updEtapa=function(ptId,idx,field,val){
+window.updEtapa=function(ptId,idx,field,val,immediate){
   const pts=ST.pts.map(p=>{
     if(p.id!==ptId)return p;
     const planoTto=(p.planoTto||[]).map((e,i)=>i===idx?{...e,[field]:val}:e);
     return{...p,planoTto};
   });
-  set({pts});save("rof_pts",pts);
+  ST.pts=pts;save("rof_pts",pts);
+  if(immediate)set({pts});
 };
 window.delEtapa=function(ptId,idx){
   const pts=ST.pts.map(p=>{
@@ -1435,96 +1546,166 @@ window.delEtapa=function(ptId,idx){
 // CONTRATO DE PRESTAÇÃO DE SERVIÇOS
 // ══════════════════════════════════════════════════════════════════
 window.renderContrato=function(p){
-  const etapas=p.planoTto||[];
-  const total=etapas.reduce((s,e)=>s+(e.valor||0),0);
-  const forma=p.contratoForma||"À vista";
-  const parcelas=p.contratoParcelas||1;
-  const sig=p.contratoSig||null;
-  const sigMode=ST.ctSigMode||"draw";
+  var etapas=p.planoTto||[];
+  var total=etapas.reduce(function(s,e){return s+(e.valor||0);},0);
+  var forma=p.contratoForma||"À vista";
+  var parcelas=p.contratoParcelas||1;
+  var prazo=p.contratoPrazo||"";
+  var sigPt=p.contratoSig||null;
+  var sigDra=p.contratoDraSig||null;
+  var sigPtMode=ST.ctSigMode||"draw";
+  var sigDraMode=ST.ctDraSigMode||"draw";
+  var ambos=!!(sigPt&&sigDra);
 
-  const sigSection=sig
-    ?`<div class="card" style="margin-bottom:14px;border:1px solid #22c55e44">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <span style="color:#22c55e;font-size:11px;font-weight:700">✅ CONTRATO ASSINADO</span>
-          <span style="color:#555;font-size:10px">${p.contratoSigDate||""}</span>
+  var sigPtHtml=sigPt
+    ?`<div style="background:#071407;border:1px solid #22c55e44;border-radius:10px;padding:12px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="color:#22c55e;font-size:11px;font-weight:700">✅ Assinado pelo Paciente em ${p.contratoSigDate||""}</span>
+          <button onclick="updPt(${p.id},'contratoSig',null,true)" class="bg" style="font-size:10px;padding:3px 8px;color:#555">↺ Refazer</button>
         </div>
-        <div style="background:#f9f9f9;border-radius:8px;padding:10px;text-align:center;min-height:60px;display:flex;align-items:center;justify-content:center">
-          ${sig.type==="canvas"
-            ?`<img src="${sig.value}" style="max-height:56px;max-width:100%;filter:invert(0) brightness(0.2)"/>`
-            :`<div style="font-family:cursive;color:#333;font-size:26px">${sig.value}</div>`}
+        <div style="text-align:center;padding:10px 0;border-top:1px solid rgba(198,164,109,0.12)">
+          ${sigPt.type==="canvas"
+            ?`<img src="${sigPt.value}" style="max-height:54px;max-width:220px"/>`
+            :`<div style="font-family:cursive;color:#E2C99A;font-size:24px">${sigPt.value}</div>`}
         </div>
-        <div style="display:flex;gap:8px;margin-top:10px">
-          <button onclick="printContrato(${p.id})" class="bp" style="flex:1;font-size:12px;padding:8px">🖨️ Imprimir / Salvar PDF</button>
-          <button onclick="whatsContrato(${p.id})" class="bg" style="flex:1;font-size:12px;padding:8px;color:#22c55e;border-color:#22c55e44">📱 WhatsApp</button>
-          <button onclick="updPt(${p.id},'contratoSig',null);set({ctSigMode:'draw'})" class="bg" style="font-size:11px;padding:8px;color:#555">↺</button>
-        </div>
+        <div style="color:#555;font-size:10px;text-align:center;margin-top:6px">${p.name} — Contratante</div>
       </div>`
-    :`<div class="card" style="margin-bottom:14px">
-        <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:12px">✍️ Assinatura Digital do Paciente</div>
-        <div style="display:flex;gap:8px;margin-bottom:10px">
-          <button onclick="set({ctSigMode:'draw'})" class="bg" style="padding:5px 12px;font-size:11px;border-radius:50px;background:${sigMode==="draw"?"#C6A46D22":"transparent"};color:${sigMode==="draw"?"#C6A46D":"#555"}">✍️ Desenhar</button>
-          <button onclick="set({ctSigMode:'type'})" class="bg" style="padding:5px 12px;font-size:11px;border-radius:50px;background:${sigMode==="type"?"#C6A46D22":"transparent"};color:${sigMode==="type"?"#C6A46D":"#555"}">⌨️ Digitar nome</button>
+    :`<div class="card" style="margin-bottom:10px">
+        <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px">✍️ Assinatura Digital — Paciente</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <button onclick="set({ctSigMode:'draw'})" class="bg" style="padding:4px 12px;font-size:11px;border-radius:50px;background:${sigPtMode==="draw"?"#C6A46D22":"transparent"};color:${sigPtMode==="draw"?"#C6A46D":"#555"}">✍️ Desenhar</button>
+          <button onclick="set({ctSigMode:'type'})" class="bg" style="padding:4px 12px;font-size:11px;border-radius:50px;background:${sigPtMode==="type"?"#C6A46D22":"transparent"};color:${sigPtMode==="type"?"#C6A46D":"#555"}">⌨️ Digitar nome</button>
         </div>
-        ${sigMode==="draw"
-          ?`<canvas id="sc-ct" width="400" height="100"
-              style="border:2px dashed rgba(198,164,109,0.4);border-radius:10px;background:#0a0a0a;
-                     cursor:crosshair;display:block;touch-action:none;width:100%;max-width:100%"></canvas>
+        ${sigPtMode==="draw"
+          ?`<canvas id="sc-ct" width="400" height="90" style="border:2px dashed rgba(198,164,109,0.4);border-radius:10px;background:#0a0a0a;cursor:crosshair;display:block;touch-action:none;width:100%;max-width:100%"></canvas>
             <div style="display:flex;gap:8px;margin-top:8px">
               <button onclick="clearSigCt()" class="bg" style="font-size:11px;padding:5px 12px">🗑 Limpar</button>
               <button id="scb-ct" onclick="confirmSigCt(${p.id})" class="bp" style="font-size:11px;padding:5px 16px;display:none">✅ Confirmar assinatura</button>
             </div>`
-          :`<input id="sti-ct" placeholder="Digite o nome completo do paciente"
-              class="inp" style="font-family:cursive;font-size:18px;color:#E2C99A;letter-spacing:1px;margin-bottom:10px"/>
+          :`<input id="sti-ct" placeholder="Digite o nome completo do paciente" class="inp" style="font-family:cursive;font-size:18px;color:#E2C99A;letter-spacing:1px;margin-bottom:10px"/>
             <button onclick="confirmSigCtText(${p.id})" class="bp" style="width:100%;font-size:12px;padding:10px">✅ Confirmar Assinatura</button>`}
+      </div>`;
+
+  var sigDraHtml=sigDra
+    ?`<div style="background:#071407;border:1px solid #22c55e44;border-radius:10px;padding:12px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="color:#22c55e;font-size:11px;font-weight:700">✅ Assinado pela Dra. Rossana em ${p.contratoDraSigDate||""}</span>
+          <button onclick="updPt(${p.id},'contratoDraSig',null,true)" class="bg" style="font-size:10px;padding:3px 8px;color:#555">↺ Refazer</button>
+        </div>
+        <div style="text-align:center;padding:10px 0;border-top:1px solid rgba(198,164,109,0.12)">
+          ${sigDra.type==="canvas"
+            ?`<img src="${sigDra.value}" style="max-height:54px;max-width:220px"/>`
+            :`<div style="font-family:cursive;color:#C6A46D;font-size:24px">${sigDra.value}</div>`}
+        </div>
+        <div style="color:#555;font-size:10px;text-align:center;margin-top:6px">Dra. Rossana Batista Fucks — CRO/SC 21403 — Contratada</div>
+      </div>`
+    :`<div class="card" style="margin-bottom:10px;border-color:rgba(198,164,109,0.25)">
+        <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px">✍️ Assinatura Digital — Dra. Rossana</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <button onclick="set({ctDraSigMode:'draw'})" class="bg" style="padding:4px 12px;font-size:11px;border-radius:50px;background:${sigDraMode==="draw"?"#C6A46D22":"transparent"};color:${sigDraMode==="draw"?"#C6A46D":"#555"}">✍️ Desenhar</button>
+          <button onclick="set({ctDraSigMode:'type'})" class="bg" style="padding:4px 12px;font-size:11px;border-radius:50px;background:${sigDraMode==="type"?"#C6A46D22":"transparent"};color:${sigDraMode==="type"?"#C6A46D":"#555"}">⌨️ Digitar nome</button>
+        </div>
+        ${sigDraMode==="draw"
+          ?`<canvas id="sc-dra" width="400" height="90" style="border:2px dashed rgba(198,164,109,0.4);border-radius:10px;background:#0a0a0a;cursor:crosshair;display:block;touch-action:none;width:100%;max-width:100%"></canvas>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button onclick="clearSigDra()" class="bg" style="font-size:11px;padding:5px 12px">🗑 Limpar</button>
+              <button id="scb-dra" onclick="confirmSigDra(${p.id})" class="bp" style="font-size:11px;padding:5px 16px;display:none">✅ Confirmar assinatura</button>
+            </div>`
+          :`<input id="sti-dra" placeholder="Dra. Rossana Batista Fucks" class="inp" style="font-family:cursive;font-size:18px;color:#C6A46D;letter-spacing:1px;margin-bottom:10px"/>
+            <button onclick="confirmSigDraText(${p.id})" class="bp" style="width:100%;font-size:12px;padding:10px">✅ Confirmar Assinatura</button>`}
       </div>`;
 
   return`<div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <div style="color:#E2C99A;font-weight:800;font-size:13px">📝 Contrato de Serviços</div>
-      ${sig?`<span style="color:#22c55e;font-size:11px;font-weight:700">✅ Assinado</span>`:`<span style="color:#f59e0b;font-size:11px">Aguardando assinatura</span>`}
+      <div style="color:#E2C99A;font-weight:800;font-size:13px">📝 Contrato de Prestação de Serviços</div>
+      <span style="color:${ambos?"#22c55e":sigPt?"#f59e0b":"#ef4444"};font-size:11px;font-weight:700">${ambos?"✅ Ambos assinaram":sigPt?"⏳ Aguard. Dra.":"⚠️ Não assinado"}</span>
     </div>
 
     <div class="card" style="margin-bottom:10px">
-      <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px">Contratante</div>
-      <div style="color:#888;font-size:12px;line-height:1.8">
-        <b style="color:#ddd">${p.name}</b><br/>
-        CPF: ${p.cpf||"—"} &nbsp;·&nbsp; RG: ${p.rg||"—"}<br/>
-        ${p.endereco||"Endereço não informado"}<br/>
-        Tel: ${p.phone||"—"}
+      <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px">CONTRATANTE — Paciente</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:12px;color:#888">
+        <div style="grid-column:1/-1;margin-bottom:4px"><span style="color:#555;font-size:10px;display:block">Nome completo</span><b style="color:#ddd;font-size:13px">${p.name}</b></div>
+        <div><span style="color:#555;font-size:10px;display:block">CPF</span>${p.cpf||"___________________"}</div>
+        <div><span style="color:#555;font-size:10px;display:block">RG</span>${p.rg||"___________________"}</div>
+        <div style="grid-column:1/-1"><span style="color:#555;font-size:10px;display:block">Endereço / Bairro / Cidade / Estado</span>${p.endereco||"____________________________"}</div>
+        <div><span style="color:#555;font-size:10px;display:block">Telefone</span>${p.phone||"—"}</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:10px;border-color:rgba(198,164,109,0.3)">
+      <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px">CONTRATADO — Prestador de Serviços</div>
+      <div style="font-size:12px;color:#888;line-height:2">
+        <b style="color:#E2C99A;font-size:13px">Dra. Rossana Batista Fucks</b> — Cirurgiã-Dentista<br/>
+        CPF: 546.313.190-20 &nbsp;·&nbsp; CRO/SC 21403<br/>
+        R. 220, nº 200 - Sala 02, Bairro Meia Praia — Itapema/SC
       </div>
     </div>
 
     <div class="card" style="margin-bottom:10px">
-      <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px">Procedimentos contratados</div>
-      ${etapas.length===0
-        ?`<div style="color:#333;font-size:12px">Nenhum procedimento no Plano de Tratamento.<br/><span style="font-size:11px;color:#222">Acesse a aba 🗂️ Plano Tto. para cadastrar.</span></div>`
-        :`${etapas.map((e,i)=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #2a1f0a">
-          <span style="color:#bbb;font-size:12px">${i+1}. ${e.proc||"Procedimento"}</span>
-          <span style="color:#E2C99A;font-weight:700;font-size:12px">R$ ${(e.valor||0).toLocaleString("pt-BR")}</span>
+      <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px">Cláusula 1ª — Procedimentos Contratados</div>
+      ${etapas.map((e,i)=>`
+        <div style="display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid rgba(198,164,109,0.07)">
+          <input value="${(e.proc||"").replace(/"/g,"&quot;")}" oninput="updEtapa(${p.id},${i},'proc',this.value)" class="inp" style="font-size:12px;padding:4px 8px" placeholder="Procedimento..."/>
+          <div style="display:flex;align-items:center;gap:4px">
+            <span style="color:#555;font-size:11px">R$</span>
+            <input type="number" value="${e.valor||0}" oninput="updEtapa(${p.id},${i},'valor',parseFloat(this.value)||0)" class="inp" style="width:90px;font-size:12px;padding:4px 8px;text-align:right"/>
+          </div>
+          <button onclick="delContratoProc(${p.id},${i})" style="background:none;border:none;color:#ef444466;cursor:pointer;font-size:16px;padding:0 4px">✕</button>
         </div>`).join("")}
-        <div style="display:flex;justify-content:flex-end;margin-top:8px">
-          <span style="color:#C6A46D;font-weight:900;font-size:14px">Total: R$ ${total.toLocaleString("pt-BR")}</span>
-        </div>`}
+      ${etapas.length>0?`<div style="text-align:right;margin-top:10px;margin-bottom:8px"><span style="color:#C6A46D;font-weight:900;font-size:14px">Total: R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})}</span></div>`:""}
+      <div style="display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;margin-top:8px;padding-top:8px;border-top:1px dashed rgba(198,164,109,0.2)">
+        <input id="ct-proc-nome-${p.id}" class="inp" style="font-size:12px;padding:6px 8px" placeholder="Descrição do procedimento..."/>
+        <div style="display:flex;align-items:center;gap:4px">
+          <span style="color:#555;font-size:11px">R$</span>
+          <input id="ct-proc-val-${p.id}" type="number" class="inp" style="width:90px;font-size:12px;padding:6px 8px;text-align:right" placeholder="0"/>
+        </div>
+        <button onclick="addContratoProc(${p.id})" class="bp" style="font-size:18px;padding:4px 10px;line-height:1">+</button>
+      </div>
     </div>
 
     <div class="card" style="margin-bottom:10px">
-      <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px">Forma de pagamento</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-        ${["À vista","Parcelado","Convênio","Permuta"].map(f=>`<button onclick="updPt(${p.id},'contratoForma','${f}')" class="bg" style="font-size:11px;padding:5px 12px;border-radius:50px;background:${forma===f?"#C6A46D22":"transparent"};color:${forma===f?"#C6A46D":"#555"};border-color:${forma===f?"rgba(198,164,109,0.4)":"rgba(198,164,109,0.1)"}">${f}</button>`).join("")}
+      <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px">Cláusula 2ª — Prazo de Execução</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="color:#888;font-size:12px">Os serviços serão realizados em aprox.</span>
+        <input type="number" min="1" max="60" value="${prazo}" oninput="updPt(${p.id},'contratoPrazo',parseInt(this.value)||1)" class="inp" style="width:65px;font-size:14px;padding:6px 8px;text-align:center"/>
+        <span style="color:#888;font-size:12px">meses</span>
       </div>
-      ${forma==="Parcelado"?`<div style="display:flex;align-items:center;gap:8px">
-        <span style="color:#666;font-size:12px">Parcelas:</span>
+      <div style="color:#444;font-size:10px;margin-top:8px;line-height:1.6">Podendo sofrer prorrogação conforme complexidade do caso, resposta biológica do(a) paciente, assiduidade às consultas e seguimento das orientações fornecidas.</div>
+    </div>
+
+    <div class="card" style="margin-bottom:10px">
+      <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px">Cláusula 3ª — Preço e Condições de Pagamento</div>
+      <div style="color:#888;font-size:12px;margin-bottom:10px">Valor total dos serviços: <b style="color:#E2C99A;font-size:15px">R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})}</b></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+        ${["À vista","Parcelado","Convênio","Permuta"].map(f=>`<button onclick="updPt(${p.id},'contratoForma','${f}',true)" class="bg" style="font-size:11px;padding:5px 14px;border-radius:50px;background:${forma===f?"#C6A46D22":"transparent"};color:${forma===f?"#C6A46D":"#555"};border-color:${forma===f?"rgba(198,164,109,0.4)":"rgba(198,164,109,0.1)"}">${f}</button>`).join("")}
+      </div>
+      ${forma==="Parcelado"?`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <span style="color:#666;font-size:12px">Nº de parcelas:</span>
         <input type="number" min="1" max="48" value="${parcelas}" oninput="updPt(${p.id},'contratoParcelas',parseInt(this.value)||1)" class="inp" style="width:70px;font-size:12px;padding:5px 8px"/>
-        <span style="color:#C6A46D;font-size:12px;font-weight:700">${total>0?`R$ ${(total/parcelas).toLocaleString("pt-BR",{minimumFractionDigits:2})} × ${parcelas}x`:""}</span>
+        <span style="color:#C6A46D;font-size:13px;font-weight:700">${total>0?"R$ "+(total/parcelas).toLocaleString("pt-BR",{minimumFractionDigits:2})+" × "+parcelas+"x":""}</span>
       </div>`:""}
+      <textarea oninput="updPt(${p.id},'contratoObs',this.value)" rows="2" class="inp" style="resize:vertical;margin-top:4px" placeholder="Detalhes do pagamento: datas, vencimentos, conta bancária...">${p.contratoObs||""}</textarea>
+      <div style="color:#444;font-size:10px;margin-top:8px;line-height:1.6">Pagamentos vencidos sujeitos a atualização monetária, multa moratória de 2% e juros de 0,1% ao dia. No parcelamento, juros legais de 1% ao mês já inclusos nas parcelas.</div>
     </div>
 
-    <div class="card" style="margin-bottom:14px">
-      <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px">Observações</div>
-      <textarea oninput="updPt(${p.id},'contratoObs',this.value)" rows="2" class="inp" style="resize:vertical" placeholder="Observações adicionais...">${p.contratoObs||""}</textarea>
+    <div class="card" style="margin-bottom:14px;background:rgba(198,164,109,0.02)">
+      <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px">Cláusula 5ª — Obrigações do Contratante</div>
+      <div style="color:#444;font-size:11px;line-height:1.8">
+        • Prestar informações verdadeiras na anamnese, especialmente sobre saúde e medicamentos em uso.<br/>
+        • Comparecer pontualmente às consultas. Ausência sem aviso com 24h de antecedência sujeita a cobrança da consulta.<br/>
+        • Seguir rigorosamente as prescrições e orientações fornecidas pela CONTRATADA.<br/>
+        • Informar insatisfações ou dúvidas ao longo do tratamento.<br/>
+        • Manter os dados cadastrais sempre atualizados.
+      </div>
     </div>
 
-    ${sigSection}
+    ${sigPtHtml}
+    ${sigDraHtml}
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+      <button onclick="printContrato(${p.id})" class="bp" style="flex:1;font-size:12px;padding:10px">🖨️ Imprimir / PDF</button>
+      <button onclick="whatsContrato(${p.id})" class="bg" style="flex:1;font-size:12px;padding:10px;color:#22c55e;border-color:#22c55e44">📱 WhatsApp</button>
+    </div>
   </div>`;
 };
 
@@ -1547,6 +1728,50 @@ window.confirmSigCtText=function(ptId){
   const pts=ST.pts.map(p=>p.id!==ptId?p:{...p,contratoSig:{type:"typed",value:v},contratoSigDate:todayFmt()});
   set({pts});save("rof_pts",pts);
   toast("✅ Contrato assinado!","success");
+};
+
+// ── Assinatura da Dra. Rossana ─────────────────────────────────
+window.clearSigDra=function(){
+  const c=document.getElementById("sc-dra");
+  if(c){c.getContext("2d").clearRect(0,0,c.width,c.height);}
+  const b=document.getElementById("scb-dra");if(b)b.style.display="none";
+};
+window.confirmSigDra=function(ptId){
+  const c=document.getElementById("sc-dra");if(!c)return;
+  const sigVal=c.toDataURL();
+  const pts=ST.pts.map(p=>p.id!==ptId?p:{...p,contratoDraSig:{type:"canvas",value:sigVal},contratoDraSigDate:todayFmt()});
+  set({pts});save("rof_pts",pts);
+  toast("✅ Assinatura da Dra. Rossana confirmada!","success");
+};
+window.confirmSigDraText=function(ptId){
+  const v=(document.getElementById("sti-dra")?.value||"").trim();
+  if(!v){toast("Digite o nome para confirmar","error");return;}
+  const pts=ST.pts.map(p=>p.id!==ptId?p:{...p,contratoDraSig:{type:"typed",value:v},contratoDraSigDate:todayFmt()});
+  set({pts});save("rof_pts",pts);
+  toast("✅ Assinatura da Dra. Rossana confirmada!","success");
+};
+
+// ── Procedimentos direto no contrato ──────────────────────────
+window.addContratoProc=function(ptId){
+  const nomeEl=document.getElementById("ct-proc-nome-"+ptId);
+  const valEl=document.getElementById("ct-proc-val-"+ptId);
+  const nome=(nomeEl?.value||"").trim();
+  const val=parseFloat(valEl?.value||0)||0;
+  if(!nome){toast("Digite o nome do procedimento","error");return;}
+  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  const novaEtapa={id:Date.now(),proc:nome,valor:val,status:"Pendente",dataPrev:"",obs:""};
+  const planoTto=[...(p.planoTto||[]),novaEtapa];
+  const pts=ST.pts.map(x=>x.id===ptId?{...x,planoTto}:x);
+  ST.pts=pts;save("rof_pts",pts);
+  if(nomeEl)nomeEl.value="";
+  if(valEl)valEl.value="";
+  set({pts});
+};
+window.delContratoProc=function(ptId,idx){
+  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  const planoTto=(p.planoTto||[]).filter((_,i)=>i!==idx);
+  const pts=ST.pts.map(x=>x.id===ptId?{...x,planoTto}:x);
+  ST.pts=pts;save("rof_pts",pts);set({pts});
 };
 
 // ── WhatsApp do contrato ───────────────────────────────────────
@@ -1583,76 +1808,89 @@ window.printContrato=function(ptId){
   const total=etapas.reduce((s,e)=>s+(e.valor||0),0);
   const forma=p.contratoForma||"À vista";
   const parcelas=p.contratoParcelas||1;
-  const sig=p.contratoSig||null;
-  const sigHtml=sig
-    ?(sig.type==="canvas"
-      ?`<img src="${sig.value}" style="max-height:56px;max-width:220px;filter:brightness(0)"/>`
-      :`<div style="font-family:cursive;font-size:28px;color:#111">${sig.value}</div>`)
-    :`<div style="color:#aaa;font-size:12px;font-style:italic">Não assinado</div>`;
-  const w=window.open("","_blank","width=820,height=960");
+  const prazo=p.contratoPrazo||"___";
+  const sigPt=p.contratoSig||null;
+  const sigDra=p.contratoDraSig||null;
+  const hoje=new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"});
+  const pgtoTexto=forma==="Parcelado"&&total>0
+    ?`${parcelas}x de R$ ${(total/parcelas).toLocaleString("pt-BR",{minimumFractionDigits:2})} (total R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})})`
+    :`${forma} — R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})}`;
+  const procsHtml=etapas.length>0
+    ?etapas.map((e,i)=>`<tr><td>${i+1}. ${e.proc||"Procedimento"}</td><td style="text-align:right;font-weight:700;white-space:nowrap">R$ ${(e.valor||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</td></tr>`).join("")
+      +`<tr style="border-top:2px solid #C6A46D"><td style="font-weight:700;padding-top:6px">TOTAL</td><td style="text-align:right;font-weight:900;color:#8B6914;font-size:14px;padding-top:6px">R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})}</td></tr>`
+    :`<tr><td colspan="2" style="color:#999;font-style:italic">Procedimentos a definir.</td></tr>`;
+
+  function buildSig(sig,nome,cargo,sigDate){
+    const imgHtml=sig
+      ?(sig.type==="canvas"
+        ?`<img src="${sig.value}" style="max-height:54px;max-width:180px"/>`
+        :`<div style="font-family:cursive;font-size:26px;color:#111">${sig.value}</div>`)
+      :`<div style="height:50px"></div>`;
+    const label=sig?`<span style="color:#22a05a;font-size:10px">✓ Assinado digitalmente em ${sigDate||""}</span>`:`<span style="color:#aaa;font-size:10px">Não assinado</span>`;
+    return`<div style="flex:1;text-align:center">
+      <div style="min-height:60px;display:flex;align-items:flex-end;justify-content:center;border-bottom:1.5px solid #333;padding-bottom:6px;margin-bottom:8px">${imgHtml}</div>
+      <div style="font-size:11px;color:#333;line-height:1.7"><b>${nome}</b><br/>${cargo}<br/>${label}</div>
+    </div>`;
+  }
+
+  const w=window.open("","_blank","width=820,height=1100");
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
   <title>Contrato — ${p.name}</title>
   <style>
     *{box-sizing:border-box}
-    body{font-family:Georgia,serif;color:#111;max-width:740px;margin:36px auto;padding:0 32px;font-size:13px;line-height:1.75}
-    h1{font-size:19px;text-align:center;margin-bottom:3px;letter-spacing:1px;text-transform:uppercase}
-    .subtitle{text-align:center;font-size:11px;color:#666;margin-bottom:24px;font-family:Arial,sans-serif}
-    h2{font-size:12px;margin:22px 0 6px;border-bottom:2px solid #C6A46D;padding-bottom:4px;
-       color:#8B6914;text-transform:uppercase;letter-spacing:1.5px;font-family:Arial,sans-serif}
-    .row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #eee;font-size:12.5px}
-    .row span:last-child{font-weight:700}
-    .total-line{display:flex;justify-content:flex-end;margin-top:10px;font-size:15px;font-weight:900;color:#8B6914}
-    p{margin:5px 0;font-size:12.5px}
-    .info-box{background:#fafafa;border:1px solid #e5d9c3;border-radius:6px;padding:10px 14px;margin-bottom:6px}
-    .sig-block{display:flex;gap:40px;margin-top:56px;page-break-inside:avoid}
-    .sig-col{flex:1;text-align:center}
-    .sig-img{min-height:64px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:6px;padding-bottom:6px;border-bottom:1.5px solid #333}
-    .sig-label{font-size:11px;color:#666;font-family:Arial,sans-serif;margin-top:4px}
-    .stamp{text-align:center;margin-top:24px;font-size:10px;color:#999;font-family:Arial,sans-serif;border-top:1px solid #eee;padding-top:10px}
-    @media print{body{margin:16px auto}@page{margin:1.4cm}}
+    body{font-family:Georgia,serif;color:#111;max-width:760px;margin:32px auto;padding:0 36px;font-size:12.5px;line-height:1.8}
+    h1{font-size:16px;text-align:center;margin-bottom:2px;letter-spacing:2px;text-transform:uppercase;font-weight:900}
+    .sub{text-align:center;font-size:10.5px;color:#666;margin-bottom:28px;font-family:Arial,sans-serif}
+    h2{font-size:11.5px;margin:20px 0 8px;border-bottom:2px solid #C6A46D;padding-bottom:3px;color:#8B6914;text-transform:uppercase;letter-spacing:1.5px;font-family:Arial,sans-serif}
+    .box{background:#fafafa;border:1px solid #e0d5c0;border-radius:6px;padding:10px 14px;margin-bottom:8px;font-size:12px}
+    .box b{color:#333}
+    table{width:100%;border-collapse:collapse;margin:6px 0}
+    td{padding:5px 4px;border-bottom:1px solid #eee;font-size:12px}
+    p{margin:6px 0;font-size:12.5px;text-align:justify}
+    .sig-row{display:flex;gap:48px;margin-top:60px;page-break-inside:avoid}
+    .stamp{text-align:center;margin-top:20px;font-size:9.5px;color:#bbb;font-family:Arial,sans-serif;border-top:1px solid #eee;padding-top:10px}
+    @media print{body{margin:10px auto}@page{margin:1.5cm;size:A4}}
   </style></head><body>
+
   <h1>Contrato de Prestação de Serviços Odontológicos</h1>
-  <div class="subtitle">Clínica Dra. Rossana Fucks &nbsp;·&nbsp; CRO/SC 21403 &nbsp;·&nbsp; Itapema/SC</div>
+  <div class="sub">CRO/SC 21403 &nbsp;·&nbsp; R. 220, nº 200 - Sala 02, Meia Praia — Itapema/SC</div>
 
-  <h2>1. Partes</h2>
-  <div class="info-box">
-    <p><b>Prestadora de Serviços:</b> Dra. Rossana Batista Fucks, Cirurgiã-Dentista, CRO/SC 21403, Itapema/SC</p>
-    <p><b>Paciente / Contratante:</b> ${p.name}</p>
-    <p>CPF: ${p.cpf||"—"} &nbsp;·&nbsp; RG: ${p.rg||"—"} &nbsp;·&nbsp; Telefone: ${p.phone||"—"}</p>
-    <p>Endereço: ${p.endereco||"—"}</p>
+  <h2>Partes</h2>
+  <div class="box">
+    <b>CONTRATANTE:</b> ${p.name}, inscrito(a) no CPF ${p.cpf||"___________________"},
+    residente e domiciliado(a) ${p.endereco||"____________________________"}.
+  </div>
+  <div class="box">
+    <b>CONTRATADO(A):</b> Dra. Rossana Batista Fucks, Cirurgiã-Dentista, inscrita no CPF 546.313.190-20 e CRO/SC 21403,
+    situada na R. 220, nº 200 - Sala 02, Bairro Meia Praia, Itapema/SC.
   </div>
 
-  <h2>2. Objeto do Contrato</h2>
-  <p>A PRESTADORA compromete-se a realizar os seguintes procedimentos odontológicos no PACIENTE identificado acima:</p>
-  ${etapas.length>0
-    ?etapas.map((e,i)=>`<div class="row"><span>${i+1}. ${e.proc||"Procedimento"}</span><span>R$ ${(e.valor||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</span></div>`).join("")+`<div class="total-line">Total: R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>`
-    :`<p style="color:#999;font-style:italic">Procedimentos a definir.</p>`}
+  <h2>Cláusula Primeira — Do Objeto</h2>
+  <p>O objeto do presente contrato é a prestação de serviços odontológicos, a partir do plano de tratamento proposto e aprovado pelo(a) paciente, que inclui a realização dos seguintes procedimentos:</p>
+  <table>${procsHtml}</table>
 
-  <h2>3. Honorários e Forma de Pagamento</h2>
-  <div class="info-box">
-    <p><b>Valor total:</b> R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})}</p>
-    <p><b>Forma:</b> ${forma}${forma==="Parcelado"&&total>0?` — ${parcelas}x de R$ ${(total/parcelas).toLocaleString("pt-BR",{minimumFractionDigits:2})}`:""}.</p>
-  </div>
+  <h2>Cláusula Segunda — Do Prazo</h2>
+  <p>Os serviços odontológicos serão realizados em <b>${prazo} meses</b>, podendo sofrer prorrogação ou alteração de acordo com a eventual complexidade que o caso apresentar no decorrer do tratamento, bem como pela resposta biológica do(a) CONTRATANTE à técnica empregada, assiduidade às consultas e seguimento das orientações fornecidas pelo(a) CONTRATADO(A).</p>
 
-  <h2>4. Direitos e Deveres</h2>
-  <p>O PACIENTE declara ter recebido informações claras sobre os procedimentos, riscos, benefícios e alternativas de tratamento, estando ciente e de acordo com o plano proposto. A PRESTADORA compromete-se a realizar os procedimentos com ética, diligência e conforme as normas do CFO.</p>
+  <h2>Cláusula Terceira — Preço e Condições de Pagamento</h2>
+  <p>O valor dos serviços odontológicos contratados é de <b>R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})}</b> e seu pagamento será efetuado da seguinte forma: <b>${pgtoTexto}</b>.</p>
+  ${p.contratoObs?`<p>${p.contratoObs}</p>`:""}
 
-  <h2>5. Rescisão</h2>
-  <p>Qualquer das partes pode rescindir este contrato mediante aviso prévio de 15 dias, ficando devidos os honorários pelos serviços já realizados.</p>
+  <h2>Cláusula Quarta — Das Observações sobre Preço e Pagamento</h2>
+  <p>O valor ora estipulado poderá sofrer alteração caso seja necessário modificar o plano de tratamento inicialmente aprovado, em face de constatação de questões técnicas ou intercorrências que inviabilizem sua execução.</p>
+  <p>Em caso de pagamento parcelado, poderá haver atualização monetária e cobrança de juros legais de 1% (um por cento) ao mês. Os pagamentos vencidos e efetuados fora dos prazos previstos estarão sujeitos a atualização monetária, multa moratória de 2% e juros de 0,1% ao dia.</p>
 
-  ${p.contratoObs?`<h2>6. Observações</h2><p>${p.contratoObs}</p>`:""}
+  <h2>Cláusula Quinta — Das Obrigações do(a) Contratante</h2>
+  <p><b>5.1</b> Prestar informações verdadeiras no preenchimento da ficha de anamnese, especialmente quanto às condições de saúde geral e bucal, uso de medicamentos e doenças pré-existentes.</p>
+  <p><b>5.2</b> Comparecer pontualmente às consultas previamente agendadas. A ausência sem aviso prévio de 24 (vinte e quatro) horas acarretará cobrança de uma consulta pelo valor vigente.</p>
+  <p><b>5.3</b> Seguir rigorosamente as prescrições, encaminhamentos e orientações fornecidas pelo(a) CONTRATADO(A), sob pena de o tratamento ser declarado como interrompido.</p>
+  <p><b>5.4</b> Informar ao(à) CONTRATADO(A) qualquer alteração decorrente do tratamento, insatisfações ou dúvidas sobre o tratamento em execução, bem como manter seus dados cadastrais sempre atualizados.</p>
 
-  <p style="margin-top:20px">Itapema/SC, ${new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"})}</p>
+  <p style="margin-top:28px">Itapema/SC, ${hoje}.</p>
 
-  <div class="sig-block">
-    <div class="sig-col">
-      <div class="sig-img"><div style="font-family:cursive;font-size:22px;color:#8B6914">Rossana Fucks</div></div>
-      <div class="sig-label"><b>Dra. Rossana Batista Fucks</b><br/>CRO/SC 21403 — Prestadora</div>
-    </div>
-    <div class="sig-col">
-      <div class="sig-img">${sigHtml}</div>
-      <div class="sig-label"><b>${p.name}</b><br/>Paciente / Contratante${sig?`<br/><span style="color:#22a05a">✓ Assinado digitalmente em ${p.contratoSigDate||""}</span>`:"<br/><span style='color:#999'>Assinar no sistema ROF™</span>"}</div>
-    </div>
+  <div class="sig-row">
+    ${buildSig(sigDra,"Dra. Rossana Batista Fucks","CRO/SC 21403 — Contratado(a)",p.contratoDraSigDate)}
+    ${buildSig(sigPt,p.name,"Contratante",p.contratoSigDate)}
   </div>
 
   <div class="stamp">Documento gerado pelo Sistema ROF™ &nbsp;·&nbsp; ${new Date().toLocaleString("pt-BR")}</div>
@@ -1698,40 +1936,137 @@ window.printRecibo=function(ptId,pgIdx){
 // ══════════════════════════════════════════════════════════════════
 // CRM / LEADS
 // ══════════════════════════════════════════════════════════════════
-const LEAD_STATUS=["Novo","Contatado","Agendado","Convertido","Perdido"];
-const LEAD_STATUS_COLORS={Novo:"#60a5fa",Contatado:"#f59e0b",Agendado:"#c084fc",Convertido:"#22c55e",Perdido:"#ef4444"};
+const LEAD_STATUS=["Novo Lead","Em Conversa","Avaliação Marcada","Orçamento Enviado","Aguardando Retorno","Fechado","Perdido","Retorno Futuro"];
+const LEAD_STATUS_COLORS={"Novo Lead":"#60a5fa","Em Conversa":"#f59e0b","Avaliação Marcada":"#c084fc","Orçamento Enviado":"#fb923c","Aguardando Retorno":"#a78bfa","Fechado":"#22c55e","Perdido":"#ef4444","Retorno Futuro":"#94a3b8"};
+const LEAD_STATUS_ICONS={"Novo Lead":"🆕","Em Conversa":"💬","Avaliação Marcada":"📅","Orçamento Enviado":"💰","Aguardando Retorno":"⏳","Fechado":"✅","Perdido":"❌","Retorno Futuro":"🔄"};
+
+function _leadDiasSemContato(l){
+  const ref=l.dataUltContato||l.updatedAt||l.createdAt;
+  if(!ref)return 999;
+  const ms=new Date()-new Date(ref+"T12:00:00");
+  return Math.floor(ms/86400000);
+}
 
 function pageCRM(){
   const leads=load("rof_leads",[]);
   const filtroStatus=ST.crmStatus||"Todos";
-  const filtrados=leads.filter(l=>filtroStatus==="Todos"||l.status===filtroStatus);
-  const total=leads.length,conv=leads.filter(l=>l.status==="Convertido").length;
-  return stitle("CRM / Leads")
-    +`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
-      <div class="card" style="text-align:center;border-top:2px solid #60a5fa"><div style="color:#444;font-size:9px;text-transform:uppercase;letter-spacing:1px">Total de leads</div><div style="color:#60a5fa;font-size:24px;font-weight:900;margin-top:4px">${total}</div></div>
-      <div class="card" style="text-align:center;border-top:2px solid #22c55e"><div style="color:#444;font-size:9px;text-transform:uppercase;letter-spacing:1px">Convertidos</div><div style="color:#22c55e;font-size:24px;font-weight:900;margin-top:4px">${conv}</div></div>
-      <div class="card" style="text-align:center;border-top:2px solid #C6A46D"><div style="color:#444;font-size:9px;text-transform:uppercase;letter-spacing:1px">Taxa conversão</div><div style="color:#C6A46D;font-size:24px;font-weight:900;margin-top:4px">${total>0?Math.round(conv/total*100):0}%</div></div>
+  const filtroOrigem=ST.crmOrigem||"Todos";
+  const filtroProc=ST.crmProc||"Todos";
+  const busca=(ST.crmBusca||"").toLowerCase();
+
+  let filtrados=leads.filter(l=>{
+    if(filtroStatus!=="Todos"&&l.status!==filtroStatus)return false;
+    if(filtroOrigem!=="Todos"&&l.origem!==filtroOrigem)return false;
+    if(filtroProc!=="Todos"&&l.interesse!==filtroProc)return false;
+    if(busca&&!l.name.toLowerCase().includes(busca)&&!(l.phone||"").includes(busca))return false;
+    return true;
+  });
+
+  // Ordenar: alertas (sem contato >3 dias em status ativo) primeiro
+  const ativos=new Set(["Novo Lead","Em Conversa","Avaliação Marcada","Orçamento Enviado","Aguardando Retorno"]);
+  filtrados.sort((a,b)=>{
+    const aAlerta=ativos.has(a.status)&&_leadDiasSemContato(a)>=3;
+    const bAlerta=ativos.has(b.status)&&_leadDiasSemContato(b)>=3;
+    if(aAlerta&&!bAlerta)return-1;if(!aAlerta&&bAlerta)return 1;
+    return new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt);
+  });
+
+  const total=leads.length;
+  const fechados=leads.filter(l=>l.status==="Fechado").length;
+  const emAndamento=leads.filter(l=>ativos.has(l.status)).length;
+  const alertas=leads.filter(l=>ativos.has(l.status)&&_leadDiasSemContato(l)>=3).length;
+  const origensAll=["Todos",...new Set(leads.map(l=>l.origem).filter(Boolean))];
+  const procsAll=["Todos",...new Set(leads.map(l=>l.interesse).filter(Boolean))];
+
+  // Funil visual
+  const funnelStages=["Novo Lead","Em Conversa","Avaliação Marcada","Orçamento Enviado","Aguardando Retorno","Fechado"];
+  const funnelHTML=`<div class="card" style="margin-bottom:14px;overflow-x:auto">
+    <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px">🎯 Funil de Pacientes</div>
+    <div style="display:flex;gap:4px;min-width:460px">
+      ${funnelStages.map(s=>{
+        const cnt=leads.filter(l=>l.status===s).length;
+        const c=LEAD_STATUS_COLORS[s];
+        const ic=LEAD_STATUS_ICONS[s];
+        const pct=total>0?Math.round(cnt/total*100):0;
+        return`<div onclick="set({crmStatus:'${s}'})" style="flex:1;cursor:pointer;text-align:center;padding:8px 4px;border-radius:8px;background:${filtroStatus===s?c+"22":"#0D0D0D"};border:1px solid ${filtroStatus===s?c+"55":"rgba(198,164,109,0.07)"};transition:all .2s">
+          <div style="font-size:14px">${ic}</div>
+          <div style="color:${c};font-size:18px;font-weight:900;line-height:1.1">${cnt}</div>
+          <div style="color:#555;font-size:8px;line-height:1.3;margin-top:2px">${s.replace(" ","\n")}</div>
+          <div style="margin-top:4px;height:2px;border-radius:2px;background:${c}${pct>0?"":"22"};opacity:${pct>0?0.7+pct/300:0.15}"></div>
+        </div>`;
+      }).join("")}
     </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+  </div>`;
+
+  // Painel resumo
+  const resumoHTML=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
+    <div class="card" style="text-align:center;padding:12px 8px;border-top:2px solid #60a5fa">
+      <div style="color:#60a5fa;font-size:22px;font-weight:900">${total}</div>
+      <div style="color:#444;font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-top:2px">Total</div>
+    </div>
+    <div class="card" style="text-align:center;padding:12px 8px;border-top:2px solid #f59e0b">
+      <div style="color:#f59e0b;font-size:22px;font-weight:900">${emAndamento}</div>
+      <div style="color:#444;font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-top:2px">Em Andamento</div>
+    </div>
+    <div class="card" style="text-align:center;padding:12px 8px;border-top:2px solid #22c55e">
+      <div style="color:#22c55e;font-size:22px;font-weight:900">${fechados}</div>
+      <div style="color:#444;font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-top:2px">Fechados</div>
+    </div>
+    <div class="card" style="text-align:center;padding:12px 8px;border-top:2px solid ${alertas>0?"#ef4444":"#333"}">
+      <div style="color:${alertas>0?"#ef4444":"#555"};font-size:22px;font-weight:900">${alertas}</div>
+      <div style="color:#444;font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-top:2px">Sem Resposta</div>
+    </div>
+  </div>`;
+
+  // Alerta destaque
+  const alertaBanner=alertas>0?`<div style="background:#ef444410;border:1px solid #ef444433;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px;cursor:pointer" onclick="set({crmStatus:'Todos',crmAlerta:true})">
+    <span style="font-size:18px">🔔</span>
+    <div><div style="color:#ef4444;font-weight:700;font-size:12px">${alertas} lead${alertas>1?"s":""} sem resposta há mais de 3 dias</div>
+    <div style="color:#888;font-size:10px">Clique para ver e retomar contato</div></div>
+  </div>`:"";
+
+  return stitle("CRM / Leads")
+    +resumoHTML
+    +funnelHTML
+    +alertaBanner
+    +`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+      <input value="${ST.crmBusca||""}" oninput="set({crmBusca:this.value})" class="inp" placeholder="🔍 Buscar por nome ou telefone..." style="flex:2;min-width:160px;font-size:12px"/>
+      <select onchange="set({crmOrigem:this.value})" class="inp" style="flex:1;min-width:110px;font-size:11px">
+        ${origensAll.map(o=>`<option value="${o}" ${filtroOrigem===o?"selected":""}>${o==="Todos"?"Todas as origens":o}</option>`).join("")}
+      </select>
+      <select onchange="set({crmProc:this.value})" class="inp" style="flex:1;min-width:110px;font-size:11px">
+        ${procsAll.map(p=>`<option value="${p}" ${filtroProc===p?"selected":""}>${p==="Todos"?"Todos procedimentos":p}</option>`).join("")}
+      </select>
+      <button onclick="addLead()" class="bp" style="font-size:12px;padding:7px 16px;white-space:nowrap;flex-shrink:0">+ Novo Lead</button>
+    </div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">
       ${["Todos",...LEAD_STATUS].map(s=>{
         const active=filtroStatus===s;
-        const c=LEAD_STATUS_COLORS[s]||"#888";
-        return`<button onclick="set({crmStatus:'${s}'})" class="bg" style="padding:4px 12px;font-size:11px;border-radius:50px;background:${active?c+"22":"transparent"};color:${active?c:"#555"};border-color:${active?c+"44":"rgba(198,164,109,0.1)"}">${s}</button>`;
+        const c=LEAD_STATUS_COLORS[s]||"#C6A46D";
+        const cnt=s==="Todos"?leads.length:leads.filter(l=>l.status===s).length;
+        return`<button onclick="set({crmStatus:'${s}'})" class="bg" style="padding:4px 10px;font-size:10px;border-radius:50px;background:${active?c+"22":"transparent"};color:${active?c:"#555"};border-color:${active?c+"44":"rgba(198,164,109,0.1)"}">${LEAD_STATUS_ICONS[s]||""} ${s} <span style="opacity:.6">${cnt}</span></button>`;
       }).join("")}
-      <button onclick="addLead()" class="bp" style="margin-left:auto;font-size:12px;padding:5px 16px">+ Novo Lead</button>
     </div>
     <div class="card" style="padding:0;overflow:hidden">
       ${filtrados.length===0
         ?emptyState("🎯","Nenhum lead encontrado","Clique em '+ Novo Lead' para começar o acompanhamento.")
-        :filtrados.map((l,i)=>{
+        :filtrados.map(l=>{
           const c=LEAD_STATUS_COLORS[l.status]||"#888";
-          return`<div class="lead-card" onclick="openLead(${l.id})">
+          const dias=_leadDiasSemContato(l);
+          const isAlerta=ativos.has(l.status)&&dias>=3;
+          const proxContato=l.proxContato?`<span style="color:#f59e0b;font-size:9px">📅 Próx: ${fmtDate(l.proxContato)}</span>`:"";
+          const orcLabel=l.orcamento?`<span style="color:#fb923c;font-size:9px">💰 ${l.orcamento}</span>`:"";
+          return`<div class="lead-card" style="${isAlerta?"border-left:3px solid #ef4444;":""}" onclick="openLead(${l.id})">
             ${ptAvatar(l.name,38)}
             <div style="flex:1;min-width:0">
               <div style="color:#E2C99A;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.name}</div>
-              <div style="color:#555;font-size:10px">${l.phone||"—"} &nbsp;·&nbsp; ${l.origem||"Sem origem"} &nbsp;·&nbsp; ${l.interesse||"Sem interesse"}</div>
+              <div style="color:#555;font-size:10px;margin-bottom:3px">${l.phone||"—"} · ${l.origem||"Sem origem"} · ${l.interesse||"—"}</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">${proxContato}${orcLabel}${isAlerta?`<span style="color:#ef4444;font-size:9px">⚠️ ${dias}d sem contato</span>`:""}</div>
             </div>
-            <span class="lead-status-pill" style="background:${c}22;color:${c};border:1px solid ${c}44">${l.status}</span>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
+              <span class="lead-status-pill" style="background:${c}22;color:${c};border:1px solid ${c}44">${l.status}</span>
+              <button onclick="event.stopPropagation();whatsLead(${l.id})" style="background:none;border:1px solid #22c55e44;border-radius:6px;color:#22c55e;cursor:pointer;font-size:10px;padding:3px 7px" title="WhatsApp">📱</button>
+            </div>
           </div>`;
         }).join("")}
     </div>`;
@@ -1739,7 +2074,7 @@ function pageCRM(){
 
 window.addLead=function(){
   const leads=load("rof_leads",[]);
-  const novo={id:Date.now(),name:"Novo Lead",phone:"",email:"",origem:"",interesse:"",status:"Novo",obs:"",createdAt:todayISO(),updatedAt:todayISO()};
+  const novo={id:Date.now(),name:"Novo Lead",phone:"",email:"",origem:"Instagram",interesse:"",status:"Novo Lead",obs:"",historico:[],orcamento:"",proxContato:"",dataUltContato:"",procedimento:"",createdAt:todayISO(),updatedAt:todayISO()};
   leads.unshift(novo);
   save("rof_leads",leads);
   set({crmStatus:"Todos"});
@@ -1749,60 +2084,102 @@ window.addLead=function(){
 window.openLead=function(lid){
   const leads=load("rof_leads",[]);
   const l=leads.find(x=>x.id===lid);if(!l)return;
-  const c=LEAD_STATUS_COLORS[l.status]||"#888";
+  const historico=(l.historico||[]).slice().reverse();
   const modal=document.createElement("div");
   modal.className="mbg";
-  modal.innerHTML=`<div class="mbx" style="max-width:480px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-      <div style="color:#E2C99A;font-weight:800;font-size:14px">🎯 Lead</div>
-      <button onclick="this.closest('.mbg').remove()" style="background:none;border:none;color:#555;font-size:20px;cursor:pointer">✕</button>
+  modal.id="lead-modal";
+  modal.innerHTML=`<div class="mbx" style="max-width:560px">
+    <div class="mhd">
+      <div class="mhd-title">🎯 Lead — ${l.name}</div>
+      <button onclick="document.getElementById('lead-modal').remove()" style="background:none;border:none;color:#555;font-size:22px;cursor:pointer;line-height:1">✕</button>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      <div style="grid-column:1/-1"><label class="lbl">Nome</label>
-        <input id="ld-name" value="${(l.name||"").replace(/"/g,"&quot;")}" class="inp"/></div>
-      <div><label class="lbl">Telefone / WhatsApp</label>
-        <input id="ld-phone" value="${(l.phone||"").replace(/"/g,"&quot;")}" class="inp"/></div>
-      <div><label class="lbl">E-mail</label>
-        <input id="ld-email" value="${(l.email||"").replace(/"/g,"&quot;")}" class="inp"/></div>
-      <div><label class="lbl">Origem do lead</label>
-        <select id="ld-origem" class="inp">
-          ${["Instagram","Facebook","Indicação","Google","WhatsApp","Outro"].map(o=>`<option value="${o}" ${l.origem===o?"selected":""}>${o}</option>`).join("")}
-        </select></div>
-      <div><label class="lbl">Interesse</label>
-        <select id="ld-interesse" class="inp">
-          ${["Clareamento","Implante","Ortodontia","Lentes","Prótese","Restauração","Outro"].map(o=>`<option value="${o}" ${l.interesse===o?"selected":""}>${o}</option>`).join("")}
-        </select></div>
-      <div style="grid-column:1/-1"><label class="lbl">Status</label>
-        <div style="display:flex;gap:5px;flex-wrap:wrap">
-          ${LEAD_STATUS.map(s=>{const sc=LEAD_STATUS_COLORS[s];return`<button id="ld-st-${s}" onclick="document.querySelectorAll('[id^=ld-st-]').forEach(b=>b.style.background='transparent');this.style.background='${sc}22';this._sel=true" style="padding:4px 11px;font-size:11px;border-radius:50px;background:${l.status===s?sc+"22":"transparent"};color:${sc};border:1px solid ${sc}44;cursor:pointer;font-family:var(--font-body)">${s}</button>`;}).join("")}
+    <div class="mbd">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div style="grid-column:1/-1"><label class="lbl">Nome completo</label>
+          <input id="ld-name" value="${(l.name||"").replace(/"/g,"&quot;")}" class="inp"/></div>
+        <div><label class="lbl">Telefone / WhatsApp</label>
+          <input id="ld-phone" value="${(l.phone||"").replace(/"/g,"&quot;")}" class="inp" placeholder="(47) 99999-9999"/></div>
+        <div><label class="lbl">E-mail</label>
+          <input id="ld-email" value="${(l.email||"").replace(/"/g,"&quot;")}" class="inp"/></div>
+        <div><label class="lbl">Origem do lead</label>
+          <select id="ld-origem" class="inp">
+            ${["Instagram","Facebook","Indicação","Google","WhatsApp","TikTok","Site","Outro"].map(o=>`<option value="${o}" ${l.origem===o?"selected":""}>${o}</option>`).join("")}
+          </select></div>
+        <div><label class="lbl">Procedimento de interesse</label>
+          <select id="ld-interesse" class="inp">
+            ${["Clareamento","Implante","Ortodontia","Lentes de Contato","Prótese","Restauração","Harmonização Facial","Botox","Preenchimento","Peeling","Outro"].map(o=>`<option value="${o}" ${l.interesse===o?"selected":""}>${o}</option>`).join("")}
+          </select></div>
+        <div><label class="lbl">Orçamento enviado</label>
+          <input id="ld-orcamento" value="${(l.orcamento||"").replace(/"/g,"&quot;")}" class="inp" placeholder="Ex: R$ 3.500,00 — implante"/></div>
+        <div><label class="lbl">Próximo contato</label>
+          <input id="ld-prox" type="date" value="${l.proxContato||""}" class="inp"/></div>
+      </div>
+      <div style="margin-bottom:10px"><label class="lbl">Status do atendimento</label>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${LEAD_STATUS.map(s=>{const sc=LEAD_STATUS_COLORS[s];const ic=LEAD_STATUS_ICONS[s];const sel=l.status===s;return`<button id="ld-st-${s.replace(/\s/g,"_")}" data-status="${s}" onclick="(function(btn){document.querySelectorAll('[id^=ld-st-]').forEach(b=>{b.style.background='transparent';b.removeAttribute('data-sel');});btn.style.background='${sc}22';btn.setAttribute('data-sel','1');})(this)" style="padding:5px 10px;font-size:10px;border-radius:50px;background:${sel?sc+"22":"transparent"};color:${sc};border:1px solid ${sc}44;cursor:pointer;font-family:var(--font-body)">${ic} ${s}</button>`;}).join("")}
         </div></div>
-      <div style="grid-column:1/-1"><label class="lbl">Observações / Histórico</label>
-        <textarea id="ld-obs" rows="3" class="inp" style="resize:vertical">${l.obs||""}</textarea></div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:14px">
-      <button onclick="saveLead(${lid})" class="bp" style="flex:1">💾 Salvar</button>
-      ${l.status==="Convertido"?"":l.status!=="Convertido"?`<button onclick="convertLead(${lid})" class="bg" style="color:#22c55e;border-color:#22c55e44;font-size:12px">✅ Converter em paciente</button>`:""}
-      <button onclick="delLead(${lid})" class="bg" style="color:#ef4444;border-color:#ef444444;font-size:12px">🗑</button>
+      <div style="margin-bottom:10px"><label class="lbl">Observações / Histórico de conversas</label>
+        <textarea id="ld-obs" rows="3" class="inp" style="resize:vertical" placeholder="Anote observações, o que o paciente disse, dúvidas...">${l.obs||""}</textarea></div>
+      <div style="margin-bottom:6px"><label class="lbl">Adicionar entrada no histórico</label>
+        <div style="display:flex;gap:6px">
+          <input id="ld-hist-txt" class="inp" style="flex:1;font-size:12px" placeholder="Registrar contato feito, resposta recebida..."/>
+          <button onclick="addHistLead(${lid})" class="bp" style="padding:8px 12px;font-size:12px;flex-shrink:0">+ Registrar</button>
+        </div></div>
+      ${historico.length>0?`<div style="background:#0a0a0a;border-radius:8px;padding:8px 10px;max-height:140px;overflow-y:auto;margin-bottom:10px">
+        ${historico.map(h=>`<div style="border-bottom:1px solid #1a1a1a;padding:5px 0;font-size:11px">
+          <span style="color:#555;font-size:10px">${fmtDate(h.date)} ${h.hora||""}</span>
+          <span style="color:#bbb;margin-left:6px">${h.texto}</span>
+        </div>`).join("")}
+      </div>`:""}
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+        <button onclick="saveLead(${lid})" class="bp" style="flex:1;min-width:100px">💾 Salvar</button>
+        <button onclick="whatsLead(${lid},true)" class="bg" style="color:#22c55e;border-color:#22c55e44;font-size:12px">📱 WhatsApp</button>
+        ${l.status!=="Fechado"?`<button onclick="convertLead(${lid})" class="bg" style="color:#22c55e;border-color:#22c55e44;font-size:12px">✅ Converter em paciente</button>`:""}
+        <button onclick="delLead(${lid})" class="bg" style="color:#ef4444;border-color:#ef444444;font-size:12px">🗑</button>
+      </div>
     </div>
   </div>`;
+  document.getElementById("lead-modal")?.remove();
   document.body.appendChild(modal);
+};
+
+window.addHistLead=function(lid){
+  const txt=document.getElementById("ld-hist-txt")?.value?.trim();
+  if(!txt)return;
+  const leads=load("rof_leads",[]);
+  const now=new Date();
+  const hora=now.getHours().toString().padStart(2,"0")+":"+now.getMinutes().toString().padStart(2,"0");
+  const updated=leads.map(l=>l.id!==lid?l:{...l,
+    historico:[...(l.historico||[]),{date:todayISO(),hora,texto:txt}],
+    dataUltContato:todayISO(),
+    updatedAt:todayISO()
+  });
+  save("rof_leads",updated);
+  const inp=document.getElementById("ld-hist-txt");if(inp)inp.value="";
+  toast("📝 Registrado!","success");
+  // Refresh modal
+  document.getElementById("lead-modal")?.remove();
+  setTimeout(()=>openLead(lid),50);
 };
 
 window.saveLead=function(lid){
   const leads=load("rof_leads",[]);
-  const selBtn=document.querySelector('[id^="ld-st-"][style*="22"]');
-  const status=selBtn?selBtn.id.replace("ld-st-",""):(leads.find(x=>x.id===lid)||{}).status||"Novo";
+  const selBtn=document.querySelector('[id^="ld-st-"][data-sel="1"]');
+  const cur=leads.find(x=>x.id===lid)||{};
+  const status=selBtn?selBtn.getAttribute("data-status"):cur.status||"Novo Lead";
   const updated=leads.map(l=>l.id!==lid?l:{...l,
     name:document.getElementById("ld-name")?.value||l.name,
     phone:document.getElementById("ld-phone")?.value||l.phone,
     email:document.getElementById("ld-email")?.value||l.email,
     origem:document.getElementById("ld-origem")?.value||l.origem,
     interesse:document.getElementById("ld-interesse")?.value||l.interesse,
+    orcamento:document.getElementById("ld-orcamento")?.value||l.orcamento||"",
+    proxContato:document.getElementById("ld-prox")?.value||l.proxContato||"",
     obs:document.getElementById("ld-obs")?.value||l.obs,
     status,updatedAt:todayISO()
   });
   save("rof_leads",updated);
-  document.querySelector(".mbg")?.remove();
+  document.getElementById("lead-modal")?.remove();
   set({});
   toast("✅ Lead salvo!","success");
 };
@@ -1810,12 +2187,10 @@ window.saveLead=function(lid){
 window.convertLead=function(lid){
   const leads=load("rof_leads",[]);
   const l=leads.find(x=>x.id===lid);if(!l)return;
-  document.querySelector(".mbg")?.remove();
-  // Mark as converted
-  const updLeads=leads.map(x=>x.id===lid?{...x,status:"Convertido",updatedAt:todayISO()}:x);
+  document.getElementById("lead-modal")?.remove();
+  const updLeads=leads.map(x=>x.id===lid?{...x,status:"Fechado",updatedAt:todayISO()}:x);
   save("rof_leads",updLeads);
-  // Create patient
-  const newPt={id:Date.now(),name:l.name,phone:l.phone,email:l.email,status:"Ativo",tipo:"particular",tags:[],notes:`Convertido de lead em ${todayISO()}. Interesse: ${l.interesse||"—"}. Origem: ${l.origem||"—"}.`};
+  const newPt={id:Date.now(),name:l.name,phone:l.phone,email:l.email,status:"Ativo",tipo:"particular",tags:[],notes:`Convertido de lead em ${todayISO()}. Interesse: ${l.interesse||"—"}. Origem: ${l.origem||"—"}.${l.orcamento?" Orçamento: "+l.orcamento:""}${l.obs?"\n"+l.obs:""}`};
   const pts=[...ST.pts,newPt];
   set({pts,page:"patients",selPt:newPt.id});
   save("rof_pts",pts);
@@ -1825,9 +2200,78 @@ window.convertLead=function(lid){
 window.delLead=function(lid){
   const leads=load("rof_leads",[]).filter(l=>l.id!==lid);
   save("rof_leads",leads);
-  document.querySelector(".mbg")?.remove();
+  document.getElementById("lead-modal")?.remove();
   set({});
   toast("Lead removido","success");
+};
+
+window.whatsLead=function(lid,fromModal){
+  const leads=load("rof_leads",[]);
+  const l=leads.find(x=>x.id===lid);if(!l)return;
+  let phone=(l.phone||"").replace(/\D/g,"");
+  if(!phone){toast("Lead sem telefone cadastrado.","warning");return;}
+  if(phone.length===10||phone.length===11)phone="55"+phone;
+  // Registrar contato no histórico
+  const now=new Date();
+  const hora=now.getHours().toString().padStart(2,"0")+":"+now.getMinutes().toString().padStart(2,"0");
+  const updated=leads.map(x=>x.id!==lid?x:{...x,dataUltContato:todayISO(),updatedAt:todayISO(),historico:[...(x.historico||[]),{date:todayISO(),hora,texto:"Contato via WhatsApp iniciado."}]});
+  save("rof_leads",updated);
+  if(fromModal){document.getElementById("lead-modal")?.remove();}
+  openWhatsMsgTemplates(phone,l.name,l.interesse);
+};
+
+// ══════════════════════════════════════════════════════════════════
+// WHATSAPP — MENSAGENS PRONTAS
+// ══════════════════════════════════════════════════════════════════
+window.openWhatsMsgTemplates=function(phone,nome,interesse){
+  if(!phone){toast("Telefone não cadastrado.","warning");return;}
+  let fmtPhone=phone.replace(/\D/g,"");
+  if(fmtPhone.length===10||fmtPhone.length===11)fmtPhone="55"+fmtPhone;
+  const primeiroNome=(nome||"").split(" ")[0];
+  const templates=[
+    {ic:"👋",titulo:"Primeiro contato",msg:`Olá, ${primeiroNome}! 😊\n\nTudo bem? Vi que você entrou em contato conosco!\n\nSou a Dra. Rossana, especialista em Método ROF™ — Reabilitação Oral & Facial Integrada.\n\nPodemos agendar uma avaliação gratuita? Quando você teria disponibilidade? 🗓️`},
+    {ic:"📅",titulo:"Confirmação de consulta",msg:`Olá, ${primeiroNome}! 😊\n\nPassando para confirmar sua consulta amanhã no Método ROF™.\n\nQualquer dúvida ou precisar reagendar, é só me avisar!\n\nDra. Rossana — CRO/SC 21403`},
+    {ic:"💰",titulo:"Orçamento enviado",msg:`Olá, ${primeiroNome}! 😊\n\nConforme conversamos, segue o orçamento do seu tratamento${interesse?" de "+interesse:""}.\n\nTemos condições especiais de parcelamento! 💳\n\nQualquer dúvida estou à disposição.\n\nDra. Rossana Batista Fucks — Método ROF™`},
+    {ic:"⏳",titulo:"Lembrete de retorno",msg:`Olá, ${primeiroNome}! Tudo bem? 😊\n\nPassando para lembrar que está na hora do seu retorno!\n\nVamos agendar? Tenho horários disponíveis esta semana. 📅\n\nDra. Rossana — Método ROF™`},
+    {ic:"🎉",titulo:"Pós-procedimento",msg:`Olá, ${primeiroNome}! 😊\n\nEspero que esteja se sentindo bem após o procedimento de hoje!\n\nLembre-se das orientações que passei. Qualquer desconforto ou dúvida, pode me chamar a qualquer hora. 💛\n\nDra. Rossana — Método ROF™`},
+    {ic:"🌟",titulo:"Avaliação / Feedback",msg:`Olá, ${primeiroNome}! Tudo bem? 😊\n\nFoi um prazer atendê-la(o)! ✨\n\nSua opinião é muito importante para mim. Se quiser, pode deixar uma avaliação no Google — leva só 1 minuto e ajuda muito!\n\nGrande abraço 💛\nDra. Rossana — Método ROF™`},
+    {ic:"📋",titulo:"Orientações pós-procedimento",msg:`Olá, ${primeiroNome}! 😊\n\nSegue um resumo das orientações pós-procedimento:\n\n• Evite alimentos quentes nas próximas 2h\n• Não fume ou consuma álcool por 24h\n• Tome a medicação conforme prescrito\n• Em caso de dor intensa ou inchaço, me avise\n\nQualquer dúvida estou aqui! 💛\nDra. Rossana — Método ROF™`},
+    {ic:"📆",titulo:"Reagendamento",msg:`Olá, ${primeiroNome}! 😊\n\nVi que sua consulta não pôde ser realizada. Sem problema!\n\nVamos remarcar? Qual dia fica melhor para você esta semana? 📅\n\nDra. Rossana — Método ROF™`},
+  ];
+  const modal=document.createElement("div");
+  modal.className="mbg";modal.id="whats-tpl-modal";
+  modal.innerHTML=`<div class="mbx" style="max-width:520px">
+    <div class="mhd">
+      <div class="mhd-title">📱 WhatsApp — Mensagens Prontas</div>
+      <button onclick="document.getElementById('whats-tpl-modal').remove()" style="background:none;border:none;color:#555;font-size:22px;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <div class="mbd">
+      <div style="color:#888;font-size:11px;margin-bottom:12px">Clique em uma mensagem para editar e enviar para <strong style="color:#E2C99A">${nome}</strong></div>
+      <div style="margin-bottom:12px">
+        <label class="lbl">Mensagem personalizada</label>
+        <textarea id="whats-custom-txt" rows="4" class="inp" style="resize:vertical;font-size:12px" placeholder="Digite ou edite uma mensagem personalizada..."></textarea>
+        <button onclick="(function(){var t=document.getElementById('whats-custom-txt').value.trim();if(!t){toast('Digite uma mensagem.','warning');return;}window.open('https://wa.me/${fmtPhone}?text='+encodeURIComponent(t),'_blank');document.getElementById('whats-tpl-modal').remove();})()" class="bp" style="width:100%;margin-top:8px;font-size:12px;padding:9px">📱 Enviar WhatsApp</button>
+      </div>
+      <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px">Templates rápidos</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${templates.map(t=>`<div onclick="document.getElementById('whats-custom-txt').value=${JSON.stringify(t.msg)}" style="padding:9px 12px;background:#0D0D0D;border:1px solid rgba(198,164,109,0.12);border-radius:8px;cursor:pointer;transition:border-color .15s" onmouseenter="this.style.borderColor='rgba(198,164,109,0.35)'" onmouseleave="this.style.borderColor='rgba(198,164,109,0.12)'">
+          <div style="font-size:12px;color:#E2C99A;font-weight:600">${t.ic} ${t.titulo}</div>
+          <div style="font-size:10px;color:#555;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.msg.substring(0,80)}...</div>
+        </div>`).join("")}
+      </div>
+    </div>
+  </div>`;
+  document.getElementById("whats-tpl-modal")?.remove();
+  document.body.appendChild(modal);
+};
+
+// Atalho rápido para WhatsApp a partir de um paciente
+window.whatsPatient=function(ptId){
+  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  let phone=(p.phone||"").replace(/\D/g,"");
+  if(!phone){toast("Paciente sem telefone cadastrado.","warning");return;}
+  if(phone.length===10||phone.length===11)phone="55"+phone;
+  openWhatsMsgTemplates(phone,p.name,p.treatment||"");
 };
 
 // ── CARD MOUSE TRACKING — gradiente segue o cursor ────────────
@@ -2134,6 +2578,13 @@ function pageAgenda(){
   const agStatus=ST.agStatus||"Todos";
   const dayApts=apts.filter(a=>a.date===date&&(agStatus==="Todos"||a.status===agStatus));
 
+  // Calcular dias da semana (Dom–Sáb) e dias do mês para as views semana/mês
+  const _agD=new Date(date+"T12:00:00");
+  const _dow=_agD.getDay();
+  const weekDays=Array.from({length:7},(_,i)=>{const d=new Date(_agD);d.setDate(_agD.getDate()-_dow+i);return d.toISOString().slice(0,10);});
+  const _lastDay=new Date(_agD.getFullYear(),_agD.getMonth()+1,0).getDate();
+  const monthDays=Array.from({length:_lastDay},(_,i)=>String(_agD.getFullYear())+"-"+String(_agD.getMonth()+1).padStart(2,"0")+"-"+String(i+1).padStart(2,"0"));
+
   // mapa de ocupação (cada slot de 30min)
   const occ={};
   dayApts.forEach(a=>{
@@ -2258,6 +2709,7 @@ function pageAgenda(){
     </div>
   </div>`:""}
 
+  ${agView==='dia'?`
   <!-- FILTRO DE STATUS -->
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
     ${["Todos","Agendado","Confirmado","Concluído","Cancelado"].map(s=>{
@@ -2296,7 +2748,7 @@ function pageAgenda(){
         </tr>`).join("")}
       `).join("")}
     </table>
-  </div>`;
+  </div>`:''}`;
 }
 
 
@@ -2817,7 +3269,7 @@ window.clickTooth=t=>{
   const face=ST.odFace||"O";
   const faces=face==="todas"?["V","O","M","D","L"]:[face];
   od[t]={...(od[t]||{}),...Object.fromEntries(faces.map(f=>[f,sel]))};
-  updPt(ST.selPt,"odontogram",od);
+  updPt(ST.selPt,"odontogram",od,true);
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -2863,10 +3315,10 @@ function pagePts(){
         <div style="grid-column:1/-1">
           <label class="lbl">Tipo de atendimento</label>
           <div style="display:flex;gap:8px;margin-bottom:8px">
-            <button onclick="updPt(${p.id},'tipo','particular')" class="bg" style="flex:1;padding:7px;font-size:11px;
+            <button onclick="updPt(${p.id},'tipo','particular',true)" class="bg" style="flex:1;padding:7px;font-size:11px;
               background:${(p.tipo||"particular")==="particular"?"#C6A46D22":"transparent"};
               color:${(p.tipo||"particular")==="particular"?GL:"#555"}">💰 Particular</button>
-            <button onclick="updPt(${p.id},'tipo','convenio')" class="bg" style="flex:1;padding:7px;font-size:11px;
+            <button onclick="updPt(${p.id},'tipo','convenio',true)" class="bg" style="flex:1;padding:7px;font-size:11px;
               background:${p.tipo==="convenio"?"#3b82f622":"transparent"};
               color:${p.tipo==="convenio"?"#60a5fa":"#555"}">🏥 Convênio</button>
           </div>
@@ -2885,7 +3337,7 @@ function pagePts(){
         <div style="grid-column:1/-1"><label class="lbl">Notas clínicas e observações</label>
           <textarea oninput="updPt(${p.id},'notes',this.value)" rows="3" class="inp" style="resize:vertical">${p.notes||""}</textarea></div>
         <div style="grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap">
-          ${["Ativo","Pendente","Inativo"].map(s=>`<button onclick="updPt(${p.id},'status','${s}')" class="bg"
+          ${["Ativo","Pendente","Inativo"].map(s=>`<button onclick="updPt(${p.id},'status','${s}',true)" class="bg"
             style="padding:6px 14px;font-size:11px;
             background:${p.status===s?"#C6A46D22":"transparent"};
             color:${p.status===s?GL:"#555"}">${s}</button>`).join("")}
@@ -3004,6 +3456,10 @@ function pagePts(){
           ${p.anamFacial?`<span class="bdg" style="background:#22c55e22;color:#22c55e;border:1px solid #22c55e44">✓ Facial</span>`:""}
           ${(p.tags||[]).map(tag=>{const tagColors={"VIP":"#C6A46D","Ortodontia":"#60a5fa","Implante":"#c084fc","Clareamento":"#f59e0b","Urgência":"#ef4444","Inativo":"#6B6B6B","Retorno":"#22c55e","Convênio":"#3b82f6"};const c=tagColors[tag]||"#888";return`<span class="pt-tag" style="color:${c};background:${c}22;border-color:${c}44;font-size:9px;padding:1px 7px">${tag}</span>`;}).join("")}
         </div>
+        ${p.phone?`<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+          <button onclick="whatsPatient(${p.id})" class="whats-fab">📱 WhatsApp</button>
+          <a href="tel:${(p.phone||"").replace(/\D/g,"")}" style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:50px;background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;font-size:11px;font-weight:600;text-decoration:none">📞 Ligar</a>
+        </div>`:""}
       </div>
     </div>
     <div style="display:flex;border-bottom:1px solid rgba(198,164,109,0.12);margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none">${tabBtns}</div>
@@ -3283,11 +3739,7 @@ function renderHOF(p){
     +formHtml+empty+cardsHtml+"</div>";
 }
 
-window.hofToggle=function(key,val){
-  var fd=ST.hofData||{};var arr=(fd[key]||[]).slice();var i=arr.indexOf(val);
-  if(i>=0)arr.splice(i,1);else arr.push(val);
-  var nd=Object.assign({},fd);nd[key]=arr;ST.hofData=nd;render();
-};
+// window.hofToggle já definido acima (dedupado)
 window.saveHOF=function(ptId){
   var fd=ST.hofData||{};
   if(!fd.date){toast("Informe a data do procedimento.","warning");return;}
@@ -3391,7 +3843,8 @@ function renderPlano(p){
     // BOTÕES
     +"<div style='display:flex;gap:8px;flex-wrap:wrap'>"
     +"<button onclick='printPlano("+p.id+")' class='bp' style='flex:1;padding:11px'>🖨️ Imprimir / Salvar PDF</button>"
-    +"<button onclick='clearPlano("+p.id+")' class='bg' style='border-color:#ef444444;color:#ef4444;padding:11px'>🗑 Limpar</button>"
+    +"<button onclick='sendWhats("+p.id+",\"orcamento\",0)' class='bg' style='padding:11px;color:#22c55e;border-color:#22c55e44'>📱 WhatsApp</button>"
+    +"<button onclick='clearPlano("+p.id+")' class='bg' style='border-color:#ef444444;color:#ef4444;padding:11px'>🗑</button>"
     +"</div>"
     +"</div>";
 }
@@ -3867,7 +4320,11 @@ window.addPt=()=>{
     photo:null,xrays:[],notes:"",docs:[],odontogram:{},anamBucal:null,anamFacial:null};
   const nps=[...ST.pts,np];save("rof_pts",nps);set({pts:nps,selPt:np.id,ptTab:"info"});
 };
-window.updPt=(id,key,val)=>{const nps=ST.pts.map(x=>x.id===id?{...x,[key]:val}:x);save("rof_pts",nps);set({pts:nps});};
+window.updPt=(id,key,val,immediate)=>{
+  const nps=ST.pts.map(x=>x.id===id?{...x,[key]:val}:x);
+  ST.pts=nps;save("rof_pts",nps);
+  if(immediate)set({pts:nps});
+};
 window.setPtPhoto=(id,inp)=>{const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>updPt(id,"photo",ev.target.result);r.readAsDataURL(f);};
 window.addXray=(id,inp)=>{Array.from(inp.files).forEach(file=>{const r=new FileReader();r.onload=ev=>{const p=ST.pts.find(x=>x.id===id);updPt(id,"xrays",[...(p.xrays||[]),{name:file.name,data:ev.target.result}]);};r.readAsDataURL(file);});};
 window.delXray=(id,i)=>{const p=ST.pts.find(x=>x.id===id);updPt(id,"xrays",p.xrays.filter((_,j)=>j!==i));};
@@ -4856,25 +5313,18 @@ window.delReceita=function(ptId,rcId){
   },"Excluir Receita");
 };
 
-function buildReceitaHTML(p,rc,via){
+function buildReceitaBody(p,rc,via){
   var logo="data:image/png;base64,"+LOGO_B64;
   var isCtrl=rc.controlado;
-  var linhas=rc.texto.split("\n").map(function(l,i){
+  var linhas=rc.texto.split("\n").map(function(l){
     if(!l.trim())return "<div style='height:8px'></div>";
-    if(i===0||rc.texto.split("\n").slice(0,i).every(function(x){return x.trim();})){}
     return "<div style='padding:4px 0;font-size:13px;color:"+(l.match(/^\d+\.|\•/)?'#8B6914':'#333')+"'>"+l+"</div>";
   }).join("");
-  var doc="<!DOCTYPE html><html><head><meta charset='UTF-8'/><title>Receituário"+(isCtrl?" de Controle Especial":""+(via?" — "+via+"ª via":""))+"</title>"
-    +"<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;background:#fff;padding:28px;max-width:680px;margin:0 auto;font-size:13px}"
-    +".gold{background:linear-gradient(135deg,#8B6914,#E2C99A,#C6A46D)}"
-    +"@media print{body{padding:12px}}</style></head><body>"
-    // Header
-    +(isCtrl?"<div style='background:#f59e0b;color:#000;text-align:center;padding:6px;font-weight:800;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:0'>RECEITA DE CONTROLE ESPECIAL"+(via?" — "+via+"ª VIA — "+(via===1?"FARMÁCIA":"PACIENTE"):"")+"</div>":"")
+  return (isCtrl?"<div style='background:#f59e0b;color:#000;text-align:center;padding:6px;font-weight:800;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:0'>RECEITA DE CONTROLE ESPECIAL"+(via?" — "+via+"ª VIA — "+(via===1?"FARMÁCIA":"PACIENTE"):"")+"</div>":"")
     +"<div style='background:linear-gradient(135deg,#8B6914,#E2C99A,#C6A46D);padding:16px 24px;display:flex;align-items:center;gap:14px;margin-bottom:0'>"
     +"<img src='"+logo+"' style='width:44px;height:44px;object-fit:contain;border-radius:6px'/>"
     +"<div><div style='color:#000;font-size:15px;font-weight:900;letter-spacing:1.5px'>RECEITUÁRIO ODONTOLÓGICO</div>"
     +"<div style='color:#000;font-size:10px;opacity:.7'>Método ROF™ · Dra. Rossana Batista Fucks · CRO/SC 21403 · Itapema/SC</div></div></div>"
-    // Paciente
     +"<div style='border:1px solid #e5e5e5;padding:10px 16px;display:flex;justify-content:space-between;background:#f9f5e8;margin-bottom:0'>"
     +"<div><div style='color:#888;font-size:9px;text-transform:uppercase;letter-spacing:1px'>Paciente</div>"
     +"<div style='color:#111;font-weight:800;font-size:15px'>"+p.name+"</div>"
@@ -4883,24 +5333,27 @@ function buildReceitaHTML(p,rc,via){
     +"<div style='text-align:right'><div style='color:#888;font-size:9px;text-transform:uppercase;letter-spacing:1px'>Data</div>"
     +"<div style='color:#555;font-weight:700'>"+fmtDate(rc.date)+"</div>"
     +"<div style='color:#888;font-size:10px'>"+rc.hora+"</div></div></div>"
-    // Conteúdo
     +"<div style='border:1px solid #e5e5e5;border-top:none;padding:16px;min-height:280px'>"
     +"<div style='color:#8B6914;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:12px;border-bottom:2px solid #C6A46D;padding-bottom:6px'>Prescrição</div>"
     +linhas+"</div>"
-    // Obs
     +(rc.obs?"<div style='border:1px solid #e5e5e5;border-top:none;padding:10px 16px;background:#fffbeb'>"
     +"<div style='color:#888;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px'>Observações</div>"
     +"<div style='color:#555;font-size:12px'>"+rc.obs+"</div></div>":"")
-    // Assinatura
     +"<div style='border:1px solid #e5e5e5;border-top:none;padding:14px 16px;display:flex;justify-content:space-between;align-items:flex-end'>"
     +"<div><div style='color:#888;font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:30px'>Assinatura e Carimbo</div>"
     +"<div style='border-top:1px solid #999;padding-top:6px;color:#888;font-size:11px'>Dra. Rossana Batista Fucks<br/><span style='color:#C6A46D;font-weight:700'>CRO/SC 21403</span><br/>Itapema — SC</div></div>"
     +"<div style='text-align:right;color:#888;font-size:10px'>Itapema/SC<br/>"+fmtDate(rc.date)+"</div></div>"
-    // Rodapé controlado
     +(isCtrl?"<div style='border:1px solid #f59e0b;border-top:none;padding:8px 16px;background:#fff8e8;font-size:10px;color:#8B6914;text-align:center'>"
-    +"Receita válida por 30 dias · Identificação do comprador obrigatória · "+(via===1?"1ª VIA — FARMÁCIA":"2ª VIA — PACIENTE")+"</div>":"")
-    +"</body></html>";
-  return doc;
+    +"Receita válida por 30 dias · Identificação do comprador obrigatória · "+(via===1?"1ª VIA — FARMÁCIA":"2ª VIA — PACIENTE")+"</div>":"");
+}
+
+function buildReceitaHTML(p,rc,via){
+  var body=buildReceitaBody(p,rc,via);
+  return "<!DOCTYPE html><html><head><meta charset='UTF-8'/><title>Receituário"+(rc.controlado?" de Controle Especial":""+(via?" — "+via+"ª via":""))+"</title>"
+    +"<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;background:#fff;padding:28px;max-width:680px;margin:0 auto;font-size:13px}"
+    +".gold{background:linear-gradient(135deg,#8B6914,#E2C99A,#C6A46D)}"
+    +"@media print{body{padding:12px}}</style></head><body>"
+    +body+"</body></html>";
 }
 
 window.viewReceita=function(ptId,rcId){
@@ -4908,12 +5361,17 @@ window.viewReceita=function(ptId,rcId){
   var rc=(p.receitas||[]).find(function(x){return x.id===rcId;});
   if(!p||!rc)return;
   if(rc.controlado){
-    // Open two windows for controlled prescription
-    [1,2].forEach(function(via){
-      var doc=buildReceitaHTML(p,rc,via);
-      var w=window.open("","_blank","width=720,height=900");
-      if(w){w.document.write(doc);w.document.close();setTimeout(function(){w.print();},via===1?400:800);}
-    });
+    // Single window with both vias separated by page-break
+    var doc="<!DOCTYPE html><html><head><meta charset='UTF-8'/><title>Receita de Controle Especial</title>"
+      +"<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;background:#fff}"
+      +".via{padding:28px;max-width:680px;margin:0 auto;font-size:13px;page-break-after:always}"
+      +".via:last-child{page-break-after:auto}"
+      +"@media print{.via{padding:12px;page-break-after:always}.via:last-child{page-break-after:auto}}</style></head><body>"
+      +"<div class='via'>"+buildReceitaBody(p,rc,1)+"</div>"
+      +"<div class='via'>"+buildReceitaBody(p,rc,2)+"</div>"
+      +"</body></html>";
+    var w=window.open("","_blank","width=720,height=900");
+    if(w){w.document.write(doc);w.document.close();setTimeout(function(){w.print();},400);}
   }else{
     var doc=buildReceitaHTML(p,rc,null);
     var w=window.open("","_blank","width=720,height=900");
@@ -4951,33 +5409,66 @@ function renderAtestado(p){
 
 window.openAtestado=function(ptId){
   var p=ST.pts.find(function(x){return x.id===ptId;});
+  var finsOpts=["Trabalho","Escola","Acompanhante","Outros fins"];
+  var finsHtml=finsOpts.map(function(f){
+    return "<button type='button' id='at-fin-"+f.replace(/\s/g,"_")+"' onclick='atToggleFin(this)' data-val='"+f+"' style='padding:5px 12px;border-radius:50px;border:1px solid rgba(198,164,109,0.2);background:transparent;color:#555;cursor:pointer;font-size:11px;font-family:Georgia,serif;transition:all 0.15s'>"+f+"</button>";
+  }).join("");
   var m=document.createElement("div");m.className="mbg";m.id="at-modal";
-  m.innerHTML="<div class='mbx' style='max-width:460px'><div class='mhd'>"
+  m.innerHTML="<div class='mbx' style='max-width:480px'><div class='mhd'>"
     +"<div style='color:#E2C99A;font-weight:800;font-size:14px'>📄 Novo Atestado — "+p.name+"</div>"
     +"<button onclick=\"document.getElementById('at-modal').remove()\" style='background:none;border:none;color:#555;cursor:pointer;font-size:22px'>✕</button>"
     +"</div><div class='mbd'>"
+    // Data + Horário
     +"<div class='g2' style='margin-bottom:10px'>"
     +"<div><label class='lbl'>Data do atendimento</label><input id='at-date' type='date' value='"+todayISO()+"' class='inp'/></div>"
-    +"<div><label class='lbl'>Horas de afastamento</label><input id='at-horas' type='number' min='0' max='720' class='inp' placeholder='Ex: 2'/></div>"
+    +"<div><label class='lbl'>Horário de atendimento</label><input id='at-hora' type='time' class='inp'/></div>"
     +"</div>"
+    // Finalidade
+    +"<div style='margin-bottom:10px'><label class='lbl'>Finalidade (para quais fins)</label>"
+    +"<div style='display:flex;gap:6px;flex-wrap:wrap;margin-top:4px'>"+finsHtml+"</div></div>"
+    // Procedimento
     +"<div style='margin-bottom:10px'><label class='lbl'>Procedimento / Motivo</label>"
     +"<input id='at-motivo' class='inp' placeholder='Ex: Tratamento odontológico cirúrgico — exodontia'/></div>"
+    // Afastamento
+    +"<div class='g2' style='margin-bottom:10px'>"
+    +"<div><label class='lbl'>Período de afastamento</label>"
+    +"<input id='at-qtd' type='number' min='0' max='365' class='inp' placeholder='Ex: 2'/></div>"
+    +"<div><label class='lbl'>Unidade</label>"
+    +"<select id='at-unidade' class='inp'><option value='hora'>hora(s)</option><option value='dia'>dia(s)</option></select></div>"
+    +"</div>"
+    // Obs
     +"<div style='margin-bottom:12px'><label class='lbl'>Observações / Restrições</label>"
-    +"<textarea id='at-obs' rows='3' class='inp' style='resize:vertical' placeholder='Repouso, dieta, medicação, outras restrições...'></textarea></div>"
+    +"<textarea id='at-obs' rows='2' class='inp' style='resize:vertical' placeholder='Repouso, dieta, medicação...'></textarea></div>"
     +"<div style='display:flex;gap:8px'>"
     +"<button onclick='saveAtestado("+ptId+")' class='bp' style='flex:1'>💾 Salvar Atestado</button>"
     +"<button onclick=\"document.getElementById('at-modal').remove()\" class='bg' style='color:#555'>Cancelar</button>"
     +"</div></div></div>";
   document.getElementById("at-modal")?.remove();document.body.appendChild(m);
 };
+window.atToggleFin=function(btn){
+  var active=btn.getAttribute("data-active")==="1";
+  btn.setAttribute("data-active",active?"0":"1");
+  btn.style.background=active?"transparent":"#C6A46D22";
+  btn.style.color=active?"#555":"#C6A46D";
+  btn.style.borderColor=active?"rgba(198,164,109,0.2)":"rgba(198,164,109,0.5)";
+};
 
 window.saveAtestado=function(ptId){
   var date=document.getElementById("at-date")?.value;
-  var horas=document.getElementById("at-horas")?.value||"";
+  var hora=document.getElementById("at-hora")?.value||"";
   var motivo=document.getElementById("at-motivo")?.value.trim()||"";
   var obs=document.getElementById("at-obs")?.value.trim()||"";
+  var qtd=document.getElementById("at-qtd")?.value||"";
+  var unidade=document.getElementById("at-unidade")?.value||"hora";
+  var afastamento=qtd?(qtd+" "+unidade+(Number(qtd)>1?"s":"")):"";
+  // coletar finalidades marcadas
+  var fins=[];
+  ["Trabalho","Escola","Acompanhante","Outros_fins"].forEach(function(f){
+    var el=document.getElementById("at-fin-"+f);
+    if(el&&el.getAttribute("data-active")==="1")fins.push(f.replace("_"," "));
+  });
   if(!date){toast("Informe a data.","warning");return;}
-  var at={id:Date.now(),date,horas,motivo,obs};
+  var at={id:Date.now(),date,hora,motivo,obs,fins:fins.join(", "),afastamento,qtd,unidade};
   var nps=ST.pts.map(function(p){if(p.id!==ptId)return p;return Object.assign({},p,{atestados:(p.atestados||[]).concat([at])});});
   save("rof_pts",nps);document.getElementById("at-modal")?.remove();set({pts:nps});
 };
@@ -5010,8 +5501,10 @@ function buildAtestadoHTML(p,at){
     +"Atesto, para os devidos fins, que o(a) paciente <strong>"+p.name+"</strong>"
     +(p.cpf?", portador(a) do CPF nº <strong>"+p.cpf+"</strong>,":"")
     +" esteve sob meus cuidados profissionais na data de <strong>"+fmtDate(at.date)+"</strong>"
+    +(at.hora?", no horário de <strong>"+at.hora+"</strong>":"")
     +(at.motivo?", sendo submetido(a) a <strong>"+at.motivo+"</strong>":"")
-    +(at.horas?", necessitando de afastamento de suas atividades pelo período de <strong>"+at.horas+" ("+at.horas+" hora"+(Number(at.horas)>1?"s":"")+")</strong>":"")
+    +(at.fins?". Finalidade: <strong>"+at.fins+"</strong>":"")
+    +((at.afastamento||at.horas)?", necessitando de afastamento de suas atividades pelo período de <strong>"+(at.afastamento||(at.horas+" hora"+(Number(at.horas)>1?"s":"")))+"</strong>":"")
     +".</div>"
     +(at.obs?"<div style='background:#f9f9f9;border-radius:6px;padding:10px 14px;font-size:12px;color:#555;margin-bottom:28px;border:1px solid #e5e5e5'><strong>Observações:</strong> "+at.obs+"</div>":"")
     +"<div style='display:flex;justify-content:space-between;align-items:flex-end;margin-top:50px;padding-top:20px;border-top:1px solid #e5e5e5'>"
@@ -5427,6 +5920,7 @@ function render(){
   }
   initSigCanvas("sc","scb",GL);
   initSigCanvas("sc-ct","scb-ct","#1a1a1a");
+  initSigCanvas("sc-dra","scb-dra","#1a1a1a");
   const aiM=document.getElementById("ai-msgs");if(aiM)aiM.scrollTop=aiM.scrollHeight;
 }
 
@@ -5467,9 +5961,7 @@ window.addEventListener("resize",()=>{
 });
 
 
-</script>
-</body>
-</htmlwindow.procSearch=function(val){
+window.procSearch=function(val){
   val=(val||"").trim().toLowerCase();
   var drop=document.getElementById("ap-proc-drop");
   if(!drop)return;
@@ -5504,7 +5996,7 @@ window.openLancamento=function(tipo){
   var m=document.createElement("div");m.className="mbg";m.id="lanc-modal";
   m.innerHTML="<div class='mbx' style='max-width:460px'><div class='mhd'>"
     +"<div class='mhd-title'>"+(tipo==="entrada"?"💚 Nova Entrada":"🔴 Nova Despesa")+"</div>"
-    +"<button onclick="document.getElementById('lanc-modal').remove()" style='background:none;border:none;color:#555;cursor:pointer;font-size:22px'>✕</button>"
+    +"<button onclick='document.getElementById(\"lanc-modal\").remove()' style='background:none;border:none;color:#555;cursor:pointer;font-size:22px'>✕</button>"
     +"</div><div class='mbd'>"
     +"<div style='display:grid;grid-template-columns:1fr 1fr;gap:10px'>"
     +"<div style='grid-column:1/-1'><label class='lbl'>Descrição *</label>"
@@ -5527,8 +6019,8 @@ window.openLancamento=function(tipo){
     +"<input id='lanc-obs' class='inp' placeholder='Opcional...'/></div>"
     +"</div>"
     +"<div style='display:flex;gap:8px;margin-top:16px'>"
-    +"<button onclick='salvarLancamento(""+tipo+"")' class='bp' style='flex:1;padding:12px'>💾 Salvar</button>"
-    +"<button onclick="document.getElementById('lanc-modal').remove()" class='bg' style='color:#555'>Cancelar</button>"
+    +"<button onclick='salvarLancamento(\""+tipo+"\")' class='bp' style='flex:1;padding:12px'>💾 Salvar</button>"
+    +"<button onclick='document.getElementById(\"lanc-modal\").remove()' class='bg' style='color:#555'>Cancelar</button>"
     +"</div></div></div>";
   document.getElementById("lanc-modal")?.remove();
   document.body.appendChild(m);
@@ -5676,5 +6168,6 @@ function renderMes(apts,monthDays,selDate){
   h+="</div></div>";
   return h;
 }
-
->
+</script>
+</body>
+</html>
