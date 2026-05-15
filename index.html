@@ -5961,9 +5961,7 @@ window.addEventListener("resize",()=>{
 });
 
 
-</script>
-</body>
-</htmlwindow.procSearch=function(val){
+window.procSearch=function(val){
   val=(val||"").trim().toLowerCase();
   var drop=document.getElementById("ap-proc-drop");
   if(!drop)return;
@@ -5998,7 +5996,7 @@ window.openLancamento=function(tipo){
   var m=document.createElement("div");m.className="mbg";m.id="lanc-modal";
   m.innerHTML="<div class='mbx' style='max-width:460px'><div class='mhd'>"
     +"<div class='mhd-title'>"+(tipo==="entrada"?"💚 Nova Entrada":"🔴 Nova Despesa")+"</div>"
-    +"<button onclick="document.getElementById('lanc-modal').remove()" style='background:none;border:none;color:#555;cursor:pointer;font-size:22px'>✕</button>"
+    +"<button onclick='document.getElementById(\"lanc-modal\").remove()' style='background:none;border:none;color:#555;cursor:pointer;font-size:22px'>✕</button>"
     +"</div><div class='mbd'>"
     +"<div style='display:grid;grid-template-columns:1fr 1fr;gap:10px'>"
     +"<div style='grid-column:1/-1'><label class='lbl'>Descrição *</label>"
@@ -6021,8 +6019,8 @@ window.openLancamento=function(tipo){
     +"<input id='lanc-obs' class='inp' placeholder='Opcional...'/></div>"
     +"</div>"
     +"<div style='display:flex;gap:8px;margin-top:16px'>"
-    +"<button onclick='salvarLancamento(""+tipo+"")' class='bp' style='flex:1;padding:12px'>💾 Salvar</button>"
-    +"<button onclick="document.getElementById('lanc-modal').remove()" class='bg' style='color:#555'>Cancelar</button>"
+    +"<button onclick='salvarLancamento(\""+tipo+"\")' class='bp' style='flex:1;padding:12px'>💾 Salvar</button>"
+    +"<button onclick='document.getElementById(\"lanc-modal\").remove()' class='bg' style='color:#555'>Cancelar</button>"
     +"</div></div></div>";
   document.getElementById("lanc-modal")?.remove();
   document.body.appendChild(m);
@@ -6170,5 +6168,6 @@ function renderMes(apts,monthDays,selDate){
   h+="</div></div>";
   return h;
 }
-
->
+</script>
+</body>
+</html>
