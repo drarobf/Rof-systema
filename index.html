@@ -3227,6 +3227,8 @@ const COND={
   carie:     {l:"Cárie",       c:"#ef4444",b:"#b91c1c"},
   restaurado:{l:"Restaurado",  c:"#22c55e",b:"#15803d"},
   ausente:   {l:"Ausente",     c:"#6b7280",b:"#4b5563"},
+  extraido:  {l:"Extraído",    c:"#991b1b",b:"#7f1d1d"},
+  extrair:   {l:"Extrair (planej.)",c:"#f59e0b",b:"#b45309"},
   implante:  {l:"Implante",    c:"#C6A46D",b:"#8B6914"},
   coroa:     {l:"Coroa",       c:"#8b5cf6",b:"#6d28d9"},
   endodontia:{l:"Endodontia",  c:"#f97316",b:"#c2410c"},
@@ -3242,23 +3244,34 @@ const FACES_LIST=[
   {k:"L",l:"Lingual / Palatino"},
 ];
 
-function toothSVG(num,od,isDec,swapMD=false){
+function toothSVG(num,od,isDec,swapMD=false,isUpper=true){
   const td=od[num]||{};
   // swapMD=true para dentes do lado direito (18-11, 48-41, 55-51, 85-81)
   // onde Mesial fica à DIREITA e Distal à ESQUERDA na tela
   const M=swapMD?"D":"M", D=swapMD?"M":"D";
+  // CONVENÇÃO ANATÔMICA — Dra. olhando o paciente sentado de frente:
+  // Arcada SUPERIOR (vendo de baixo pra cima): topo = Vestibular (lábio) | base = Palatino (interno)
+  // Arcada INFERIOR (vendo de cima pra baixo): topo = Lingual (interno) | base = Vestibular (lábio)
+  const TOP=isUpper?"V":"L";   // face no topo do dente desenhado
+  const BOT=isUpper?"L":"V";   // face na base do dente desenhado
   const fc=f=>COND[td[f]||"higido"]?.c||"#2a2a2a";
+  // Detecta status especiais em qualquer face do dente
+  const faces=["V","O","M","D","L"];
+  const isAusente=faces.some(f=>td[f]==="ausente"||td[f]==="extraido");
+  const isExtrair=!isAusente&&faces.some(f=>td[f]==="extrair");
   const w=isDec?26:32,h=isDec?36:44;
   const mx=w/2,my=h/2,pad=5;
+  // Tooltip com info clínica
+  const ttFaces=faces.filter(f=>td[f]&&td[f]!=="higido").map(f=>f+":"+(COND[td[f]]?.l||td[f])).join(" ");
   return`<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"
     onclick="clickTooth(${num})" style="cursor:pointer;flex-shrink:0"
-    title="Dente ${num}${td.V?` V:${td.V}`:""}${td.O?` O:${td.O}`:""}">
+    title="Dente ${num}${ttFaces?" — "+ttFaces:""}">
     <polygon points="${pad},0 ${w-pad},0 ${w},${pad} ${w},${h-pad} ${w-pad},${h} ${pad},${h} 0,${h-pad} 0,${pad}"
       fill="#111" stroke="rgba(198,164,109,.12)" stroke-width="1"/>
-    <!-- V topo -->
-    <polygon points="${pad},0 ${w-pad},0 ${w-pad-2},${pad+2} ${pad+2},${pad+2}" fill="${fc("V")}"/>
-    <!-- L base -->
-    <polygon points="${pad+2},${h-pad-2} ${w-pad-2},${h-pad-2} ${w-pad},${h} ${pad},${h}" fill="${fc("L")}"/>
+    <!-- topo: ${isUpper?"Vestibular":"Lingual"} -->
+    <polygon points="${pad},0 ${w-pad},0 ${w-pad-2},${pad+2} ${pad+2},${pad+2}" fill="${fc(TOP)}"/>
+    <!-- base: ${isUpper?"Palatino":"Vestibular"} -->
+    <polygon points="${pad+2},${h-pad-2} ${w-pad-2},${h-pad-2} ${w-pad},${h} ${pad},${h}" fill="${fc(BOT)}"/>
     <!-- M esq (ou D se swapMD) -->
     <polygon points="0,${pad} ${pad+2},${pad+2} ${pad+2},${h-pad-2} 0,${h-pad}" fill="${fc(M)}"/>
     <!-- D dir (ou M se swapMD) -->
@@ -3268,6 +3281,9 @@ function toothSVG(num,od,isDec,swapMD=false){
     <text x="${mx}" y="${my+3}" text-anchor="middle"
       font-size="${isDec?6:8}" fill="rgba(255,255,255,.65)"
       pointer-events="none" font-family="Arial,sans-serif">${num}</text>
+    ${isAusente?`<line x1="2" y1="2" x2="${w-2}" y2="${h-2}" stroke="#ef4444" stroke-width="2.8" stroke-linecap="round"/>
+    <line x1="${w-2}" y1="2" x2="2" y2="${h-2}" stroke="#ef4444" stroke-width="2.8" stroke-linecap="round"/>`:""}
+    ${isExtrair?`<line x1="3" y1="${h-3}" x2="${w-3}" y2="3" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="3,2"/>`:""}
   </svg>`;
 }
 
@@ -3303,18 +3319,18 @@ function renderOdontogram(od,ptId){
     </div>
     <div style="text-align:center;margin-bottom:4px">
       <div style="color:#666;font-size:8px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Permanentes — Superior</div>
-      <div style="display:flex;justify-content:center;gap:2px;flex-wrap:wrap">${PERM_U.map((t,i)=>toothSVG(t,od,false,i<8)).join("")}</div>
+      <div style="display:flex;justify-content:center;gap:2px;flex-wrap:wrap">${PERM_U.map((t,i)=>toothSVG(t,od,false,i<8,true)).join("")}</div>
     </div>
     <div style="text-align:center;margin-bottom:14px">
-      <div style="display:flex;justify-content:center;gap:2px;flex-wrap:wrap">${PERM_L.map((t,i)=>toothSVG(t,od,false,i<8)).join("")}</div>
+      <div style="display:flex;justify-content:center;gap:2px;flex-wrap:wrap">${PERM_L.map((t,i)=>toothSVG(t,od,false,i<8,false)).join("")}</div>
       <div style="color:#666;font-size:8px;text-transform:uppercase;letter-spacing:1px;margin-top:4px">Permanentes — Inferior</div>
     </div>
     <div style="border-top:1px dashed rgba(198,164,109,0.12);padding-top:12px;text-align:center;margin-bottom:4px">
       <div style="color:#555;font-size:8px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">🍼 Decíduos — Superior</div>
-      <div style="display:flex;justify-content:center;gap:2px;flex-wrap:wrap">${DEC_U.map((t,i)=>toothSVG(t,od,true,i<5)).join("")}</div>
+      <div style="display:flex;justify-content:center;gap:2px;flex-wrap:wrap">${DEC_U.map((t,i)=>toothSVG(t,od,true,i<5,true)).join("")}</div>
     </div>
     <div style="text-align:center;margin-bottom:10px">
-      <div style="display:flex;justify-content:center;gap:2px;flex-wrap:wrap">${DEC_L.map((t,i)=>toothSVG(t,od,true,i<5)).join("")}</div>
+      <div style="display:flex;justify-content:center;gap:2px;flex-wrap:wrap">${DEC_L.map((t,i)=>toothSVG(t,od,true,i<5,false)).join("")}</div>
       <div style="color:#555;font-size:8px;text-transform:uppercase;letter-spacing:1px;margin-top:4px">🍼 Decíduos — Inferior</div>
     </div>
     <div style="display:flex;justify-content:flex-end;margin-top:8px">
@@ -3331,6 +3347,707 @@ window.clickTooth=t=>{
   const faces=face==="todas"?["V","O","M","D","L"]:[face];
   od[t]={...(od[t]||{}),...Object.fromEntries(faces.map(f=>[f,sel]))};
   updPt(ST.selPt,"odontogram",od,true);
+  // Abre modal pra adicionar procedimento ao plano clínico
+  abrirPlanoClinicoModal(t,sel,faces);
+};
+
+// Render da seção "Plano Clínico do Odontograma" — fica abaixo do odontograma
+function renderPlanoClinicoOdontograma(p){
+  const plan=p.planoClinico||[];
+  if(plan.length===0){
+    return `<div class="card" style="margin-top:14px;padding:12px;text-align:center;border:1px dashed rgba(198,164,109,0.18)">
+      <div style="color:#666;font-size:11px;line-height:1.6">
+        💡 <b style="color:#C6A46D">Plano Clínico vinculado ao odontograma</b><br/>
+        Ao marcar uma condição em um dente, abrirá um menu rápido pra você adicionar o procedimento indicado.<br/>
+        Os procedimentos aparecerão aqui e poderão ser importados para o Orçamento.
+      </div>
+    </div>`;
+  }
+  // Ordena por dente
+  const ordenado=[...plan].sort((a,b)=>(a.tooth||0)-(b.tooth||0));
+  const planejados=ordenado.filter(it=>it.status==="planejado");
+  const feitos=ordenado.filter(it=>it.status==="feito");
+  const totalPlanejado=planejados.reduce((s,it)=>s+Number(it.price||0),0);
+  const totalFeito=feitos.reduce((s,it)=>s+Number(it.price||0),0);
+
+  const itemHTML=(it)=>{
+    const condInfo=COND[it.cond]||{l:it.cond,c:"#888"};
+    const facesLbl=it.faces?.length===5?"todas":(it.faces||[]).join(", ");
+    return `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:${it.status==="feito"?"rgba(34,197,94,0.05)":"#0a0a0a"};border-radius:6px;margin-bottom:4px;border-left:3px solid ${it.status==="feito"?"#22c55e":condInfo.c}">
+      <input type="checkbox" ${it.status==="feito"?"checked":""} onchange="marcarProcFeito(${it.id},this.checked)" style="cursor:pointer;width:16px;height:16px;accent-color:#22c55e"/>
+      <div style="background:${condInfo.c}22;color:${condInfo.c};font-size:10px;font-weight:800;width:32px;text-align:center;padding:3px 0;border-radius:4px;flex-shrink:0">${it.tooth}</div>
+      <div style="flex:1;min-width:0">
+        <div style="color:${it.status==="feito"?"#888":"#ddd"};font-size:12px;font-weight:600;${it.status==="feito"?"text-decoration:line-through":""}">${it.name}</div>
+        <div style="color:#555;font-size:10px">${condInfo.l} · ${facesLbl} ${it.obs?"· "+it.obs:""}</div>
+      </div>
+      <div style="color:#E2C99A;font-size:12px;font-weight:700;white-space:nowrap">R$ ${Number(it.price||0).toLocaleString("pt-BR")}</div>
+      <button onclick="removerProcDoPlano(${it.id})" style="background:none;border:none;color:#444;cursor:pointer;font-size:14px;padding:4px">🗑</button>
+    </div>`;
+  };
+
+  return `<div class="card" style="margin-top:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="color:#E2C99A;font-weight:800;font-size:13px">📋 Plano Clínico do Odontograma</div>
+      <div style="display:flex;gap:6px">
+        <button onclick="importarPlanoClinicoParaOrcamento(${p.id})" class="bp" style="padding:6px 10px;font-size:11px">📥 Enviar p/ Orçamento</button>
+        <button onclick="rConfirm('Limpar TODO o plano clínico deste paciente?',()=>{const nps=ST.pts.map(x=>x.id===${p.id}?{...x,planoClinico:[]}:x);save('rof_pts',nps);set({pts:nps});toast('Plano clínico limpo.','success');},'Limpar')" class="bg" style="padding:6px 10px;font-size:11px;color:#ef4444;border-color:#ef444444">🗑</button>
+      </div>
+    </div>
+
+    ${planejados.length>0?`
+      <div style="color:#C6A46D;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin:8px 0 4px">📋 A executar (${planejados.length}) — R$ ${totalPlanejado.toLocaleString("pt-BR")}</div>
+      ${planejados.map(itemHTML).join("")}
+    `:""}
+
+    ${feitos.length>0?`
+      <div style="color:#22c55e;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin:12px 0 4px">✓ Realizados (${feitos.length}) — R$ ${totalFeito.toLocaleString("pt-BR")}</div>
+      ${feitos.map(itemHTML).join("")}
+    `:""}
+
+    <div style="background:linear-gradient(135deg,#8B6914,#E2C99A,#C6A46D);border-radius:8px;padding:8px 14px;margin-top:10px;display:flex;justify-content:space-between;align-items:center">
+      <span style="color:#000;font-size:11px;font-weight:700">TOTAL DO PLANO</span>
+      <span style="color:#000;font-size:14px;font-weight:900">R$ ${(totalPlanejado+totalFeito).toLocaleString("pt-BR")}</span>
+    </div>
+  </div>`;
+}
+
+// Mapeamento: condição → procedimentos sugeridos (ids do PROCS)
+const SUGEST_PROC_POR_COND={
+  carie:[10,11,12,13],      // Restauração resina 1-4 faces
+  fratura:[10,11,12,13,60,61,67], // Restauração ou pino/núcleo/coroa
+  ausente:[68,70,69,44,77], // Coroa sobre implante, PPR, PT, enxerto, implante
+  extraido:[68,70,69,44,77],
+  extrair:[40,41,42,43,44], // Extração simples/siso/raiz/decíduo + enxerto
+  endodontia:[80,81,82],    // Endo se houver — ids genéricos
+  coroa:[67,68,62,63,66],
+  protese:[69,70,68,67],
+  implante:[77,68,44],
+  planejado:[],             // Vai mostrar todos
+  restaurado:[20,21,22],    // Manutenção
+  higido:[20,21,23],        // Profilaxia, raspagem supra, flúor
+};
+
+// Lista os procedimentos sugeridos para uma condição
+function getProcsSugeridos(cond){
+  const ids=SUGEST_PROC_POR_COND[cond]||[];
+  if(ids.length===0)return PROCS;
+  return ids.map(id=>PROCS.find(pr=>pr.id===id)).filter(Boolean);
+}
+
+// Salva no estado o dente/condição/face selecionados pro modal
+let _planoCtx={tooth:null,cond:null,faces:[]};
+
+window.abrirPlanoClinicoModal=function(tooth,cond,faces){
+  _planoCtx={tooth,cond,faces};
+  const p=ST.pts.find(x=>x.id===ST.selPt);if(!p)return;
+  const condInfo=COND[cond]||{l:cond,c:"#888"};
+  const facesLbl=faces.length===5?"todas as faces":faces.map(f=>FACES_LIST.find(x=>x.k===f)?.l||f).join(", ");
+  const sugeridos=getProcsSugeridos(cond);
+  const procOpts=sugeridos.map(pr=>`<option value="${pr.id}">${pr.n} — R$ ${pr.p.toLocaleString("pt-BR")}</option>`).join("");
+  const todosOpts=PROCS.map(pr=>`<option value="${pr.id}">${pr.n} — R$ ${pr.p.toLocaleString("pt-BR")}</option>`).join("");
+  // Itens já planejados para esse dente
+  const planClin=p.planoClinico||[];
+  const jaPlanejados=planClin.filter(it=>it.tooth===tooth);
+  const listaItens=jaPlanejados.length===0
+    ?"<div style='color:#444;font-size:11px;text-align:center;padding:8px'>Nenhum procedimento planejado pra este dente ainda.</div>"
+    :jaPlanejados.map((it,i)=>{
+      const pr=PROCS.find(p=>p.id===it.procId);
+      return `<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;background:#0a0a0a;border-radius:6px;margin-bottom:4px">
+        <div style="flex:1">
+          <div style="color:#ddd;font-size:12px;font-weight:600">${pr?.n||it.name}</div>
+          <div style="color:#666;font-size:10px">${it.faces?.join(", ")||""} · R$ ${(it.price||pr?.p||0).toLocaleString("pt-BR")} ${it.status==="feito"?"· ✓ Feito":""}</div>
+        </div>
+        <button onclick="removerProcDoPlano(${it.id})" class="bg" style="padding:4px 8px;font-size:11px;color:#ef4444;border-color:#ef444444">🗑</button>
+      </div>`;
+    }).join("");
+  const modal=document.createElement("div");
+  modal.id="plano-clinico-modal";
+  modal.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(4px)";
+  modal.innerHTML=`<div style="background:#0d0d0d;border:1px solid rgba(198,164,109,0.2);border-radius:14px;padding:18px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.8)">
+    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:14px">
+      <div>
+        <div style="color:#E2C99A;font-size:14px;font-weight:900">🦷 Dente ${tooth}</div>
+        <div style="color:#888;font-size:11px;margin-top:2px">
+          <span style="background:${condInfo.c}22;color:${condInfo.c};padding:2px 8px;border-radius:8px;font-weight:700">${condInfo.l}</span>
+          em ${facesLbl}
+        </div>
+      </div>
+      <button onclick="document.getElementById('plano-clinico-modal').remove()" style="background:none;border:none;color:#666;font-size:22px;cursor:pointer;padding:0;line-height:1">×</button>
+    </div>
+
+    <div style="background:rgba(198,164,109,0.04);border-radius:8px;padding:10px;margin-bottom:14px">
+      <div style="color:#C6A46D;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px">📋 Já planejado neste dente</div>
+      ${listaItens}
+    </div>
+
+    <div style="border-top:1px solid rgba(198,164,109,0.1);padding-top:14px">
+      <div style="color:#E2C99A;font-size:12px;font-weight:800;margin-bottom:10px">➕ Adicionar ao plano de tratamento</div>
+      
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button id="bt-sug" onclick="alternarProcsSugeridos(true)" class="bp" style="flex:1;padding:6px;font-size:11px">✨ Sugeridos</button>
+        <button id="bt-todos" onclick="alternarProcsSugeridos(false)" class="bg" style="flex:1;padding:6px;font-size:11px">📋 Todos os procedimentos</button>
+      </div>
+
+      <label class="lbl">Procedimento</label>
+      <select id="modal-proc" class="inp" style="margin-bottom:8px">
+        <option value="">Selecionar procedimento...</option>
+        ${procOpts}
+      </select>
+      <select id="modal-proc-all" class="inp" style="display:none;margin-bottom:8px">
+        <option value="">Selecionar procedimento...</option>
+        ${todosOpts}
+      </select>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div>
+          <label class="lbl">Valor (R$)</label>
+          <input type="number" id="modal-price" class="inp" min="0" placeholder="Padrão do procedimento"/>
+        </div>
+        <div>
+          <label class="lbl">Status</label>
+          <select id="modal-status" class="inp">
+            <option value="planejado">📋 Planejado</option>
+            <option value="feito">✓ Já realizado</option>
+          </select>
+        </div>
+      </div>
+
+      <label class="lbl">Observações (opcional)</label>
+      <textarea id="modal-obs" rows="2" class="inp" style="resize:vertical;margin-bottom:10px" placeholder="Ex: usar resina A2, fazer enceramento prévio..."></textarea>
+
+      <button onclick="adicionarProcAoPlano()" class="bp" style="width:100%;padding:10px;font-size:13px;font-weight:800">+ Adicionar ao Plano Clínico</button>
+    </div>
+
+    <div style="margin-top:12px;text-align:center">
+      <button onclick="document.getElementById('plano-clinico-modal').remove()" style="background:none;border:none;color:#666;font-size:11px;cursor:pointer">Pular — apenas marcar no odontograma</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  // Esc fecha
+  modal.addEventListener("click",e=>{if(e.target===modal)modal.remove();});
+};
+
+window.alternarProcsSugeridos=function(sug){
+  document.getElementById("modal-proc").style.display=sug?"":"none";
+  document.getElementById("modal-proc-all").style.display=sug?"none":"";
+  document.getElementById("bt-sug").className=sug?"bp":"bg";
+  document.getElementById("bt-todos").className=sug?"bg":"bp";
+};
+
+window.adicionarProcAoPlano=function(){
+  const sugMode=document.getElementById("modal-proc").style.display!=="none";
+  const selId=sugMode?document.getElementById("modal-proc").value:document.getElementById("modal-proc-all").value;
+  if(!selId){toast("Selecione um procedimento.","warning");return;}
+  const procId=Number(selId);
+  const pr=PROCS.find(p=>p.id===procId);
+  if(!pr)return;
+  const price=Number(document.getElementById("modal-price").value)||pr.p;
+  const status=document.getElementById("modal-status").value;
+  const obs=document.getElementById("modal-obs").value;
+  const item={
+    id:Date.now(),
+    tooth:_planoCtx.tooth,
+    faces:_planoCtx.faces,
+    cond:_planoCtx.cond,
+    procId,
+    name:pr.n,
+    price,
+    status,
+    obs,
+    createdAt:new Date().toISOString(),
+  };
+  const nps=ST.pts.map(p=>{
+    if(p.id!==ST.selPt)return p;
+    return {...p,planoClinico:[...(p.planoClinico||[]),item]};
+  });
+  save("rof_pts",nps);set({pts:nps});
+  toast("Procedimento adicionado ao plano clínico ✓","success");
+  document.getElementById("plano-clinico-modal").remove();
+};
+
+window.removerProcDoPlano=function(itemId){
+  const nps=ST.pts.map(p=>{
+    if(p.id!==ST.selPt)return p;
+    return {...p,planoClinico:(p.planoClinico||[]).filter(it=>it.id!==itemId)};
+  });
+  save("rof_pts",nps);set({pts:nps});
+  // Re-renderiza o modal se ainda estiver aberto
+  const m=document.getElementById("plano-clinico-modal");
+  if(m&&_planoCtx.tooth){
+    m.remove();
+    abrirPlanoClinicoModal(_planoCtx.tooth,_planoCtx.cond,_planoCtx.faces);
+  }
+  toast("Item removido do plano.","success");
+};
+
+window.marcarProcFeito=function(itemId,feito){
+  const nps=ST.pts.map(p=>{
+    if(p.id!==ST.selPt)return p;
+    return {...p,planoClinico:(p.planoClinico||[]).map(it=>it.id===itemId?{...it,status:feito?"feito":"planejado",doneAt:feito?new Date().toISOString():null}:it)};
+  });
+  save("rof_pts",nps);set({pts:nps});
+};
+
+window.importarPlanoClinicoParaOrcamento=function(ptId){
+  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  const planClin=(p.planoClinico||[]).filter(it=>it.status==="planejado");
+  if(planClin.length===0){toast("Nenhum procedimento planejado no odontograma para importar.","warning");return;}
+  if(!confirm(`Importar ${planClin.length} procedimento(s) do odontograma para o orçamento?`))return;
+  // Agrupa por procId pra somar quantidades
+  const agrupado={};
+  planClin.forEach(it=>{
+    const key=it.procId+"_"+it.price;
+    if(!agrupado[key]){
+      agrupado[key]={procId:it.procId,name:it.name,price:it.price,qty:0,dentes:[]};
+    }
+    agrupado[key].qty++;
+    agrupado[key].dentes.push(it.tooth);
+  });
+  const novosItens=Object.values(agrupado).map(it=>({
+    procId:it.procId,
+    name:it.name+" (dentes "+it.dentes.join(", ")+")",
+    qty:it.qty,
+    price:it.price,
+  }));
+  const nps=ST.pts.map(x=>{
+    if(x.id!==ptId)return x;
+    const plano=x.plano||{itens:[],obs:"",desconto:0,parcelas:1,validade:""};
+    return {...x,plano:{...plano,itens:[...(plano.itens||[]),...novosItens]}};
+  });
+  save("rof_pts",nps);set({pts:nps});
+  toast("Itens importados do odontograma ✓","success");
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// FICHA PERIODONTAL — Sondagem 6 sítios + Recessão + Mobilidade + Furca + Sangramento + Placa
+// ═══════════════════════════════════════════════════════════════════
+// Sítios por dente (6 sítios padrão clínico)
+// Vestibular: MV (mesio-vest), V (vest), DV (disto-vest)
+// Lingual:    ML (mesio-ling), L (ling), DL (disto-ling)
+const PERIO_SITIOS=["MV","V","DV","ML","L","DL"];
+// Mobilidade: 0=normal, 1=horiz<1mm, 2=horiz>1mm, 3=horiz+vertical
+const MOB_OPTS=[0,1,2,3];
+// Furca (classificação de Hamp): 0=sem, 1=inicial, 2=cul-de-sac, 3=passagem completa
+const FURCA_OPTS=[0,1,2,3];
+
+function getPeriodMetric(p,toothNum,metric){
+  return p.perio?.[toothNum]?.[metric];
+}
+
+function colorSondagem(mm){
+  // Verde até 3mm, amarelo 4-5mm, vermelho 6+mm
+  const v=Number(mm)||0;
+  if(v===0)return "#444";
+  if(v<=3)return "#22c55e";
+  if(v<=5)return "#f59e0b";
+  return "#ef4444";
+}
+
+function colorRecessao(mm){
+  const v=Number(mm)||0;
+  if(v===0)return "#444";
+  if(v<=2)return "#60a5fa";
+  if(v<=4)return "#f59e0b";
+  return "#ef4444";
+}
+
+// Calcula NIC (Nível de Inserção Clínica) = Sondagem + Recessão
+function calcNIC(p,toothNum,sitio){
+  const s=Number(getPeriodMetric(p,toothNum,"pd_"+sitio))||0;
+  const r=Number(getPeriodMetric(p,toothNum,"re_"+sitio))||0;
+  return s+r;
+}
+
+function renderPerioDente(p,toothNum,isUpper){
+  const td=p.perio?.[toothNum]||{};
+  const mob=td.mob||0;
+  const furca=td.furca||0;
+  // Sangramento e placa: array de sítios com valor
+  const bop=td.bop||{};
+  const plq=td.plq||{};
+  // Em arcada superior: vestibular em cima, lingual embaixo
+  // Em arcada inferior: vestibular embaixo, lingual em cima
+  const sitiosV=["MV","V","DV"];
+  const sitiosL=["ML","L","DL"];
+  const TOP=isUpper?sitiosV:sitiosL;
+  const BOT=isUpper?sitiosL:sitiosV;
+  // Mostra X se ausente/extraído no odontograma
+  const od=p.odontogram?.[toothNum]||{};
+  const isAusente=["V","O","M","D","L"].some(f=>od[f]==="ausente"||od[f]==="extraido");
+  if(isAusente){
+    return `<div style="display:inline-flex;flex-direction:column;align-items:center;min-width:38px;opacity:0.4">
+      <div style="color:#ef4444;font-size:22px;line-height:1;margin:8px 0">✕</div>
+      <div style="color:#555;font-size:9px;font-weight:700">${toothNum}</div>
+    </div>`;
+  }
+  // Função pra gerar input compacto pra cada sítio
+  const inp=(sitio,metric,placeholder)=>{
+    const val=td[metric+"_"+sitio]||"";
+    const isS=metric==="pd",isR=metric==="re";
+    const color=isS?colorSondagem(val):isR?colorRecessao(val):"#bbb";
+    return `<input type="number" min="0" max="15" value="${val}" 
+      oninput="updPerio(${p.id},${toothNum},'${metric}_${sitio}',this.value);this.style.color='${color}'"
+      style="width:20px;background:transparent;border:none;color:${color};font-size:10px;font-weight:700;text-align:center;padding:1px 0;outline:none;font-family:Inter,sans-serif"
+      placeholder="${placeholder||"-"}"/>`;
+  };
+  // Sangramento e Placa: bolinhas clicáveis
+  const dot=(sitio,metric)=>{
+    const v=(metric==="bop"?bop:plq)[sitio];
+    const color=metric==="bop"?"#ef4444":"#60a5fa";
+    return `<span onclick="togglePerioFlag(${p.id},${toothNum},'${metric}','${sitio}')"
+      style="display:inline-block;width:6px;height:6px;border-radius:50%;cursor:pointer;background:${v?color:"transparent"};border:1px solid ${color}55;margin:1px"></span>`;
+  };
+  return `<div style="display:inline-flex;flex-direction:column;align-items:center;min-width:38px;border:1px solid rgba(198,164,109,0.08);border-radius:5px;padding:3px;background:#0d0d0d;margin:1px">
+    <!-- Placa (azul) topo -->
+    <div style="display:flex;gap:1px">${TOP.map(s=>dot(s,"plq")).join("")}</div>
+    <!-- BOP (vermelha) topo -->
+    <div style="display:flex;gap:1px">${TOP.map(s=>dot(s,"bop")).join("")}</div>
+    <!-- Sondagem topo -->
+    <div style="display:flex;gap:0">${TOP.map(s=>inp(s,"pd")).join("")}</div>
+    <!-- Recessão topo -->
+    <div style="display:flex;gap:0;border-bottom:1px dashed rgba(198,164,109,0.1);padding-bottom:1px">${TOP.map(s=>inp(s,"re")).join("")}</div>
+    <!-- Número do dente -->
+    <div style="color:#C6A46D;font-size:10px;font-weight:800;padding:2px 0;line-height:1">${toothNum}</div>
+    ${mob>0?`<div style="color:#ef4444;font-size:8px;font-weight:700">M${mob}</div>`:""}
+    ${furca>0?`<div style="color:#f59e0b;font-size:8px;font-weight:700">F${furca}</div>`:""}
+    <!-- Recessão base -->
+    <div style="display:flex;gap:0;border-top:1px dashed rgba(198,164,109,0.1);padding-top:1px">${BOT.map(s=>inp(s,"re")).join("")}</div>
+    <!-- Sondagem base -->
+    <div style="display:flex;gap:0">${BOT.map(s=>inp(s,"pd")).join("")}</div>
+    <!-- BOP (vermelha) base -->
+    <div style="display:flex;gap:1px">${BOT.map(s=>dot(s,"bop")).join("")}</div>
+    <!-- Placa (azul) base -->
+    <div style="display:flex;gap:1px">${BOT.map(s=>dot(s,"plq")).join("")}</div>
+  </div>`;
+}
+
+function renderPerio(p){
+  // Estatísticas gerais
+  const perioData=p.perio||{};
+  let totalSitios=0,sangrantes=0,placa=0,bolsa4=0,bolsa6=0,somaPD=0,somaREC=0,sitiosComPD=0,sitiosComREC=0;
+  Object.entries(perioData).forEach(([tn,td])=>{
+    PERIO_SITIOS.forEach(s=>{
+      const pd=Number(td["pd_"+s])||0;
+      const re=Number(td["re_"+s])||0;
+      if(pd>0||re>0)totalSitios++;
+      if(pd>0){somaPD+=pd;sitiosComPD++;if(pd>=4&&pd<6)bolsa4++;if(pd>=6)bolsa6++;}
+      if(re>0){somaREC+=re;sitiosComREC++;}
+      if((td.bop||{})[s])sangrantes++;
+      if((td.plq||{})[s])placa++;
+    });
+  });
+  const ISG=totalSitios>0?Math.round((sangrantes/totalSitios)*100):0; // Índice Sangramento Gengival
+  const IP=totalSitios>0?Math.round((placa/totalSitios)*100):0; // Índice de Placa
+  const PDmedia=sitiosComPD>0?(somaPD/sitiosComPD).toFixed(1):"—";
+
+  return `<div>
+    <!-- LEGENDA -->
+    <div class="card" style="margin-bottom:14px;padding:12px 14px;background:rgba(198,164,109,0.04)">
+      <div style="color:#E2C99A;font-size:11px;font-weight:800;margin-bottom:8px">🩸 FICHA PERIODONTAL — Sondagem completa (6 sítios)</div>
+      <div style="display:flex;flex-wrap:wrap;gap:14px;font-size:10px;color:#888">
+        <span><b style="color:#22c55e">●</b> PD ≤ 3mm (saudável)</span>
+        <span><b style="color:#f59e0b">●</b> PD 4-5mm (atenção)</span>
+        <span><b style="color:#ef4444">●</b> PD ≥ 6mm (bolsa)</span>
+        <span><b style="color:#60a5fa">●</b> Recessão</span>
+        <span><b style="color:#ef4444">○</b> BOP — 1ª fileira (sangramento)</span>
+        <span><b style="color:#60a5fa">○</b> Placa — 2ª fileira</span>
+        <span><b style="color:#ef4444">M</b>obilidade · <b style="color:#f59e0b">F</b>urca</span>
+      </div>
+    </div>
+
+    <!-- INDICADORES -->
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:14px">
+      <div class="card" style="text-align:center;padding:8px 4px;border-top:2px solid #22c55e">
+        <div style="color:#22c55e;font-size:18px;font-weight:900">${PDmedia}</div>
+        <div style="color:#555;font-size:8px;text-transform:uppercase">PD média (mm)</div>
+      </div>
+      <div class="card" style="text-align:center;padding:8px 4px;border-top:2px solid #ef4444">
+        <div style="color:#ef4444;font-size:18px;font-weight:900">${ISG}%</div>
+        <div style="color:#555;font-size:8px;text-transform:uppercase">ISG (sangr.)</div>
+      </div>
+      <div class="card" style="text-align:center;padding:8px 4px;border-top:2px solid #60a5fa">
+        <div style="color:#60a5fa;font-size:18px;font-weight:900">${IP}%</div>
+        <div style="color:#555;font-size:8px;text-transform:uppercase">IP (placa)</div>
+      </div>
+      <div class="card" style="text-align:center;padding:8px 4px;border-top:2px solid #f59e0b">
+        <div style="color:#f59e0b;font-size:18px;font-weight:900">${bolsa4}</div>
+        <div style="color:#555;font-size:8px;text-transform:uppercase">Bolsas 4-5mm</div>
+      </div>
+      <div class="card" style="text-align:center;padding:8px 4px;border-top:2px solid #ef4444">
+        <div style="color:#ef4444;font-size:18px;font-weight:900">${bolsa6}</div>
+        <div style="color:#555;font-size:8px;text-transform:uppercase">Bolsas ≥ 6mm</div>
+      </div>
+    </div>
+
+    <!-- INSTRUÇÕES -->
+    <div style="font-size:11px;color:#666;margin-bottom:10px;line-height:1.6;background:#0a0a0a;border-radius:6px;padding:8px 12px">
+      💡 <b style="color:#C6A46D">Como preencher cada dente (de cima pra baixo):</b><br/>
+      <b style="color:#60a5fa">●●●</b> Placa (clique pra marcar) →
+      <b style="color:#ef4444">●●●</b> Sangramento (BOP) →
+      <b style="color:#22c55e">123</b> Sondagem (PD em mm) →
+      <b style="color:#60a5fa">123</b> Recessão (RE em mm) →
+      <b style="color:#C6A46D">[número do dente]</b> →
+      depois espelha pra baixo (lado oposto da face).
+    </div>
+
+    <!-- ARCADA SUPERIOR -->
+    <div style="text-align:center;margin-bottom:18px">
+      <div style="color:#C6A46D;font-size:9px;text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;font-weight:700">Arcada Superior</div>
+      <div style="overflow-x:auto;padding-bottom:6px">
+        <div style="display:inline-flex;gap:1px;flex-wrap:nowrap">
+          ${[18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28].map(t=>renderPerioDente(p,t,true)).join("")}
+        </div>
+      </div>
+    </div>
+
+    <!-- ARCADA INFERIOR -->
+    <div style="text-align:center;margin-bottom:18px">
+      <div style="overflow-x:auto;padding-bottom:6px">
+        <div style="display:inline-flex;gap:1px;flex-wrap:nowrap">
+          ${[48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38].map(t=>renderPerioDente(p,t,false)).join("")}
+        </div>
+      </div>
+      <div style="color:#C6A46D;font-size:9px;text-transform:uppercase;letter-spacing:2px;margin-top:6px;font-weight:700">Arcada Inferior</div>
+    </div>
+
+    <!-- CONTROLES POR DENTE (mobilidade e furca) -->
+    <div class="card" style="margin-bottom:14px">
+      <div style="color:#E2C99A;font-size:11px;font-weight:800;margin-bottom:10px">🦷 Mobilidade e Furca por dente</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px">
+        <div>
+          <label class="lbl">Selecionar dente</label>
+          <select id="perio-dente-sel" class="inp" onchange="document.getElementById('perio-mob-info').innerHTML='Dente '+this.value">
+            <option value="">Escolher...</option>
+            ${[18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28,48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38].map(t=>{
+              const v=p.perio?.[t]||{};
+              const tag=(v.mob>0?` M${v.mob}`:"")+(v.furca>0?` F${v.furca}`:"");
+              return `<option value="${t}">${t}${tag}</option>`;
+            }).join("")}
+          </select>
+        </div>
+        <div>
+          <label class="lbl">Mobilidade (Miller)</label>
+          <div style="display:flex;gap:3px">
+            ${MOB_OPTS.map(m=>`<button onclick="setPerioMob(${p.id},${m})" class="bg" style="flex:1;padding:5px;font-size:11px">${m}</button>`).join("")}
+          </div>
+        </div>
+        <div>
+          <label class="lbl">Furca (Hamp)</label>
+          <div style="display:flex;gap:3px">
+            ${FURCA_OPTS.map(f=>`<button onclick="setPerioFurca(${p.id},${f})" class="bg" style="flex:1;padding:5px;font-size:11px">${f}</button>`).join("")}
+          </div>
+        </div>
+        <div id="perio-mob-info" style="grid-column:1/-1;color:#555;font-size:10px;text-align:center;padding:4px">Selecione um dente acima para registrar mobilidade ou furca</div>
+      </div>
+      <div style="margin-top:10px;font-size:10px;color:#444;line-height:1.6">
+        <b style="color:#888">Mobilidade (Miller):</b> 0=normal · 1=horizontal &lt;1mm · 2=horizontal &gt;1mm · 3=horizontal+vertical<br/>
+        <b style="color:#888">Furca (Hamp):</b> 0=sem · 1=inicial &lt;3mm · 2=cul-de-sac · 3=passagem completa
+      </div>
+    </div>
+
+    <!-- DIAGNÓSTICO E OBSERVAÇÕES -->
+    <div class="card" style="margin-bottom:14px">
+      <div style="color:#E2C99A;font-size:11px;font-weight:800;margin-bottom:10px">📋 Diagnóstico e Plano Periodontal</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <label class="lbl">Data do exame</label>
+          <input type="date" value="${p.perio_data||todayISO()}" oninput="updPt(${p.id},'perio_data',this.value)" class="inp"/>
+        </div>
+        <div>
+          <label class="lbl">Classificação (estadiamento)</label>
+          <select onchange="updPt(${p.id},'perio_classif',this.value)" class="inp">
+            <option value="">Selecionar...</option>
+            ${["Saúde periodontal","Gengivite induzida por placa","Periodontite Estágio I (leve)","Periodontite Estágio II (moderada)","Periodontite Estágio III (severa)","Periodontite Estágio IV (avançada)","Periodontite necrosante","Periodontite como manifestação de doença sistêmica"].map(c=>`<option value="${c}" ${p.perio_classif===c?"selected":""}>${c}</option>`).join("")}
+          </select>
+        </div>
+        <div>
+          <label class="lbl">Grau (progressão)</label>
+          <select onchange="updPt(${p.id},'perio_grau',this.value)" class="inp">
+            <option value="">Selecionar...</option>
+            ${["Grau A (lenta)","Grau B (moderada)","Grau C (rápida)"].map(g=>`<option value="${g}" ${p.perio_grau===g?"selected":""}>${g}</option>`).join("")}
+          </select>
+        </div>
+        <div>
+          <label class="lbl">Fatores de risco</label>
+          <select onchange="updPt(${p.id},'perio_risco',this.value)" class="inp">
+            <option value="">Selecionar...</option>
+            ${["Nenhum","Tabagismo","Diabetes","Tabagismo + Diabetes","Histórico familiar","Estresse","Imunossupressão","Outros"].map(r=>`<option value="${r}" ${p.perio_risco===r?"selected":""}>${r}</option>`).join("")}
+          </select>
+        </div>
+        <div style="grid-column:1/-1">
+          <label class="lbl">Diagnóstico clínico</label>
+          <textarea oninput="updPt(${p.id},'perio_diagnostico',this.value)" rows="2" class="inp" style="resize:vertical" placeholder="Descreva o diagnóstico periodontal completo...">${p.perio_diagnostico||""}</textarea>
+        </div>
+        <div style="grid-column:1/-1">
+          <label class="lbl">Plano de tratamento periodontal</label>
+          <textarea oninput="updPt(${p.id},'perio_plano',this.value)" rows="3" class="inp" style="resize:vertical" placeholder="Ex: Raspagem supragengival 4 sessões, ATM, controle de placa, reavaliação em 60 dias...">${p.perio_plano||""}</textarea>
+        </div>
+        <div style="grid-column:1/-1">
+          <label class="lbl">Recomendações ao paciente</label>
+          <textarea oninput="updPt(${p.id},'perio_recom',this.value)" rows="2" class="inp" style="resize:vertical" placeholder="Higiene, fio dental, escova interdental, enxaguante, retornos...">${p.perio_recom||""}</textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- AÇÕES -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="rConfirm('Limpar TODA a sondagem periodontal? Esta ação não pode ser desfeita.',()=>{updPt(${p.id},'perio',{},true);toast('Periograma limpo.','success');},'Limpar Periograma')" class="bg" style="border-color:#ef444444;color:#ef4444;font-size:11px;padding:8px 14px">🗑 Limpar tudo</button>
+      <button onclick="printPerio(${p.id})" class="bp" style="flex:1;padding:9px;font-size:12px">🖨️ Imprimir Periograma</button>
+    </div>
+  </div>`;
+}
+
+// Atualizar valor de PD ou RE de um sítio
+window.updPerio=function(ptId,toothNum,key,val){
+  const nps=ST.pts.map(p=>{
+    if(p.id!==ptId)return p;
+    const perio={...(p.perio||{})};
+    perio[toothNum]={...(perio[toothNum]||{}),[key]:val};
+    return {...p,perio};
+  });
+  ST.pts=nps;save("rof_pts",nps);
+  // Não re-renderiza pra não perder o foco do input
+};
+
+// Toggle de sangramento ou placa em um sítio
+window.togglePerioFlag=function(ptId,toothNum,metric,sitio){
+  const nps=ST.pts.map(p=>{
+    if(p.id!==ptId)return p;
+    const perio={...(p.perio||{})};
+    const td={...(perio[toothNum]||{})};
+    const flags={...(td[metric]||{})};
+    flags[sitio]=!flags[sitio];
+    td[metric]=flags;
+    perio[toothNum]=td;
+    return {...p,perio};
+  });
+  save("rof_pts",nps);
+  set({pts:nps});
+};
+
+// Setar mobilidade do dente selecionado
+window.setPerioMob=function(ptId,mob){
+  const sel=document.getElementById("perio-dente-sel");
+  const toothNum=Number(sel?.value);
+  if(!toothNum){toast("Selecione um dente primeiro.","warning");return;}
+  const nps=ST.pts.map(p=>{
+    if(p.id!==ptId)return p;
+    const perio={...(p.perio||{})};
+    perio[toothNum]={...(perio[toothNum]||{}),mob};
+    return {...p,perio};
+  });
+  save("rof_pts",nps);set({pts:nps});
+  toast("Dente "+toothNum+": Mobilidade "+mob,"success");
+};
+
+// Setar furca do dente selecionado
+window.setPerioFurca=function(ptId,furca){
+  const sel=document.getElementById("perio-dente-sel");
+  const toothNum=Number(sel?.value);
+  if(!toothNum){toast("Selecione um dente primeiro.","warning");return;}
+  const nps=ST.pts.map(p=>{
+    if(p.id!==ptId)return p;
+    const perio={...(p.perio||{})};
+    perio[toothNum]={...(perio[toothNum]||{}),furca};
+    return {...p,perio};
+  });
+  save("rof_pts",nps);set({pts:nps});
+  toast("Dente "+toothNum+": Furca "+furca,"success");
+};
+
+// Imprimir periograma
+window.printPerio=function(ptId){
+  const p=ST.pts.find(x=>x.id===ptId);
+  if(!p)return;
+  const perioData=p.perio||{};
+  let totalSitios=0,sangrantes=0,placa=0,bolsa4=0,bolsa6=0,somaPD=0,sitiosComPD=0;
+  Object.entries(perioData).forEach(([tn,td])=>{
+    PERIO_SITIOS.forEach(s=>{
+      const pd=Number(td["pd_"+s])||0;
+      if(pd>0){somaPD+=pd;sitiosComPD++;if(pd>=4&&pd<6)bolsa4++;if(pd>=6)bolsa6++;}
+      if((td.bop||{})[s])sangrantes++;
+      if((td.plq||{})[s])placa++;
+      if(pd>0||Number(td["re_"+s])>0)totalSitios++;
+    });
+  });
+  const ISG=totalSitios>0?Math.round((sangrantes/totalSitios)*100):0;
+  const IP=totalSitios>0?Math.round((placa/totalSitios)*100):0;
+  const PDmedia=sitiosComPD>0?(somaPD/sitiosComPD).toFixed(1):"—";
+
+  // Tabela por dente
+  const linhaSup=[18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28];
+  const linhaInf=[48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38];
+  function tabelaDentes(dentes){
+    let h="<table style='width:100%;border-collapse:collapse;font-size:9px;margin-bottom:8px'><thead><tr><th style='padding:4px;background:#f9f5e8;color:#8B6914;text-align:left'>Sítio</th>";
+    dentes.forEach(t=>{h+=`<th style='padding:4px;background:#f9f5e8;color:#8B6914;text-align:center;min-width:24px'>${t}</th>`;});
+    h+="</tr></thead><tbody>";
+    PERIO_SITIOS.forEach(s=>{
+      h+=`<tr><td style='padding:3px 4px;color:#666;font-weight:700;border-bottom:1px solid #eee'>${s} PD</td>`;
+      dentes.forEach(t=>{
+        const v=perioData[t]?.["pd_"+s]||"";
+        const num=Number(v)||0;
+        const col=num>=6?"#ef4444":num>=4?"#f59e0b":num>0?"#22c55e":"#aaa";
+        h+=`<td style='padding:3px;text-align:center;color:${col};font-weight:700;border-bottom:1px solid #eee'>${v||"-"}</td>`;
+      });
+      h+="</tr>";
+      h+=`<tr><td style='padding:3px 4px;color:#666;font-weight:700;border-bottom:1px solid #eee'>${s} REC</td>`;
+      dentes.forEach(t=>{
+        const v=perioData[t]?.["re_"+s]||"";
+        h+=`<td style='padding:3px;text-align:center;color:#60a5fa;border-bottom:1px solid #eee'>${v||"-"}</td>`;
+      });
+      h+="</tr>";
+    });
+    h+="<tr><td style='padding:3px 4px;color:#666;font-weight:700'>Mob.</td>";
+    dentes.forEach(t=>{
+      const v=perioData[t]?.mob||0;
+      h+=`<td style='padding:3px;text-align:center;color:${v>0?"#ef4444":"#aaa"};font-weight:700'>${v||"-"}</td>`;
+    });
+    h+="</tr><tr><td style='padding:3px 4px;color:#666;font-weight:700'>Furca</td>";
+    dentes.forEach(t=>{
+      const v=perioData[t]?.furca||0;
+      h+=`<td style='padding:3px;text-align:center;color:${v>0?"#f59e0b":"#aaa"};font-weight:700'>${v||"-"}</td>`;
+    });
+    h+="</tr></tbody></table>";
+    return h;
+  }
+  const logo="data:image/png;base64,"+LOGO_B64;
+  const doc=`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Periograma — ${p.name}</title>
+  <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;padding:18px;font-size:11px;color:#222}@media print{body{padding:8px}@page{size:A4 landscape;margin:1cm}}</style>
+  </head><body>
+  <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #C6A46D;padding-bottom:10px;margin-bottom:14px">
+    <img src="${logo}" style="width:42px;height:42px"/>
+    <div style="text-align:center"><div style="color:#C6A46D;font-size:14px;font-weight:900;letter-spacing:1.5px">FICHA PERIODONTAL</div>
+    <div style="color:#888;font-size:9px">Método ROF™ · Dra. Rossana Batista Fucks · CRO/SC 21403</div></div>
+    <div style="text-align:right;color:#888;font-size:9px">${todayFmt()}</div>
+  </div>
+  <div style="background:#f9f5e8;border-radius:6px;padding:8px 12px;margin-bottom:12px;display:flex;justify-content:space-between">
+    <div><b style="color:#8B6914">Paciente:</b> ${p.name}${p.cpf?` &nbsp; <b style="color:#8B6914">CPF:</b> ${p.cpf}`:""}</div>
+    <div><b style="color:#8B6914">Data exame:</b> ${p.perio_data?fmtDate(p.perio_data):todayFmt()}</div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:14px">
+    <div style="text-align:center;padding:6px;background:#f0fdf4;border-radius:4px;border:1px solid #22c55e44"><div style="color:#22c55e;font-size:16px;font-weight:900">${PDmedia}</div><div style="font-size:8px;color:#666;text-transform:uppercase">PD média</div></div>
+    <div style="text-align:center;padding:6px;background:#fef2f2;border-radius:4px;border:1px solid #ef444444"><div style="color:#ef4444;font-size:16px;font-weight:900">${ISG}%</div><div style="font-size:8px;color:#666;text-transform:uppercase">ISG</div></div>
+    <div style="text-align:center;padding:6px;background:#eff6ff;border-radius:4px;border:1px solid #60a5fa44"><div style="color:#60a5fa;font-size:16px;font-weight:900">${IP}%</div><div style="font-size:8px;color:#666;text-transform:uppercase">IP</div></div>
+    <div style="text-align:center;padding:6px;background:#fefce8;border-radius:4px;border:1px solid #f59e0b44"><div style="color:#f59e0b;font-size:16px;font-weight:900">${bolsa4}</div><div style="font-size:8px;color:#666;text-transform:uppercase">Bolsas 4-5mm</div></div>
+    <div style="text-align:center;padding:6px;background:#fef2f2;border-radius:4px;border:2px solid #ef4444"><div style="color:#ef4444;font-size:16px;font-weight:900">${bolsa6}</div><div style="font-size:8px;color:#666;text-transform:uppercase">Bolsas ≥ 6mm</div></div>
+  </div>
+  <div style="color:#8B6914;font-size:10px;font-weight:700;text-transform:uppercase;margin-bottom:4px">Arcada Superior — 18 a 28</div>
+  ${tabelaDentes(linhaSup)}
+  <div style="color:#8B6914;font-size:10px;font-weight:700;text-transform:uppercase;margin-bottom:4px;margin-top:12px">Arcada Inferior — 48 a 38</div>
+  ${tabelaDentes(linhaInf)}
+  ${p.perio_classif||p.perio_grau?`<div style="margin-top:12px;padding:8px 12px;background:#f9f5e8;border-radius:6px;font-size:11px">
+    <b style="color:#8B6914">Classificação:</b> ${p.perio_classif||"—"} ${p.perio_grau?" · "+p.perio_grau:""}${p.perio_risco?" · Risco: "+p.perio_risco:""}
+  </div>`:""}
+  ${p.perio_diagnostico?`<div style="margin-top:8px"><b style="color:#8B6914">Diagnóstico:</b> ${p.perio_diagnostico}</div>`:""}
+  ${p.perio_plano?`<div style="margin-top:6px"><b style="color:#8B6914">Plano de tratamento:</b> ${p.perio_plano}</div>`:""}
+  ${p.perio_recom?`<div style="margin-top:6px"><b style="color:#8B6914">Recomendações:</b> ${p.perio_recom}</div>`:""}
+  <div style="margin-top:30px;display:flex;justify-content:space-between;padding-top:14px;border-top:1px solid #ddd;font-size:10px;color:#666">
+    <div>Dra. Rossana Batista Fucks · CRO/SC 21403</div>
+    <div>${todayFmt()}</div>
+  </div>
+  </body></html>`;
+  const w=window.open("","_blank","width=1100,height=800");
+  if(w){w.document.write(doc);w.document.close();setTimeout(()=>w.print(),400);}
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -3348,7 +4065,7 @@ function pagePts(){
   const p=pts.find(x=>x.id===selPt);
 
   if(p){
-    const tabs=[{k:"info",l:"📋 Dados"},{k:"anam",l:"📝 Anamnese"},{k:"clinic",l:"🦷 Clínica"},{k:"hof",l:"✨ HOF"},{k:"plano_tto",l:"🗂️ Plano Tto."},{k:"plano",l:"💰 Orçamento"},{k:"evolucao",l:"📒 Evolução"},{k:"financeiro_pt",l:"💵 Financeiro"},{k:"receita",l:"💊 Receita"},{k:"atestado",l:"📄 Atestado"},{k:"contrato",l:"📝 Contrato"},{k:"xray",l:"🩻 Rx"},{k:"fotos",l:"📸 Fotos"},{k:"docs",l:"📄 Docs"}];
+    const tabs=[{k:"info",l:"📋 Dados"},{k:"anam",l:"📝 Anamnese"},{k:"clinic",l:"🦷 Clínica"},{k:"perio",l:"🩸 Perio"},{k:"hof",l:"✨ HOF"},{k:"plano_tto",l:"🗂️ Plano Tto."},{k:"plano",l:"💰 Orçamento"},{k:"evolucao",l:"📒 Evolução"},{k:"financeiro_pt",l:"💵 Financeiro"},{k:"receita",l:"💊 Receita"},{k:"atestado",l:"📄 Atestado"},{k:"contrato",l:"📝 Contrato"},{k:"xray",l:"🩻 Rx"},{k:"fotos",l:"📸 Fotos"},{k:"docs",l:"📄 Docs"}];
     const tabBtns=tabs.map(t=>`<button onclick="set({ptTab:'${t.k}'})" style="flex-shrink:0;background:none;border:none;
       border-bottom:${ptTab===t.k?`3px solid #C6A46D`:"3px solid transparent"};
       color:${ptTab===t.k?GL:"#555"};padding:10px 10px;font-size:${t.l.length>4?"11px":"18px"};cursor:pointer;
@@ -3409,6 +4126,7 @@ function pagePts(){
     }
     else if(ptTab==="clinic"){
       tc=renderOdontogram(p.odontogram||{},p.id)+
+        renderPlanoClinicoOdontograma(p)+
         `<div style="margin-top:18px">
           ${[["Queixa principal","queixa"],["Diagnóstico","diagnostico"],["Plano de tratamento","plano_tto"],["Observações periodontais","perio_obs"]].map(([l,k])=>`
             <div style="margin-bottom:10px">
@@ -3416,6 +4134,9 @@ function pagePts(){
               <textarea oninput="updPt(${p.id},'${k}',this.value)" rows="2" class="inp" style="resize:vertical">${p[k]||""}</textarea>
             </div>`).join("")}
         </div>`;
+    }
+    else if(ptTab==="perio"){
+      tc=renderPerio(p);
     }
     else if(ptTab==="anam"){
       tc=`<div style="display:flex;flex-direction:column;gap:12px">
@@ -3859,6 +4580,13 @@ function renderPlano(p){
     }).join("");
 
   return "<div>"
+    // BOTÃO IMPORTAR DO ODONTOGRAMA
+    +"<div style='margin-bottom:14px;padding:12px;background:linear-gradient(135deg,rgba(198,164,109,0.08),rgba(198,164,109,0.02));border-radius:10px;border:1px dashed rgba(198,164,109,0.2);display:flex;align-items:center;gap:10px'>"
+    +"<div style='font-size:22px'>🦷</div>"
+    +"<div style='flex:1'><div style='color:#E2C99A;font-size:12px;font-weight:700'>Plano Clínico do Odontograma</div>"
+    +"<div style='color:#666;font-size:10px'>"+((p.planoClinico||[]).filter(it=>it.status==="planejado").length)+" procedimento(s) planejado(s) no odontograma.</div></div>"
+    +"<button onclick='importarPlanoClinicoParaOrcamento("+p.id+")' class='bp' style='padding:8px 12px;font-size:11px;font-weight:700'>📥 Importar</button>"
+    +"</div>"
     // ADICIONAR PROCEDIMENTO
     +"<div class='cg' style='margin-bottom:14px'>"
     +"<div style='color:#E2C99A;font-weight:800;font-size:13px;margin-bottom:10px'>➕ Adicionar Procedimento</div>"
@@ -6180,18 +6908,28 @@ function renderWeek(apts,weekDays,selDate){
     h+=el.outerHTML;
   });
   h+="</tr>";
-  ["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00"].forEach(function(slot){
+  // Horários cheios de 7h às 19h
+  var horas=["07:00","08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00"];
+  horas.forEach(function(slot){
+    var slotH=parseInt(slot.substring(0,2));
     h+="<tr><td style='padding:3px 2px;font-size:9px;color:#444;text-align:right;vertical-align:top;border-right:1px solid rgba(198,164,109,0.1)'>"+slot+"</td>";
     weekDays.forEach(function(d){
-      var dA=apts.filter(function(a){return a.date===d&&a.time===slot;});
+      // Pega TODAS as consultas do dia cuja hora cheia bate com o slot
+      // Ex: slot "14:00" pega consultas de 14:00, 14:15, 14:30, 14:45
+      var dA=apts.filter(function(a){
+        if(a.date!==d||!a.time)return false;
+        var aH=parseInt(a.time.substring(0,2));
+        return aH===slotH;
+      }).sort(function(a,b){return a.time.localeCompare(b.time);});
       var iT=d===todayISO();
       h+="<td style='padding:2px;vertical-align:top;border-right:1px solid rgba(198,164,109,0.05);border-bottom:1px solid rgba(198,164,109,0.04);background:"+(iT?"rgba(198,164,109,0.03)":"transparent")+";min-height:28px'>";
       dA.forEach(function(a){
         var pr=PROCS.find(function(p){return p.id===a.procId;});
         var cor=a.tipo==="convenio"?"#3b82f6":G;
-        h+="<div onclick='openEditApt("+a.id+")' style='background:"+cor+"18;border-left:2px solid "+cor+";padding:2px 3px;border-radius:2px;cursor:pointer;margin-bottom:1px'>"
-          +"<div style='color:#EAEAEA;font-size:9px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>"+a.patient.split(" ")[0]+"</div>"
-          +"<div style='color:#666;font-size:8px'>"+(pr?pr.n.substring(0,10):"")+"</div>"
+        var firstName=(a.patient||"").split(" ")[0];
+        h+="<div onclick='openEditApt("+a.id+")' style='background:"+cor+"22;border-left:2px solid "+cor+";padding:2px 4px;border-radius:3px;cursor:pointer;margin-bottom:2px' title='"+a.time+" - "+(a.patient||"")+" - "+(pr?pr.n:"")+"'>"
+          +"<div style='color:"+cor+";font-size:8px;font-weight:700;line-height:1.1'>"+a.time+"</div>"
+          +"<div style='color:#EAEAEA;font-size:9px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.2'>"+firstName+"</div>"
           +"</div>";
       });
       h+="</td>";
