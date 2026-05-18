@@ -2469,7 +2469,7 @@ const ST={
   selTerm:null,tSig:null,tDone:null,sigMode:"draw",
   aiMsgs:[{r:"a",t:"Olá! Sou Júlia, secretária virtual do Método ROF™. Como posso ajudar hoje? 😊"}],
   aiInp:"",aiLoad:false,
-  showApt:false,aptTipo:"particular",aptConv:"",aptDur:60,aptSlot:null,aptCat:"Todos",hofForm:false,hofType:"botox",hofData:{},planoCat:"Todos",procsFilter:"Todos",procsSearch:"",finFilter:"todos",relPeriodo:"mes",stkFilter:"Todos",fotoCat:"Todas",
+  showApt:false,aptTipo:"particular",aptConv:"",aptDur:60,aptSlot:null,aptCat:"Todos",aptPatId:null,aptPatName:"",hofForm:false,hofType:"botox",hofData:{},planoCat:"Todos",procsFilter:"Todos",procsSearch:"",finFilter:"todos",relPeriodo:"mes",stkFilter:"Todos",fotoCat:"Todas",
 };
 function set(p){Object.assign(ST,p);render();}
 window.set=set;
@@ -2659,7 +2659,7 @@ function pageAgenda(){
     <button onclick="set({agDate:'${next}'})" class="bg" style="padding:7px 14px;font-size:18px;line-height:1">›</button>
     <button onclick="set({agDate:todayISO()})" class="bg" style="font-size:11px;padding:6px 12px">Hoje</button>
     <input type="date" value="${date}" onchange="set({agDate:this.value})" class="inp" style="width:148px;flex-shrink:0"/>
-    <button onclick="set({showApt:!ST.showApt,aptSlot:null})" class="bp" style="padding:9px 16px;font-size:12px;flex-shrink:0">+ Nova Consulta</button>
+    <button onclick="set({showApt:!ST.showApt,aptSlot:null,aptPatId:null,aptPatName:''})" class="bp" style="padding:9px 16px;font-size:12px;flex-shrink:0">+ Nova Consulta</button>
   </div>
 
   <!-- FORMULÁRIO NOVA CONSULTA -->
@@ -2668,10 +2668,11 @@ function pageAgenda(){
     <div class="g2" style="margin-bottom:10px">
       <div style="grid-column:1/-1"><label class="lbl">Paciente</label>
         <div style="position:relative">
-          <input id="ap-pat" class="inp" placeholder="🔍 Buscar ou cadastrar novo paciente..."
+          <input id="ap-pat" class="inp" placeholder="🔍 Buscar ou cadastrar novo paciente..." value="${(ST.aptPatName||'').replace(/"/g,'&quot;')}" data-pt-id="${ST.aptPatId||''}"
             oninput="aptSearch(this.value)" autocomplete="off"/>
           <div id="ap-drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:#0F0F0F;border:1px solid rgba(198,164,109,0.3);border-radius:0 0 10px 10px;z-index:999;max-height:210px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.8)"></div>
         </div>
+        <div id="ap-pat-badge" style="font-size:11px;margin-top:4px;font-weight:600">${ST.aptPatId?'<span style="color:#22c55e">✓ Paciente cadastrado</span>':''}</div>
       </div>
       <div><label class="lbl">Data</label><input id="ap-date" type="date" value="${date}" class="inp"/></div>
       <div>
@@ -2705,7 +2706,7 @@ function pageAgenda(){
     <div style="display:flex;gap:8px;margin-top:12px">
       <button onclick="saveApt()" class="bp" style="flex:1">✅ Salvar Consulta</button>
       <button onclick="saveApt();setTimeout(()=>whatsAgendamento(),400)" style="background:none;border:1px solid #22c55e55;border-radius:50px;padding:9px 14px;color:#22c55e;cursor:pointer;font-size:12px;font-family:var(--font-body);white-space:nowrap;flex-shrink:0">📱 Salvar e avisar</button>
-      <button onclick="set({showApt:false})" class="bg" style="color:#555;border-color:rgba(198,164,109,0.12)">Cancelar</button>
+      <button onclick="set({showApt:false,aptPatId:null,aptPatName:''})" class="bg" style="color:#555;border-color:rgba(198,164,109,0.12)">Cancelar</button>
     </div>
   </div>`:""}
 
@@ -2879,6 +2880,15 @@ window.whatsBirthday=function(ptId){
 window.aptSearch=function(val){
   val=(val||"").trim();
   var drop=document.getElementById("ap-drop");
+  var inpEl=document.getElementById("ap-pat");
+  var badge=document.getElementById("ap-pat-badge");
+  // Se o usuário começou a digitar diferente do nome selecionado, invalida o id
+  if(inpEl&&ST.aptPatName&&val!==ST.aptPatName){
+    ST.aptPatId=null;
+    ST.aptPatName="";
+    inpEl.setAttribute("data-pt-id","");
+    if(badge)badge.innerHTML="";
+  }
   if(!drop)return;
   if(val.length<1){drop.style.display="none";return;}
 
@@ -2928,14 +2938,30 @@ window.aptSearch=function(val){
 
 window.aptSelectPt=function(el){
   var name=el.getAttribute("data-name");
-  var inp=document.getElementById("ap-pat");
-  if(inp)inp.value=name;
-  var drop=document.getElementById("ap-drop");
-  if(drop)drop.style.display="none";
-  // Auto-set tipo from patient record
   var pt=ST.pts.find(function(p){return p.name===name;});
-  if(pt&&pt.tipo==="convenio"){set({aptTipo:"convenio",aptConv:pt.convenio||""});}
-  else set({aptTipo:"particular",aptConv:""});
+  // 1) Guarda no state SEM re-renderizar (evita destruir o campo)
+  ST.aptPatId=pt?pt.id:null;
+  ST.aptPatName=name;
+  if(pt&&pt.tipo==="convenio"){
+    ST.aptTipo="convenio";
+    ST.aptConv=pt.convenio||"";
+  }else{
+    ST.aptTipo="particular";
+    ST.aptConv="";
+  }
+  // 2) Atualiza UI manualmente (sem render completo)
+  var inp=document.getElementById("ap-pat");
+  if(inp){inp.value=name;inp.setAttribute("data-pt-id",pt?pt.id:"");}
+  var drop=document.getElementById("ap-drop");
+  if(drop){drop.innerHTML="";drop.style.display="none";}
+  // 3) Atualiza marcador visual de "paciente cadastrado"
+  var badge=document.getElementById("ap-pat-badge");
+  if(badge){
+    if(pt){badge.innerHTML="✓ Paciente cadastrado";badge.style.color="#22c55e";}
+    else{badge.innerHTML="";}
+  }
+  // 4) Atualiza apenas os botões de tipo/convênio se já estiverem na tela
+  // (sem rerenderizar tudo)
 };
 
 // Fechar dropdown ao clicar fora
@@ -3027,6 +3053,8 @@ window.saveQuickReg=function(){
   if(exists){
     var inp=document.getElementById("ap-pat");if(inp)inp.value=exists.name;
     document.getElementById("qr-modal")?.remove();
+    ST.aptPatId=exists.id;
+    ST.aptPatName=exists.name;
     set({aptTipo:exists.tipo||"particular",aptConv:exists.convenio||""});
     return;
   }
@@ -3034,7 +3062,10 @@ window.saveQuickReg=function(){
     endereco:"",lastVisit:"—",treatment:"",tipo:tipo,convenio:convenio,status:"Ativo",
     photo:null,xrays:[],notes:"",docs:[],odontogram:{},anamBucal:null,anamFacial:null};
   var nps=[...ST.pts,np];save("rof_pts",nps);
-  var inp=document.getElementById("ap-pat");if(inp)inp.value=nome;
+  // Guarda no state ANTES de qualquer render
+  ST.aptPatId=np.id;
+  ST.aptPatName=np.name;
+  var inp=document.getElementById("ap-pat");if(inp){inp.value=nome;inp.setAttribute("data-pt-id",np.id);}
   document.getElementById("qr-modal")?.remove();
   // Toast
   var t=document.createElement("div");
@@ -3140,16 +3171,46 @@ window.confirmDelApt=function(aptId){
 };
 
 window.saveApt=()=>{
-  const pat=(document.getElementById("ap-pat")?.value||"").trim();
+  const inpEl=document.getElementById("ap-pat");
+  const patName=(inpEl?.value||"").trim();
+  // Tenta pegar patientId: 1) do attr do input, 2) do state, 3) busca pelo nome
+  let patId=inpEl?.getAttribute("data-pt-id")||ST.aptPatId||null;
+  if(patId){patId=Number(patId);}
+  // Fallback: se o usuário digitou um nome exato sem clicar na sugestão
+  if(!patId&&patName){
+    const found=ST.pts.find(p=>p.name.toLowerCase()===patName.toLowerCase());
+    if(found)patId=found.id;
+  }
   const date=document.getElementById("ap-date")?.value||ST.agDate;
   const time=document.getElementById("ap-time")?.value||"09:00";
   const procId=Number(document.getElementById("ap-proc")?.value||0);
   const dur=Number(document.getElementById("ap-dur")?.value||60);
   const tipo=ST.aptTipo||"particular";
   const conv=(document.getElementById("ap-conv")?.value||ST.aptConv||"").trim();
-  if(!pat||!procId){toast("Preencha o paciente e o procedimento.","warning");return;}
-  const na=[...ST.apts,{id:Date.now(),patient:pat,date,time,procId,dur,status:"Aguardando",tipo,conv}];
-  save("rof_apts",na);set({apts:na,showApt:false,aptSlot:null});
+  // Validações
+  if(!patName){toast("Digite o nome do paciente.","warning");return;}
+  if(!patId){
+    toast("Selecione um paciente da lista ou cadastre um novo.","warning");
+    return;
+  }
+  if(!procId){toast("Selecione o procedimento.","warning");return;}
+  // Garante que o nome salvo seja o nome oficial do cadastro
+  const patObj=ST.pts.find(p=>p.id===patId);
+  const finalName=patObj?patObj.name:patName;
+  const na=[...ST.apts,{
+    id:Date.now(),
+    patientId:patId,     // ← VÍNCULO PELO ID
+    patient:finalName,   // ← nome oficial do cadastro
+    date,time,procId,dur,
+    status:"Aguardando",
+    tipo,conv
+  }];
+  save("rof_apts",na);
+  // Limpa estado da seleção
+  ST.aptPatId=null;
+  ST.aptPatName="";
+  set({apts:na,showApt:false,aptSlot:null});
+  toast("✅ Consulta agendada para "+finalName+"!","success");
 };
 window.delApt=id=>{rConfirm("Excluir esta consulta?",()=>{const na=ST.apts.filter(a=>a.id!==id);save("rof_apts",na);set({apts:na});toast("Consulta excluída.","success");},"Excluir Consulta");};
 
