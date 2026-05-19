@@ -5263,8 +5263,9 @@ function pagePts(){
       </div>
     </div>
     <div class="card" style="display:flex;align-items:center;gap:14px;margin-bottom:12px;padding:14px">
-      <div style="position:relative;cursor:pointer;flex-shrink:0" onclick="document.getElementById('ph-${p.id}').click()">
-        <input type="file" id="ph-${p.id}" accept="image/*" capture="user" style="display:none" onchange="setPtPhoto(${p.id},this)"/>
+      <div style="position:relative;cursor:pointer;flex-shrink:0" onclick="openPhotoMenu(${p.id})">
+        <input type="file" id="ph-${p.id}" accept="image/*" capture="environment" style="display:none" onchange="setPtPhoto(${p.id},this)"/>
+        <input type="file" id="ph-gal-${p.id}" accept="image/*" style="display:none" onchange="setPtPhoto(${p.id},this)"/>
         ${p.photo?`<img src="${p.photo}" style="width:74px;height:74px;border-radius:50%;object-fit:cover;border:3px solid #C6A46D;box-shadow:0 0 16px #C6A46D55"/>`
           :`<div style="width:74px;height:74px;border-radius:50%;background:linear-gradient(135deg,#8B6914,#E2C99A,#C6A46D);display:flex;align-items:center;justify-content:center;color:#000;font-weight:900;font-size:28px">${p.name[0]}</div>`}
         <div style="position:absolute;bottom:1px;right:1px;background:linear-gradient(135deg,#8B6914,#E2C99A,#C6A46D);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;border:2px solid #1A1A1A">📷</div>
@@ -6156,7 +6157,7 @@ window.updPt=(id,key,val,immediate)=>{
   ST.pts=nps;save("rof_pts",nps);
   if(immediate)set({pts:nps});
 };
-window.setPtPhoto=(id,inp)=>{const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>updPt(id,"photo",ev.target.result);r.readAsDataURL(f);};
+window.setPtPhoto=(id,inp)=>{const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{updPt(id,"photo",ev.target.result,true);toast("Foto salva!","success");};r.readAsDataURL(f);};
 window.addXray=(id,inp)=>{Array.from(inp.files).forEach(file=>{const r=new FileReader();r.onload=ev=>{const p=ST.pts.find(x=>x.id===id);updPt(id,"xrays",[...(p.xrays||[]),{name:file.name,data:ev.target.result}]);};r.readAsDataURL(file);});};
 window.delXray=(id,i)=>{const p=ST.pts.find(x=>x.id===id);updPt(id,"xrays",p.xrays.filter((_,j)=>j!==i));};
 
