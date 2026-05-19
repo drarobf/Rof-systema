@@ -2531,9 +2531,9 @@ window.printContrato=function(ptId){
   </div>
 
   <div class="stamp">Documento gerado pelo Sistema ROF™ &nbsp;·&nbsp; ${new Date().toLocaleString("pt-BR")}</div>
+  <script>window.onload=function(){window.print();}</script>
   </body></html>`);
   w.document.close();
-  setTimeout(()=>w.print(),500);
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -2565,9 +2565,9 @@ window.printRecibo=function(ptId,pgIdx){
   <div class="row"><span>Data</span><span>${fmtDate(pg.date)}</span></div>
   <p style="margin-top:18px;font-size:12px;color:#555">Declaro ter recebido a importância acima referente aos serviços odontológicos prestados.</p>
   <div class="sig">Dra. Rossana Batista Fucks — CRO/SC 21403</div>
+  <script>window.onload=function(){window.print();}</script>
   </body></html>`);
   w.document.close();
-  setTimeout(()=>w.print(),400);
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -3138,16 +3138,20 @@ window.doLogin=async function(){
   const btn=document.querySelector(".ls-btn");
   if(btn){btn.disabled=true;btn.querySelector("span").textContent="Verificando...";}
   let ok=false,localOnly=false;
-  try{
-    await loginWithApi(p);
-    ok=true;
-  }catch(err){
-    const canUseOffline=(!navigator.onLine&&localStorage.getItem("rof_auth")==="ok");
-    const apiUnavailable=!navigator.onLine||!err.status||err.status>=500;
-    if(apiUnavailable&&(p===APP_PASSWORD||canUseOffline)){
+  if(!SUPABASE_URL){
+    if(p===APP_PASSWORD){ok=true;localOnly=true;localStorage.setItem("rof_auth","ok");}
+  }else{
+    try{
+      await loginWithApi(p);
       ok=true;
-      localOnly=true;
-      if(p===APP_PASSWORD)localStorage.setItem("rof_auth","ok");
+    }catch(err){
+      const canUseOffline=(!navigator.onLine&&localStorage.getItem("rof_auth")==="ok");
+      const apiUnavailable=!navigator.onLine||!err.status||err.status>=500||err.status===404;
+      if(apiUnavailable&&(p===APP_PASSWORD||canUseOffline)){
+        ok=true;
+        localOnly=true;
+        if(p===APP_PASSWORD)localStorage.setItem("rof_auth","ok");
+      }
     }
   }
   if(ok){
@@ -5085,7 +5089,7 @@ window.printPerio=function(ptId){
   </div>
   </body></html>`;
   const w=window.open("","_blank","width=1100,height=800");
-  if(w){w.document.write(doc);w.document.close();setTimeout(()=>w.print(),400);}
+  if(w){w.document.write(doc.replace("</body></html>","<script>window.onload=function(){window.print();}<\/script></body></html>"));w.document.close();}
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -5763,9 +5767,9 @@ window.printPlano=function(ptId){
     +"<div style='flex:1;text-align:center'>"
     +"<div style='height:50px;border-bottom:1px solid #ccc;margin-bottom:8px'></div>"
     +"<div style='color:#888;font-size:11px'>"+p.name+"<br/>Paciente</div></div>"
-    +"</div></body></html>";
+    +"</div><script>window.onload=function(){window.print();}<\/script></body></html>";
   var w=window.open("","_blank","width=800,height=900");
-  if(w){w.document.write(doc);w.document.close();setTimeout(function(){w.print();},400);}
+  if(w){w.document.write(doc);w.document.close();}
 };
 
 
@@ -6059,9 +6063,9 @@ window.printCompare=function(ptId){
     +"</div></div>"
     +"<div style='text-align:center;margin-top:20px;color:#C6A46D;font-size:11px;font-style:italic'>"
     +"\"Função gera equilíbrio. Equilíbrio gera estética. Função e estética integradas geram harmonia facial.™\"</div>"
-    +"</body></html>";
+    +"<script>window.onload=function(){window.print();}<\/script></body></html>";
   var w=window.open("","_blank","width=800,height=900");
-  if(w){w.document.write(doc);w.document.close();setTimeout(function(){w.print();},400);}
+  if(w){w.document.write(doc);w.document.close();}
 };
 
 
@@ -7180,7 +7184,7 @@ function buildReceitaHTML(p,rc,via){
     +"<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;background:#fff;padding:28px;max-width:680px;margin:0 auto;font-size:13px}"
     +".gold{background:linear-gradient(135deg,#8B6914,#E2C99A,#C6A46D)}"
     +"@media print{body{padding:12px}}</style></head><body>"
-    +body+"</body></html>";
+    +body+"<script>window.onload=function(){window.print();}<\/script></body></html>";
 }
 
 window.viewReceita=function(ptId,rcId){
@@ -7196,13 +7200,13 @@ window.viewReceita=function(ptId,rcId){
       +"@media print{.via{padding:12px;page-break-after:always}.via:last-child{page-break-after:auto}}</style></head><body>"
       +"<div class='via'>"+buildReceitaBody(p,rc,1)+"</div>"
       +"<div class='via'>"+buildReceitaBody(p,rc,2)+"</div>"
-      +"</body></html>";
+      +"<script>window.onload=function(){window.print();}<\/script></body></html>";
     var w=window.open("","_blank","width=720,height=900");
-    if(w){w.document.write(doc);w.document.close();setTimeout(function(){w.print();},400);}
+    if(w){w.document.write(doc);w.document.close();}
   }else{
     var doc=buildReceitaHTML(p,rc,null);
     var w=window.open("","_blank","width=720,height=900");
-    if(w){w.document.write(doc);w.document.close();setTimeout(function(){w.print();},400);}
+    if(w){w.document.write(doc);w.document.close();}
   }
 };
 
@@ -7348,7 +7352,7 @@ window.viewAtestado=function(ptId,atId){
   if(!p||!at)return;
   var doc=buildAtestadoHTML(p,at);
   var w=window.open("","_blank","width=720,height=900");
-  if(w){w.document.write(doc);w.document.close();setTimeout(function(){w.print();},400);}
+  if(w){w.document.write(doc.replace("</body></html>","<script>window.onload=function(){window.print();}<\/script></body></html>"));w.document.close();}
 };
 
 // Keep printAtestado as alias
