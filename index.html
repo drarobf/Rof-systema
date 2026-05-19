@@ -897,6 +897,464 @@ tr:hover td { background: rgba(198,164,109,0.03); color: var(--white); }
 .slot-row { transition: background 0.15s; }
 .slot-row:hover { background: rgba(198,164,109,0.04) !important; cursor: pointer; }
 
+/* Visual refresh */
+:root {
+  --black: #090806;
+  --surface: #11100E;
+  --surface2: #171512;
+  --surface3: #1E1B17;
+  --surface4: #27231E;
+  --border: rgba(226,201,154,0.12);
+  --border-gold: rgba(226,201,154,0.34);
+  --gold: #C9A86F;
+  --gold-light: #F0D69C;
+  --gold-dark: #8A6A2B;
+  --gold-subtle: rgba(201,168,111,0.08);
+  --white: #F7F2EA;
+  --gray: #A09A8F;
+  --gray2: #605A51;
+  --gray3: #2C2822;
+  --blue: #7DB7FF;
+  --green: #3DDC84;
+  --amber: #F0B84F;
+  --red: #FF6B6B;
+  --violet: #B9A2FF;
+  --teal: #58D4C5;
+  --radius: 8px;
+  --radius-sm: 7px;
+  --shadow-soft: 0 18px 45px rgba(0,0,0,0.38);
+  --shadow-panel: 0 26px 70px rgba(0,0,0,0.48);
+}
+body {
+  background:
+    linear-gradient(135deg, rgba(201,168,111,0.05), transparent 24%),
+    linear-gradient(180deg, #0D0B09 0%, #090806 42%, #0D0B09 100%);
+}
+#ls::before {
+  background:
+    linear-gradient(135deg, rgba(201,168,111,0.11), transparent 32%),
+    linear-gradient(225deg, rgba(125,183,255,0.06), transparent 36%),
+    linear-gradient(180deg, rgba(255,255,255,0.03), transparent 50%);
+  animation: none;
+  opacity: 0.9;
+}
+#layout {
+  background:
+    linear-gradient(90deg, rgba(201,168,111,0.045), transparent 18%),
+    linear-gradient(180deg, #0D0B09 0%, #0A0907 100%);
+}
+#sidebar {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.018), transparent 24%),
+    var(--surface);
+  border-right-color: rgba(226,201,154,0.16);
+  box-shadow: 18px 0 50px rgba(0,0,0,0.22);
+}
+.sb-header {
+  background:
+    linear-gradient(180deg, rgba(201,168,111,0.12), rgba(201,168,111,0.02) 58%, transparent),
+    var(--surface);
+}
+.nb {
+  min-height: 42px;
+  border-left-width: 0;
+}
+.nb.on {
+  color: var(--white);
+  background: linear-gradient(90deg, rgba(201,168,111,0.16), rgba(201,168,111,0.04));
+  box-shadow: inset 0 0 0 1px rgba(201,168,111,0.12);
+}
+.nb.on::after {
+  left: 0;
+  right: auto;
+  border-radius: 0 2px 2px 0;
+}
+#hdr {
+  background: rgba(17,16,14,0.92);
+  border-bottom-color: rgba(226,201,154,0.14);
+  backdrop-filter: blur(18px);
+}
+.hdr-menu-btn,
+#hdr .bg {
+  background: rgba(255,255,255,0.025) !important;
+  border-color: rgba(226,201,154,0.16) !important;
+  color: var(--gray) !important;
+}
+.hdr-menu-btn:hover,
+#hdr .bg:hover {
+  border-color: rgba(240,214,156,0.45) !important;
+  color: var(--gold-light) !important;
+}
+.card,
+.cg,
+.sc,
+.mbx,
+#rof-search-box,
+.rof-confirm-box,
+.rof-toast {
+  box-shadow: var(--shadow-soft);
+}
+.card,
+.cg,
+.sc {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.026), transparent 34%),
+    var(--surface2);
+  border-color: rgba(226,201,154,0.12);
+}
+.card:hover,
+.sc:hover {
+  border-color: rgba(240,214,156,0.28);
+  box-shadow: var(--shadow-panel);
+}
+.bp {
+  box-shadow: 0 8px 22px rgba(138,106,43,0.22);
+}
+.bg {
+  background: rgba(255,255,255,0.018);
+}
+.inp {
+  background: rgba(255,255,255,0.035);
+  border-color: rgba(226,201,154,0.12);
+}
+.inp:focus {
+  background: rgba(255,255,255,0.052);
+}
+
+/* Dashboard refresh */
+.dash-shell {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 28px;
+}
+.dash-hero {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 320px;
+  gap: 18px;
+  min-height: 180px;
+  padding: 24px;
+  border: 1px solid rgba(226,201,154,0.18);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(135deg, rgba(201,168,111,0.18), rgba(125,183,255,0.055) 46%, rgba(88,212,197,0.04)),
+    linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.012)),
+    var(--surface2);
+  box-shadow: var(--shadow-panel);
+}
+.dash-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.045), transparent 36%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 72px);
+  opacity: 0.26;
+  pointer-events: none;
+}
+.dash-hero > * {
+  position: relative;
+  z-index: 1;
+}
+.dash-kicker,
+.dash-label {
+  color: var(--gold);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2.4px;
+  text-transform: uppercase;
+}
+.dash-hero h1 {
+  margin: 10px 0 8px;
+  max-width: 620px;
+  font-family: var(--font-display);
+  font-size: clamp(28px, 4vw, 44px);
+  line-height: 1.05;
+  color: var(--white);
+  font-weight: 700;
+}
+.dash-hero p {
+  max-width: 590px;
+  color: var(--gray);
+  font-size: 13px;
+  line-height: 1.75;
+}
+.dash-hero-side {
+  align-self: stretch;
+  display: grid;
+  gap: 10px;
+}
+.dash-today-card,
+.dash-load-card {
+  border: 1px solid rgba(226,201,154,0.14);
+  border-radius: var(--radius);
+  background: rgba(9,8,6,0.34);
+  padding: 14px;
+}
+.dash-date {
+  margin-top: 8px;
+  color: var(--white);
+  font-size: 18px;
+  font-weight: 800;
+}
+.dash-sub {
+  color: var(--gray2);
+  font-size: 11px;
+  margin-top: 3px;
+}
+.dash-progress {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  margin-top: 12px;
+}
+.dash-progress span {
+  display: block;
+  height: 100%;
+  width: var(--p,0%);
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--gold), var(--teal));
+}
+.dash-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: 12px;
+}
+.dash-metric {
+  min-height: 124px;
+  cursor: pointer;
+  text-align: left;
+  border: 1px solid rgba(226,201,154,0.12);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.032), transparent 38%),
+    var(--surface2);
+  padding: 16px;
+  color: var(--white);
+  transition: var(--transition);
+  box-shadow: var(--shadow-soft);
+}
+.dash-metric:hover {
+  transform: translateY(-2px);
+  border-color: var(--a);
+  box-shadow: var(--shadow-panel);
+}
+.dash-metric-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.dash-metric-icon {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  background: rgba(201,168,111,0.09);
+  border: 1px solid rgba(226,201,154,0.16);
+  color: var(--a);
+  font-size: 18px;
+}
+.dash-metric-value {
+  margin-top: 18px;
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1;
+}
+.dash-metric-meta {
+  margin-top: 7px;
+  color: var(--gray);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.dash-grid {
+  display: grid;
+  grid-template-columns: minmax(0,1.45fr) minmax(300px,0.75fr);
+  gap: 14px;
+  align-items: start;
+}
+.dash-stack {
+  display: grid;
+  gap: 14px;
+}
+.dash-panel {
+  border: 1px solid rgba(226,201,154,0.12);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.03), transparent 28%),
+    var(--surface2);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+.dash-panel-head {
+  min-height: 56px;
+  padding: 15px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid rgba(226,201,154,0.1);
+}
+.dash-panel-title {
+  color: var(--white);
+  font-weight: 800;
+  font-size: 13px;
+}
+.dash-panel-sub {
+  color: var(--gray2);
+  font-size: 10px;
+  margin-top: 2px;
+}
+.dash-panel-body {
+  padding: 8px;
+}
+.dash-mini-btn {
+  border: 1px solid rgba(226,201,154,0.18);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.022);
+  color: var(--gold-light);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 7px 11px;
+  transition: var(--transition);
+}
+.dash-mini-btn:hover {
+  border-color: rgba(240,214,156,0.42);
+  background: rgba(201,168,111,0.08);
+}
+.dash-row,
+.dash-compact-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 10px;
+  border: 0;
+  border-bottom: 1px solid rgba(226,201,154,0.07);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+.dash-row {
+  cursor: pointer;
+}
+.dash-row:hover,
+.dash-compact-row:hover {
+  background: rgba(201,168,111,0.055);
+}
+.dash-row:last-child,
+.dash-compact-row:last-child {
+  border-bottom: 0;
+}
+.dash-time {
+  min-width: 58px;
+  border-radius: var(--radius-sm);
+  background: rgba(201,168,111,0.13);
+  border: 1px solid rgba(201,168,111,0.18);
+  color: var(--gold-light);
+  padding: 7px 8px;
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+}
+.dash-main {
+  flex: 1;
+  min-width: 0;
+}
+.dash-name {
+  color: var(--white);
+  font-size: 13px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dash-detail {
+  color: var(--gray2);
+  font-size: 11px;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dash-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 12px;
+}
+.dash-action {
+  min-height: 74px;
+  border: 1px solid rgba(226,201,154,0.12);
+  border-radius: var(--radius);
+  background: rgba(255,255,255,0.024);
+  color: var(--white);
+  cursor: pointer;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  text-align: left;
+  transition: var(--transition);
+}
+.dash-action:hover {
+  border-color: rgba(240,214,156,0.35);
+  background: rgba(201,168,111,0.075);
+  transform: translateY(-1px);
+}
+.dash-action span:first-child {
+  font-size: 18px;
+}
+.dash-action strong {
+  font-size: 12px;
+}
+@media (max-width: 1100px) {
+  .dash-hero {
+    grid-template-columns: 1fr;
+  }
+  .dash-hero-side {
+    grid-template-columns: 1fr 1fr;
+  }
+  .dash-metrics {
+    grid-template-columns: repeat(2, minmax(0,1fr));
+  }
+  .dash-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 620px) {
+  .dash-shell {
+    gap: 12px;
+  }
+  .dash-hero {
+    padding: 18px;
+  }
+  .dash-hero-side,
+  .dash-metrics,
+  .dash-actions {
+    grid-template-columns: 1fr;
+  }
+  .dash-row,
+  .dash-compact-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .dash-time {
+    min-width: 52px;
+  }
+}
+
 /* Print */
 @media print {
   #layout > div:first-child, #bnav, #hdr, #overlay, #ls, .bp, .bg, button { display: none !important; }
@@ -2776,7 +3234,7 @@ const NAV=[{id:"dashboard",e:"◈",l:"Dashboard"},{id:"agenda",e:"📅",l:"Agend
 function buildNav(){
   const grps=[
     {sec:"Principal",ids:["dashboard","agenda","patients","crm"]},
-    {sec:"Gestão",ids:["financeiro","stock","procs","relatorios"]},
+    {sec:"Gestão",ids:["financeiro","stock","procs","orientacoes","relatorios"]},
     {sec:"Documentos",ids:["terms","ai"]},
   ];
   const cl=document.getElementById("sidebar")?.classList.contains("closed");
@@ -2803,6 +3261,134 @@ window.go=id=>{set({page:id,selPt:null,tDone:null,tSig:null,showApt:false});if(i
 // DASHBOARD
 // ═══════════════════════════════════════════════════════════════════
 function pageDashboard(){
+  {
+    const ptsDash=ST.pts||[];
+    const aptsDash=[...(ST.apts||[])];
+    const stockDash=ST.stk||[];
+    const todayDash=todayISO();
+    const nowDash=new Date();
+    const hourDash=nowDash.getHours();
+    const greetDash=hourDash<12?"Bom dia":hourDash<18?"Boa tarde":"Boa noite";
+    const safeDash=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+    const lowDash=stockDash.filter(s=>(Number(s.qty)||0)<=(Number(s.min)||0));
+    const todayAptsDash=aptsDash.filter(a=>String(a.date||"")===todayDash);
+    const upcomingDash=aptsDash
+      .filter(a=>String(a.date||"")>=todayDash)
+      .sort((a,b)=>String(a.date||"").localeCompare(String(b.date||""))||String(a.time||"").localeCompare(String(b.time||"")))
+      .slice(0,6);
+    const bdaysDash=ptsDash.filter(p=>p.birthday).map(p=>{
+      const parts=String(p.birthday).split("-").map(Number);
+      if(parts.length<3||!parts[1]||!parts[2])return null;
+      const next=new Date(nowDash.getFullYear(),parts[1]-1,parts[2]);
+      if(next<nowDash)next.setFullYear(nowDash.getFullYear()+1);
+      return{...p,diff:Math.ceil((next-nowDash)/86400000)};
+    }).filter(Boolean).sort((a,b)=>a.diff-b.diff).slice(0,5);
+    const monthDash=todayDash.slice(0,7);
+    const monthAptsDash=aptsDash.filter(a=>String(a.date||"").slice(0,7)===monthDash).length;
+    const activePtsDash=ptsDash.filter(p=>!p.status||p.status==="Ativo").length;
+    const loadPctDash=Math.min(100,Math.round((todayAptsDash.length/Math.max(8,todayAptsDash.length))*100));
+    const heroStatusDash=todayAptsDash.length
+      ? `${todayAptsDash.length} consulta${todayAptsDash.length>1?"s":""} hoje`
+      : "Agenda livre hoje";
+    const metricsDash=[
+      {ic:"🦷",lbl:"Pacientes ativos",val:activePtsDash,meta:`${ptsDash.length} fichas no total`,accent:"var(--gold)",page:"patients"},
+      {ic:"📅",lbl:"Hoje",val:todayAptsDash.length,meta:heroStatusDash,accent:"var(--green)",page:"agenda"},
+      {ic:"⚠️",lbl:"Estoque alerta",val:lowDash.length,meta:lowDash.length?"Itens abaixo do mínimo":"Tudo dentro do limite",accent:"var(--amber)",page:"stock"},
+      {ic:"📈",lbl:"Movimento mensal",val:monthAptsDash,meta:"Consultas registradas no mês",accent:"var(--blue)",page:"relatorios"}
+    ];
+    const upcomingHtmlDash=upcomingDash.map(a=>{
+      const pr=PROCS.find(p=>p.id===a.procId);
+      return`<button class="dash-row" onclick="go('agenda')">
+        <span class="dash-time">${safeDash(a.time||"--:--")}</span>
+        <span class="dash-main">
+          <span class="dash-name">${safeDash(a.patient||"Paciente")}</span>
+          <span class="dash-detail">${fmtDate(a.date)} · ${safeDash(pr?.n||"Consulta")} · ${durLabel(a.dur||30)}</span>
+        </span>
+        ${tipoBadge(a.tipo,a.conv)}
+        ${badge(a.status||"Pendente")}
+      </button>`;
+    }).join("")||emptyState("📅","Nenhuma consulta agendada","Clique em Agenda para organizar os próximos horários.");
+    const bdaysHtmlDash=bdaysDash.map(p=>`<div class="dash-compact-row">
+      ${p.photo?`<img src="${p.photo}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:1px solid rgba(240,214,156,0.42);flex-shrink:0"/>`:ptAvatar(p.name,38)}
+      <div class="dash-main">
+        <div class="dash-name">${safeDash(p.name)}</div>
+        <div class="dash-detail">${p.diff===0?"Hoje":`em ${p.diff} dia${p.diff>1?"s":""}`} · ${calcAge(p.birthday)} anos</div>
+      </div>
+      <button onclick="whatsBirthday('${p.id}')" class="dash-mini-btn" title="Enviar parabéns via WhatsApp">WhatsApp</button>
+    </div>`).join("")||emptyState("🎂","Sem aniversários próximos","Cadastre datas de nascimento nas fichas dos pacientes.");
+    return`<div class="dash-shell">
+      <section class="dash-hero">
+        <div>
+          <div class="dash-kicker">Central clínica ROF</div>
+          <h1>${greetDash}, Dra. Rossana</h1>
+          <p>${heroStatusDash}. O painel reúne agenda, pacientes e alertas importantes para deixar a rotina clínica mais clara e rápida.</p>
+        </div>
+        <div class="dash-hero-side">
+          <div class="dash-today-card">
+            <div class="dash-label">Hoje</div>
+            <div class="dash-date">${todayFmt()}</div>
+            <div class="dash-sub">${ptsDash.length} pacientes cadastrados</div>
+          </div>
+          <div class="dash-load-card">
+            <div class="dash-label">Ocupação da agenda</div>
+            <div class="dash-progress" style="--p:${loadPctDash}%"><span></span></div>
+            <div class="dash-sub">${loadPctDash}% da referência diária</div>
+          </div>
+        </div>
+      </section>
+
+      <div class="dash-metrics">
+        ${metricsDash.map(m=>`<button class="dash-metric" style="--a:${m.accent}" onclick="go('${m.page}')">
+          <span class="dash-metric-top">
+            <span class="dash-label">${m.lbl}</span>
+            <span class="dash-metric-icon">${m.ic}</span>
+          </span>
+          <span class="dash-metric-value">${m.val}</span>
+          <span class="dash-metric-meta">${m.meta}</span>
+        </button>`).join("")}
+      </div>
+
+      <div class="dash-grid">
+        <section class="dash-panel">
+          <div class="dash-panel-head">
+            <div>
+              <div class="dash-panel-title">Próximas consultas</div>
+              <div class="dash-panel-sub">${upcomingDash.length} horários em destaque</div>
+            </div>
+            <button class="dash-mini-btn" onclick="go('agenda')">Agenda</button>
+          </div>
+          <div class="dash-panel-body">${upcomingHtmlDash}</div>
+        </section>
+
+        <div class="dash-stack">
+          <section class="dash-panel">
+            <div class="dash-panel-head">
+              <div>
+                <div class="dash-panel-title">Aniversários</div>
+                <div class="dash-panel-sub">Próximos pacientes</div>
+              </div>
+            </div>
+            <div class="dash-panel-body">${bdaysHtmlDash}</div>
+          </section>
+
+          <section class="dash-panel">
+            <div class="dash-panel-head">
+              <div>
+                <div class="dash-panel-title">Ações rápidas</div>
+                <div class="dash-panel-sub">Atalhos principais</div>
+              </div>
+            </div>
+            <div class="dash-actions">
+              <button class="dash-action" onclick="go('agenda')"><span>📅</span><strong>Agenda</strong></button>
+              <button class="dash-action" onclick="go('patients')"><span>🦷</span><strong>Pacientes</strong></button>
+              <button class="dash-action" onclick="go('financeiro')"><span>💵</span><strong>Financeiro</strong></button>
+              <button class="dash-action" onclick="go('orientacoes')"><span>📋</span><strong>Orientações</strong></button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>`;
+  }
   const{pts,apts,stk}=ST;
   const low=stk.filter(s=>s.qty<=s.min);
   const today=todayISO();const ta=apts.filter(a=>a.date===today);
@@ -7771,7 +8357,7 @@ function render(){
   ct.classList.remove("fade");void ct.offsetWidth;ct.classList.add("fade");
   if(typeof updateNotifDot==="function")updateNotifDot();
   // Stagger entrance nos cards
-  ct.querySelectorAll(".sc,.card,.cg").forEach((el,i)=>{
+  ct.querySelectorAll(".sc,.card,.cg,.dash-hero,.dash-metric,.dash-panel").forEach((el,i)=>{
     el.style.animationDelay=(i*28)+"ms";
     el.style.animation="fadeIn 0.35s var(--ease) both";
     el.style.animationDelay=(i*30)+"ms";
