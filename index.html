@@ -1547,6 +1547,28 @@ window.delEtapa=function(ptId,idx){
 // ══════════════════════════════════════════════════════════════════
 window.renderContrato=function(p){
   var etapas=p.planoTto||[];
+  // ── AUTO-IMPORT do Orçamento se contrato estiver vazio ──
+  var planoOrc=p.plano||{itens:[]};
+  var itensOrc=planoOrc.itens||[];
+  if(etapas.length===0&&itensOrc.length>0&&!p.contratoSkipAutoImport){
+    // Converte itens do orçamento em etapas do contrato
+    etapas=itensOrc.map(function(it){
+      var pr=PROCS.find(function(x){return x.id===it.procId;});
+      var nome=pr?pr.n:(it.name||"Procedimento");
+      var qtd=it.qty||1;
+      var valorUnit=it.price||(pr?pr.p:0);
+      // Se quantidade > 1, mostra "(x3)" no nome
+      var nomeFinal=qtd>1?nome+" (×"+qtd+")":nome;
+      return {proc:nomeFinal,valor:valorUnit*qtd,status:"pendente"};
+    });
+    // Salva no paciente
+    var nps=ST.pts.map(function(x){
+      if(x.id!==p.id)return x;
+      return Object.assign({},x,{planoTto:etapas});
+    });
+    ST.pts=nps;save("rof_pts",nps);
+    setTimeout(function(){toast("Procedimentos importados do orçamento ✓","success");},100);
+  }
   var total=etapas.reduce(function(s,e){return s+(e.valor||0);},0);
   var forma=p.contratoForma||"À vista";
   var parcelas=p.contratoParcelas||1;
@@ -1642,7 +1664,13 @@ window.renderContrato=function(p){
     </div>
 
     <div class="card" style="margin-bottom:10px">
-      <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px">Cláusula 1ª — Procedimentos Contratados</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+        <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700">Cláusula 1ª — Procedimentos Contratados</div>
+        ${itensOrc.length>0?`<button onclick="importarOrcamentoContrato(${p.id})" class="bp" style="font-size:10px;padding:5px 10px">📥 ${etapas.length>0?"Reimportar":"Importar"} do Orçamento (${itensOrc.length})</button>`:""}
+      </div>
+      ${etapas.length===0&&itensOrc.length===0?`<div style="text-align:center;color:#666;font-size:11px;padding:14px;background:rgba(198,164,109,0.04);border-radius:8px;margin-bottom:10px;line-height:1.6">
+        💡 Adicione procedimentos manualmente abaixo OU vá na aba <b style="color:#C6A46D">💰 Orçamento</b> para criar o orçamento e ele aparecerá aqui automaticamente.
+      </div>`:""}
       ${etapas.map((e,i)=>`
         <div style="display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid rgba(198,164,109,0.07)">
           <input value="${(e.proc||"").replace(/"/g,"&quot;")}" oninput="updEtapa(${p.id},${i},'proc',this.value)" class="inp" style="font-size:12px;padding:4px 8px" placeholder="Procedimento..."/>
@@ -1772,6 +1800,30 @@ window.delContratoProc=function(ptId,idx){
   const planoTto=(p.planoTto||[]).filter((_,i)=>i!==idx);
   const pts=ST.pts.map(x=>x.id===ptId?{...x,planoTto}:x);
   ST.pts=pts;save("rof_pts",pts);set({pts});
+};
+
+// ── Importar Orçamento → Contrato (reimportação manual) ─────────
+window.importarOrcamentoContrato=function(ptId){
+  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  const itensOrc=(p.plano||{}).itens||[];
+  if(itensOrc.length===0){toast("Orçamento vazio. Adicione procedimentos na aba Orçamento primeiro.","warning");return;}
+  // Se já tem etapas no contrato, confirmar substituição
+  const etapasAtuais=p.planoTto||[];
+  if(etapasAtuais.length>0){
+    if(!confirm("Já existem "+etapasAtuais.length+" procedimento(s) no contrato. Deseja SUBSTITUIR por "+itensOrc.length+" item(ns) do orçamento? (Os valores atuais serão perdidos)"))return;
+  }
+  // Converte itens do orçamento em etapas do contrato
+  const novasEtapas=itensOrc.map(function(it){
+    const pr=PROCS.find(x=>x.id===it.procId);
+    const nome=pr?pr.n:(it.name||"Procedimento");
+    const qtd=it.qty||1;
+    const valorUnit=it.price||(pr?pr.p:0);
+    const nomeFinal=qtd>1?nome+" (×"+qtd+")":nome;
+    return {id:Date.now()+Math.random(),proc:nomeFinal,valor:valorUnit*qtd,status:"Pendente",dataPrev:"",obs:""};
+  });
+  const pts=ST.pts.map(x=>x.id===ptId?{...x,planoTto:novasEtapas,contratoSkipAutoImport:false}:x);
+  ST.pts=pts;save("rof_pts",pts);set({pts});
+  toast(itensOrc.length+" procedimento(s) importado(s) do orçamento ✓","success");
 };
 
 // ── WhatsApp do contrato ───────────────────────────────────────
@@ -2607,6 +2659,13 @@ const DEF_PROCS=[
   // Oclusão
   {id:50,n:"Ajuste oclusal",p:200,c:"Oclusão / ATM"},
   {id:51,n:"Placa miorrelaxante",p:1200,c:"Oclusão / ATM"},
+  // Endodontia
+  {id:75,n:"Tratamento de canal — monorradicular",p:1200,c:"Endodontia"},
+  {id:76,n:"Tratamento de canal — birradicular",p:1600,c:"Endodontia"},
+  {id:77,n:"Tratamento de canal — multirradicular",p:2200,c:"Endodontia"},
+  {id:78,n:"Retratamento de canal — monorradicular",p:1500,c:"Endodontia"},
+  {id:79,n:"Retratamento de canal — birradicular",p:1900,c:"Endodontia"},
+  {id:74,n:"Retratamento de canal — multirradicular",p:2600,c:"Endodontia"},
   // Prótese
   {id:60,n:"Pino de fibra de vidro",p:350,c:"Prótese / Restauradora"},
   {id:61,n:"Núcleo metálico",p:400,c:"Prótese / Restauradora"},
@@ -2652,8 +2711,18 @@ const DEF_PROCS=[
   {id:208,n:"ROF Osseum™",p:3500,c:"Protocolos ROF"},
   {id:209,n:"ROF Prime™",p:18000,c:"Protocolos ROF"},
 ];
-// Load editable procs from storage
+// Load editable procs from storage — com auto-merge de novos procedimentos do padrão
 let PROCS=load("rof_procs",DEF_PROCS);
+// Auto-merge: se DEF_PROCS tem ids que não estão em PROCS, adiciona (preserva valores editados pelo usuário)
+(function autoMergeProcs(){
+  const idsExistentes=new Set(PROCS.map(p=>p.id));
+  const novos=DEF_PROCS.filter(d=>!idsExistentes.has(d.id));
+  if(novos.length>0){
+    PROCS=[...PROCS,...novos];
+    save("rof_procs",PROCS);
+    console.log("[ROF] "+novos.length+" novo(s) procedimento(s) padrão adicionado(s):",novos.map(n=>n.n).join(", "));
+  }
+})();
 
 // ── DADOS INICIAIS ──────────────────────────────────────────────────
 const DEFPTS=[]
@@ -2703,7 +2772,7 @@ function applySB(){
     });
   }
 }
-const NAV=[{id:"dashboard",e:"◈",l:"Dashboard"},{id:"agenda",e:"📅",l:"Agenda"},{id:"patients",e:"🦷",l:"Pacientes"},{id:"crm",e:"🎯",l:"CRM / Leads"},{id:"financeiro",e:"💵",l:"Financeiro"},{id:"stock",e:"📦",l:"Estoque"},{id:"procs",e:"🗂️",l:"Procedimentos"},{id:"relatorios",e:"📊",l:"Relatórios"},{id:"terms",e:"📜",l:"Termos ROF™"},{id:"ai",e:"🤖",l:"Júlia IA"}];
+const NAV=[{id:"dashboard",e:"◈",l:"Dashboard"},{id:"agenda",e:"📅",l:"Agenda"},{id:"patients",e:"🦷",l:"Pacientes"},{id:"crm",e:"🎯",l:"CRM / Leads"},{id:"financeiro",e:"💵",l:"Financeiro"},{id:"stock",e:"📦",l:"Estoque"},{id:"procs",e:"🗂️",l:"Procedimentos"},{id:"orientacoes",e:"📋",l:"Orientações Pós"},{id:"relatorios",e:"📊",l:"Relatórios"},{id:"terms",e:"📜",l:"Termos ROF™"},{id:"ai",e:"🤖",l:"Júlia IA"}];
 function buildNav(){
   const grps=[
     {sec:"Principal",ids:["dashboard","agenda","patients","crm"]},
@@ -3624,19 +3693,50 @@ function renderPlanoClinicoOdontograma(p){
 }
 
 // Mapeamento: condição → procedimentos sugeridos (ids do PROCS)
+// MAPEAMENTO CLÍNICO: condição no odontograma → procedimentos sugeridos (ordem por relevância)
+// IDs conferidos com a tabela DEF_PROCS — atualizar aqui se mudar a tabela
 const SUGEST_PROC_POR_COND={
-  carie:[10,11,12,13],      // Restauração resina 1-4 faces
-  fratura:[10,11,12,13,60,61,67], // Restauração ou pino/núcleo/coroa
-  ausente:[68,70,69,44,77], // Coroa sobre implante, PPR, PT, enxerto, implante
-  extraido:[68,70,69,44,77],
-  extrair:[40,41,42,43,44], // Extração simples/siso/raiz/decíduo + enxerto
-  endodontia:[80,81,82],    // Endo se houver — ids genéricos
-  coroa:[67,68,62,63,66],
-  protese:[69,70,68,67],
-  implante:[77,68,44],
-  planejado:[],             // Vai mostrar todos
-  restaurado:[20,21,22],    // Manutenção
-  higido:[20,21,23],        // Profilaxia, raspagem supra, flúor
+  // CÁRIE → restaurações por tamanho + endo (se profunda) + coroa (se grande)
+  carie:[10,11,12,13,75,76,77,67,72,80],
+  // (10-13 = restaurações 1-4 faces; 75-77 = canal mono/bi/multi; 67 = coroa porcelana; 72 = inlay/onlay; 80 = faceta resina)
+
+  // FRATURA → restauração + pino + núcleo + coroa + endo se necessária
+  fratura:[10,11,12,13,60,61,67,75,76,77,42],
+  // (60 = pino fibra; 61 = núcleo metálico; 42 = exodontia raiz residual em caso grave)
+
+  // AUSENTE / EXTRAÍDO → implante + prótese fixa/removível + enxerto
+  ausente:[100,68,44,70,69,67],
+  extraido:[100,68,44,70,69,67],
+  // (100 = implante; 68 = coroa sobre implante; 44 = enxerto ósseo; 70 = PPR; 69 = PT)
+
+  // EXTRAIR (planejado) → exodontias + enxerto + implante (planejamento integrado)
+  extrair:[40,41,42,43,44,100,68],
+  // (40 = simples; 41 = siso; 42 = raiz residual; 43 = decíduo; 44 = enxerto pós; 100 = implante futuro)
+
+  // ENDODONTIA → tratamento e retratamento de canal + restauração final + pino + coroa
+  endodontia:[75,76,77,74,78,79,60,61,11,12,13,67],
+  // (75-77 = tto mono/bi/multi; 74,78,79 = retratamento multi/mono/bi; 60-61 = pino/núcleo; restauração final; coroa)
+
+  // COROA → reabilitação protética completa
+  coroa:[67,68,62,63,64,65,66,60,61],
+  // (67 = coroa; 68 = sobre implante; 62-66 = cimentação/provisório; 60-61 = pino/núcleo se necessário)
+
+  // PRÓTESE → opções protéticas variadas
+  protese:[69,70,67,68,72,71],
+  // (69 = PT; 70 = PPR; 67 = coroa; 68 = sobre implante; 71 = table top; 72 = inlay/onlay)
+
+  // IMPLANTE → implante + reabilitação + enxerto
+  implante:[100,68,44,45,67],
+  // (100 = implante; 68 = coroa sobre implante; 44 = enxerto; 45 = aumento coroa clínica)
+
+  // PLANEJADO → mostra tudo (vai listar todos no fallback)
+  planejado:[],
+
+  // RESTAURADO (manutenção/troca) → polimento + nova restauração + ajuste oclusal
+  restaurado:[20,21,50,10,11,12,13],
+
+  // HÍGIDO → manutenção preventiva
+  higido:[20,21,23,24,25,1],
 };
 
 // Lista os procedimentos sugeridos para uma condição
@@ -6536,17 +6636,63 @@ window.sendWhats=function(ptId,tipo,docId){
   if(!phone){toast("Paciente sem telefone cadastrado. Adicione o WhatsApp na aba Dados.","warning");return;}
   // Format to international Brazil
   if(phone.length===10||phone.length===11){phone="55"+phone;}
+  var primeiroNome=p.name.split(" ")[0];
   var msg="";
   if(tipo==="receita"){
     var rc=(p.receitas||[]).find(function(x){return x.id===docId;});
     if(!rc)return;
-    msg="Olá, "+p.name.split(" ")[0]+"! 😊\n\nSegue sua receita odontológica da consulta de "+fmtDate(rc.date)+".\n\nMétodo ROF™ — Dra. Rossana Batista Fucks\nCRO/SC 21403 · Itapema/SC\n\n_Dúvidas? Estamos à disposição!_";
+    msg="Olá, "+primeiroNome+"! 😊\n\nSegue sua receita odontológica da consulta de "+fmtDate(rc.date)+".\n\nDra. Rossana Fucks — CRO/SC 21403\n\n_Dúvidas? Estou à disposição!_";
   }else if(tipo==="atestado"){
     var at=(p.atestados||[]).find(function(x){return x.id===docId;});
     if(!at)return;
-    msg="Olá, "+p.name.split(" ")[0]+"! 😊\n\nSegue seu atestado odontológico referente ao atendimento de "+fmtDate(at.date)+"."+(at.horas?"\nAfastamento: "+at.horas+" hora(s).\n":"\n")+"\nMétodo ROF™ — Dra. Rossana Batista Fucks\nCRO/SC 21403 · Itapema/SC";
+    msg="Olá, "+primeiroNome+"! 😊\n\nSegue seu atestado odontológico referente ao atendimento de "+fmtDate(at.date)+"."+(at.horas?"\nAfastamento: "+at.horas+" hora(s).\n":"\n")+"\nDra. Rossana Fucks — CRO/SC 21403";
   }else if(tipo==="orcamento"){
-    msg="Olá, "+p.name.split(" ")[0]+"! 😊\n\nSegue seu orçamento de tratamento do Método ROF™.\n\nQualquer dúvida estou à disposição!\n\nDra. Rossana Batista Fucks\nCRO/SC 21403 · Itapema/SC";
+    // ─── ORÇAMENTO DETALHADO ───
+    var plano=p.plano||{itens:[],obs:"",desconto:0,parcelas:1,validade:""};
+    var itens=plano.itens||[];
+    if(itens.length===0){
+      toast("Nenhum procedimento no orçamento. Adicione antes de enviar.","warning");
+      return;
+    }
+    var subtotal=itens.reduce(function(s,i){return s+(i.qty*(i.price||0));},0);
+    var desc=Number(plano.desconto||0);
+    var totalDesc=Math.max(0,subtotal-desc);
+    var parcelas=Number(plano.parcelas||1);
+    // Monta lista de procedimentos
+    var listaProcs=itens.map(function(it){
+      var pr=PROCS.find(function(p){return p.id===it.procId;});
+      var nome=pr?pr.n:(it.name||"Procedimento");
+      var preco=it.price||(pr?pr.p:0);
+      var totalItem=it.qty*preco;
+      var qtdLbl=it.qty>1?" (x"+it.qty+")":"";
+      return "• "+nome+qtdLbl+" — R$ "+totalItem.toLocaleString("pt-BR");
+    }).join("\n");
+
+    msg="Olá, "+primeiroNome+"! 😊\n\n";
+    msg+="Conforme conversamos, segue o orçamento do seu tratamento:\n\n";
+    msg+="📋 *PROCEDIMENTOS:*\n";
+    msg+=listaProcs+"\n\n";
+    msg+="━━━━━━━━━━━━━━━━━\n";
+    msg+="*Subtotal:* R$ "+subtotal.toLocaleString("pt-BR")+"\n";
+    if(desc>0){
+      msg+="*Desconto:* R$ "+desc.toLocaleString("pt-BR")+"\n";
+    }
+    msg+="*💰 TOTAL: R$ "+totalDesc.toLocaleString("pt-BR")+"*\n";
+    if(parcelas>1){
+      var vlrParc=Math.round(totalDesc/parcelas);
+      msg+="\n💳 *Parcelamento:* em "+parcelas+"x de R$ "+vlrParc.toLocaleString("pt-BR")+"\n";
+    }else{
+      msg+="\n💳 *Pagamento à vista*\n";
+    }
+    if(plano.validade){
+      msg+="\n📅 _Validade do orçamento: "+fmtDate(plano.validade)+"_\n";
+    }
+    if(plano.obs){
+      msg+="\n📝 *Observações:*\n"+plano.obs+"\n";
+    }
+    msg+="\nQualquer dúvida estou à disposição por aqui!\n\n";
+    msg+="Dra. Rossana Fucks — CRO/SC 21403\n";
+    msg+="📍 Rua 220, nº 200, Sala 2 — Ed. Paris — Meia Praia, Itapema/SC";
   }
   // Open print window first so user can save PDF, then open WhatsApp
   if(tipo==="receita"){
@@ -6876,6 +7022,736 @@ window.sendAI=async()=>{
 // ═══════════════════════════════════════════════════════════════════
 // RENDER PRINCIPAL
 // ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════
+// ORIENTAÇÕES PÓS-PROCEDIMENTO — Biblioteca + Envio WhatsApp
+// ═══════════════════════════════════════════════════════════════════
+
+// Biblioteca padrão de orientações (editáveis pelo usuário, salvas em localStorage)
+const ORIENT_PADRAO=[
+  {id:"exodontia",ic:"🦷",titulo:"Exodontia (extração dentária)",cat:"Cirúrgico",msg:`Olá, {nome}! 😊
+
+Segue as orientações para os próximos dias após a extração:
+
+🩸 *PRIMEIRAS 24 HORAS:*
+• Morda a gaze por 30-40 minutos após sair do consultório
+• Não cuspa nem faça bochechos vigorosos
+• Não use canudo nem fume (atrasa cicatrização)
+• Evite esforço físico e exposição ao sol
+
+🍽️ *ALIMENTAÇÃO:*
+• Hoje: alimentos frios e pastosos (sorvete, gelatina, iogurte, vitaminas)
+• Próximos 3 dias: alimentos mornos e macios (sopa, purê, ovo mexido)
+• Evite alimentos duros, crocantes e muito quentes
+
+❄️ *INCHAÇO:*
+• Aplique compressa de gelo no rosto por 20min, com intervalos, nas primeiras 24h
+• Após 48h, se ainda houver inchaço, use compressa morna
+
+💊 *MEDICAÇÃO:*
+• Tome a medicação prescrita conforme orientação
+• Não tome aspirina (aumenta sangramento)
+
+🪥 *HIGIENE:*
+• Escove normalmente, evitando a região operada nas primeiras 24h
+• Após 24h, escove suavemente também a área operada
+• Bochecho com soro fisiológico ou solução prescrita
+
+⚠️ *ME CHAME SE:*
+• Sangramento intenso após 24h
+• Dor forte que a medicação não controla
+• Febre acima de 38°C
+• Inchaço aumentando após o 3º dia
+
+Qualquer dúvida estou aqui!
+
+Dra. Rossana Fucks — CRO/SC 21403`},
+
+  {id:"implante",ic:"🔩",titulo:"Implante dentário",cat:"Cirúrgico",msg:`Olá, {nome}! 😊
+
+Parabéns! Seu implante foi colocado. Vamos cuidar para a osseointegração ser perfeita:
+
+🩸 *PRIMEIRAS 48 HORAS:*
+• Morda a gaze por 40 minutos
+• Não cuspa, não faça bochecho forte
+• Evite esforço físico, abaixar a cabeça e pegar peso
+• Durma com a cabeça mais elevada (use 2 travesseiros)
+• Não fume e não beba álcool (CRÍTICO para o sucesso do implante)
+
+🍽️ *ALIMENTAÇÃO:*
+• Hoje e amanhã: frios e pastosos (sorvete, iogurte, vitaminas geladas)
+• Próximos 7 dias: alimentos mornos, macios e sem mastigar do lado operado
+• Aumente gradualmente a consistência conforme o conforto
+
+❄️ *COMPRESSAS DE GELO:*
+• Aplique no rosto sobre a região: 20min com gelo + 20min descanso
+• Repetir nas primeiras 24h é fundamental para reduzir o inchaço
+
+💊 *MEDICAÇÃO:*
+• Tome rigorosamente o antibiótico até o fim, mesmo se sentir bem
+• Anti-inflamatório e analgésico conforme prescrito
+• NÃO interromper a medicação por conta própria
+
+🪥 *HIGIENE BUCAL:*
+• Escove normalmente os outros dentes
+• Na área do implante, use a escova ultra macia que entreguei
+• Bochecho com clorexidina 0,12% conforme prescrito (2x/dia por 7 dias)
+
+⚠️ *ME AVISE IMEDIATAMENTE SE:*
+• Sangramento que não cessa
+• Inchaço aumentando após o 3º dia
+• Febre persistente
+• Dor intensa que a medicação não controla
+• Sentir o implante "mexer"
+
+🚭 *FUMO E ÁLCOOL:*
+Por favor, evite durante toda a cicatrização (mínimo 30 dias). Eles podem comprometer a osseointegração e levar à perda do implante.
+
+📅 *RETORNO:* Já está agendado. Não falte!
+
+Estou aqui para qualquer dúvida 💛
+
+Dra. Rossana Fucks — CRO/SC 21403`},
+
+  {id:"botox",ic:"💉",titulo:"Toxina Botulínica (Botox)",cat:"Harmonização",msg:`Olá, {nome}! 😊
+
+Seu procedimento com toxina botulínica foi um sucesso! Algumas orientações importantes para os próximos dias:
+
+⏰ *PRIMEIRAS 4 HORAS:*
+• NÃO deite ou abaixe a cabeça
+• NÃO esfregue, masseie ou pressione a região aplicada
+• Faça caretas suaves (sorrir, franzir testa, fazer "bico") por 1-2 horas — ajuda a fixar o produto nos músculos certos
+
+❌ *NAS PRIMEIRAS 24 HORAS, EVITE:*
+• Atividade física intensa
+• Exposição solar direta
+• Calor extremo (sauna, banho muito quente)
+• Maquiagem pesada na área aplicada
+• Massagens faciais
+
+🍷 *24-48 HORAS:*
+• Evite álcool e alimentos muito salgados (retêm líquido)
+• Evite dormir de bruços ou pressionar o rosto
+
+💧 *ROTINA DE CUIDADOS:*
+• Continue usando seu protetor solar normalmente
+• Hidratação facial leve está liberada
+• Beba bastante água
+
+✨ *RESULTADO:*
+• Você começará a perceber o efeito em 3-5 dias
+• O resultado completo aparece entre 10-14 dias
+• Duração média: 4-6 meses (varia conforme metabolismo)
+
+⚠️ *ME AVISE SE:*
+• Dor de cabeça intensa que persiste
+• Assimetria muito acentuada após 7 dias
+• Pálpebra "caída" ou dificuldade para abrir os olhos
+• Reação alérgica (vermelhidão excessiva, coceira generalizada)
+
+📅 *RETOQUE:* Avaliação em 15 dias para ajustes finos, se necessário.
+
+Qualquer dúvida me chame por aqui!
+
+Dra. Rossana Fucks — CRO/SC 21403`},
+
+  {id:"preench_labial",ic:"💋",titulo:"Preenchimento Labial",cat:"Harmonização",msg:`Olá, {nome}! 😊
+
+Seus lábios ficaram lindos! ✨ Para preservar o resultado e ter uma boa cicatrização:
+
+⏰ *PRIMEIRAS 24 HORAS:*
+• NÃO toque, aperte ou massageie os lábios
+• NÃO faça caretas exageradas
+• NÃO use batom ou maquiagem na boca
+• NÃO beba com canudo nem ingira líquidos muito quentes
+
+❄️ *INCHAÇO E HEMATOMAS:*
+• Aplique compressa fria suave (gelo envolto em pano) por 10min algumas vezes ao dia nas primeiras 48h
+• É *normal* ter inchaço por 3-5 dias — não se assuste!
+• Pode haver pequenos hematomas que somem em 7-10 dias
+
+❌ *NOS PRÓXIMOS 7 DIAS, EVITE:*
+• Atividade física intensa (libera nas primeiras 48h)
+• Exposição solar direta e calor (sauna, banho quente)
+• Tratamentos faciais (massagem, limpeza de pele, laser)
+• Procedimentos odontológicos eletivos
+• Beijos intensos 😅
+
+💧 *CUIDADOS:*
+• Beba bastante água (hidrata o ácido hialurônico)
+• Use protetor labial com FPS
+• Pode aplicar arnica em pomada para acelerar a redução de hematomas
+• Durma com a cabeça elevada nas primeiras noites
+
+✨ *RESULTADO:*
+• O resultado real aparece entre 7-14 dias, quando todo inchaço some
+• Duração média: 8-12 meses
+
+⚠️ *ME AVISE IMEDIATAMENTE SE:*
+• Mudança de coloração para roxo escuro ou branco persistente
+• Dor intensa que aumenta
+• Bolhas, feridas ou áreas muito sensíveis ao toque
+• Vermelhidão e calor local após 48h
+
+📅 *RETORNO:* Avaliação em 15 dias para conferir o resultado final.
+
+Estou aqui pra qualquer dúvida! 💛
+
+Dra. Rossana Fucks — CRO/SC 21403`},
+
+  {id:"preench_hialuronico",ic:"💎",titulo:"Preenchimento com Ácido Hialurônico (facial)",cat:"Harmonização",msg:`Olá, {nome}! 😊
+
+Seu preenchimento foi realizado com sucesso! Vamos cuidar do resultado:
+
+⏰ *PRIMEIRAS 24 HORAS:*
+• NÃO massageie ou pressione a região tratada
+• NÃO use maquiagem pesada na área
+• NÃO durma de bruços ou comprima o rosto
+• Mantenha a cabeça levemente elevada ao dormir
+
+❄️ *COMPRESSA FRIA:*
+• Pode aplicar suavemente 10min algumas vezes ao dia nas primeiras 24h
+• Ajuda a reduzir inchaço e pequenos hematomas
+
+❌ *NOS PRÓXIMOS 7-14 DIAS, EVITE:*
+• Atividade física intensa (libera após 48h)
+• Exposição solar direta sem protetor
+• Calor extremo: sauna, banho muito quente, hidromassagem
+• Tratamentos estéticos faciais (laser, peelings, ultrassom, radiofrequência)
+• Massagens faciais
+• Procedimentos odontológicos não-urgentes (combina com a Dra. antes)
+
+💧 *CUIDADOS:*
+• Hidratação facial suave está liberada após 24h
+• Use protetor solar FPS 50+ todos os dias
+• Beba bastante água
+• Arnica em pomada pode ajudar se houver hematomas
+
+✨ *O QUE ESPERAR:*
+• Inchaço leve por 3-7 dias é normal
+• Pequenos pontinhos de hematoma podem aparecer e somem em 7-10 dias
+• Resultado real e definitivo: 14-21 dias
+• Duração: 12-18 meses dependendo do produto e região
+
+⚠️ *AVISE IMEDIATAMENTE SE:*
+• Mudança de cor para azulado/esbranquiçado persistente
+• Dor intensa que piora ao invés de melhorar
+• Áreas frias, dormentes ou com perda de sensibilidade
+• Vermelhidão intensa após 48h
+• Lesões na pele
+
+📅 *RETORNO:* Em 15-21 dias para reavaliar o resultado.
+
+Qualquer coisa me chame! 💛
+
+Dra. Rossana Fucks — CRO/SC 21403`},
+
+  {id:"bioestimulador",ic:"✨",titulo:"Bioestimulador de Colágeno",cat:"Harmonização",msg:`Olá, {nome}! 😊
+
+Você acabou de iniciar um tratamento incrível de regeneração! Os bioestimuladores trabalham *de dentro para fora* — vamos potencializar o resultado:
+
+🔄 *MASSAGEM (MUITO IMPORTANTE!):*
+• Massageie a região tratada *5 minutos, 5 vezes ao dia, durante 5 dias* (regra dos 5×5×5)
+• Movimentos circulares suaves, com as duas mãos
+• Use creme hidratante neutro
+• Isso ajuda a distribuir o produto e prevenir nódulos
+
+⏰ *PRIMEIRAS 24-48 HORAS:*
+• Pode haver inchaço, leve vermelhidão ou pequenos hematomas — totalmente normal
+• Compressa fria suave alivia (10min, algumas vezes ao dia)
+
+❌ *POR 14 DIAS, EVITE:*
+• Atividade física intensa nas primeiras 48h
+• Sauna, banho muito quente, exposição solar direta
+• Tratamentos com calor (laser, radiofrequência, ultrassom)
+• Massagens faciais por outras pessoas (a sua é diferente, faz parte do protocolo)
+• Procedimentos odontológicos eletivos
+
+💧 *CUIDADOS:*
+• Hidratação reforçada: água + creme hidratante facial
+• Protetor solar FPS 50+ obrigatório, todos os dias
+• Pode usar maquiagem leve após 24h
+
+✨ *RESULTADOS — Tenha paciência, é gradual:*
+• O efeito é progressivo: bioestimuladores fazem você produzir seu próprio colágeno
+• Primeiros sinais: 30-45 dias
+• Resultado completo: 3-4 meses após a última sessão
+• Duração: 18-24 meses (alguns chegam a 2 anos)
+
+⚠️ *ME AVISE SE:*
+• Surgir nódulo palpável após 7 dias (pode precisar massagem direcionada)
+• Vermelhidão muito intensa que não melhora
+• Dor persistente ou crescente
+• Qualquer reação fora do esperado
+
+📅 *PRÓXIMA SESSÃO:* Conforme conversamos no plano.
+
+Estou aqui pra cuidar de você! 💛
+
+Dra. Rossana Fucks — CRO/SC 21403`},
+
+  {id:"clareamento",ic:"⚪",titulo:"Clareamento Dental",cat:"Estético",msg:`Olá, {nome}! 😊
+
+Seu sorriso está mais branco! ✨ Para manter o resultado e proteger seus dentes:
+
+🚫 *DIETA BRANCA — Por 14 DIAS, EVITE:*
+• Café, chá preto, chá mate
+• Vinho tinto, vinho branco também
+• Refrigerantes de cor (Coca, guaraná, etc.)
+• Açaí, frutas vermelhas (morango, amora, mirtilo)
+• Beterraba, molho de tomate, açafrão, curry
+• Chocolate ao leite (limite o branco também)
+• Cigarro, charuto, vape (mancha bastante)
+
+✅ *PODE COMER À VONTADE:*
+• Leite, iogurte natural, queijo branco
+• Frango, peixe, ovos
+• Arroz, batata, macarrão (com molho branco)
+• Banana, maçã, pera, melão
+• Couve-flor, chuchu, abobrinha
+• Água, água de coco
+
+😬 *SENSIBILIDADE — É NORMAL:*
+• Pode sentir dentes sensíveis ao frio nos primeiros dias
+• Use a pasta dessensibilizante que indiquei
+• Evite líquidos muito gelados nos primeiros 3 dias
+• Se a sensibilidade for muito intensa, me avise
+
+🪥 *HIGIENE REFORÇADA:*
+• Escove após cada refeição (pelo menos 3x/dia)
+• Use fio dental diariamente
+• Enxaguante sem álcool e sem corante
+• Evite escovas duras
+
+✨ *MANUTENÇÃO:*
+• O resultado dura em média 1-2 anos com cuidados
+• Use a moldeira de retoque periodicamente conforme orientação
+• Profilaxia profissional a cada 6 meses
+
+⚠️ *ME AVISE SE:*
+• Sensibilidade muito intensa ou persistente
+• Manchas brancas surgiram nos dentes
+• Irritação gengival que não melhora
+
+📅 *RETORNO:* Avaliação em 30 dias.
+
+Aproveite seu sorriso! 💛
+
+Dra. Rossana Fucks — CRO/SC 21403`},
+
+  {id:"restauracao",ic:"🦷",titulo:"Restauração em Resina",cat:"Restaurador",msg:`Olá, {nome}! 😊
+
+Sua restauração foi finalizada! Algumas orientações para a melhor adaptação:
+
+⏰ *PRIMEIRAS 2 HORAS:*
+• Espere o efeito da anestesia passar antes de comer
+• Cuidado para não morder bochecha, lábio ou língua enquanto estiver dormente
+• Pode beber água
+
+🍽️ *ALIMENTAÇÃO:*
+• Pode comer normalmente, mas evite alimentos muito duros nas primeiras 24h
+• Atenção a sementes pequenas, pipoca, gelo (pode quebrar a resina)
+• Café, chá e vinho podem manchar — modere ou escove logo após
+
+😬 *SENSIBILIDADE — PODE ACONTECER:*
+• Pequena sensibilidade ao frio/quente nos primeiros dias é normal
+• Tende a melhorar progressivamente em 1-2 semanas
+• Use pasta dessensibilizante se necessário
+
+🪥 *HIGIENE:*
+• Escove normalmente, com escova macia
+• Use fio dental todos os dias (importante para a longevidade da restauração)
+• Enxaguante com flúor diariamente
+
+⚠️ *ME AVISE SE:*
+• Sentir a mordida "alta" (como se o dente batesse antes que os outros)
+• Dor espontânea que aparece sem estímulo
+• Dor que piora em vez de melhorar
+• Restauração ficou áspera ou descolou
+• Manchas escuras na borda da restauração com o tempo
+
+✨ *DURABILIDADE:*
+• Restaurações de resina duram em média 5-10 anos
+• Com bons cuidados, podem durar bem mais
+• Retornos a cada 6 meses para profilaxia
+
+Qualquer desconforto, me chame!
+
+Dra. Rossana Fucks — CRO/SC 21403`},
+
+  {id:"endodontia",ic:"🔬",titulo:"Tratamento de Canal (Endodontia)",cat:"Endodôntico",msg:`Olá, {nome}! 😊
+
+O tratamento de canal foi realizado. Algumas orientações importantes:
+
+⏰ *PRIMEIRAS 24-48 HORAS:*
+• Espere a anestesia passar para se alimentar
+• Pode haver leve sensibilidade ao mastigar — é normal
+• Evite mastigar do lado tratado por 24-48h
+
+💊 *MEDICAÇÃO:*
+• Tome o anti-inflamatório/analgésico conforme prescrição
+• Se foi prescrito antibiótico, tome até o fim
+• Não interrompa por conta própria
+
+🍽️ *ALIMENTAÇÃO:*
+• Alimentos mornos e macios nas primeiras 24h
+• Evite muito quente ou muito frio (sensibilidade)
+• Não mastigue alimentos duros do lado tratado até finalizar o tratamento
+
+🪥 *HIGIENE:*
+• Escove normalmente com escova macia
+• Use fio dental, cuidado para não deslocar a restauração provisória
+
+⚠️ *ATENÇÃO — RESTAURAÇÃO DEFINITIVA:*
+• O dente está com restauração provisória
+• É *fundamental* fazer a restauração definitiva (resina/coroa) o quanto antes
+• Sem a restauração definitiva, o dente pode fraturar ou contaminar
+• Não atrase essa etapa!
+
+⚠️ *ME AVISE IMEDIATAMENTE SE:*
+• Dor intensa que a medicação não controla
+• Inchaço na gengiva ou rosto
+• Febre
+• Mau gosto persistente vindo do dente
+• Provisória caiu
+
+📅 *PRÓXIMA SESSÃO:* Já está agendada (se houver mais sessões) ou já vamos partir para a restauração definitiva.
+
+Estou à disposição! 💛
+
+Dra. Rossana Fucks — CRO/SC 21403`},
+
+  {id:"profilaxia",ic:"🧼",titulo:"Profilaxia / Limpeza Profissional",cat:"Preventivo",msg:`Olá, {nome}! 😊
+
+Sua limpeza profissional foi realizada! Seus dentes estão lisinhos ✨
+
+🍽️ *NAS PRÓXIMAS 24 HORAS:*
+• Evite alimentos com corantes fortes (café, vinho tinto, açaí, beterraba)
+• Os dentes ficam mais "abertos" à pigmentação por algumas horas após o flúor
+
+😬 *PODE OCORRER:*
+• Leve sensibilidade ao frio por 1-2 dias — normal
+• Pequeno sangramento gengival se havia gengivite — vai sumir com a higiene em casa
+• Sensação de "dentes lisos demais" — você se acostuma 😊
+
+🪥 *HIGIENE EM CASA — REFORCE:*
+• Escove 3x ao dia, 2 minutos cada vez
+• Fio dental DIARIAMENTE (é o que faz a maior diferença!)
+• Escova com cerdas macias
+• Pasta com flúor
+• Enxaguante sem álcool se necessário
+
+🦷 *MANUTENÇÃO:*
+• Profilaxia profissional a cada 6 meses (alguns casos a cada 3-4 meses)
+• Vou te avisar quando estiver perto
+
+⚠️ *ME AVISE SE:*
+• Sangramento gengival que não melhora em 1 semana
+• Sensibilidade muito intensa ou prolongada
+• Surgir alguma área dolorida
+
+Continue com a rotina de cuidados que conversamos!
+
+Dra. Rossana Fucks — CRO/SC 21403`},
+
+  {id:"raspagem",ic:"🩸",titulo:"Raspagem Periodontal",cat:"Periodontal",msg:`Olá, {nome}! 😊
+
+Sua raspagem foi realizada com sucesso. Vamos cuidar da gengiva nos próximos dias:
+
+⏰ *PRIMEIRAS 24-48 HORAS:*
+• Sensibilidade na gengiva e dentes é totalmente esperada
+• Pode haver leve sangramento ao escovar — diminui progressivamente
+• Os dentes podem parecer "longos" temporariamente (a gengiva desinflama)
+
+🍽️ *ALIMENTAÇÃO:*
+• Evite alimentos muito quentes, ácidos ou condimentados nas primeiras 24h
+• Prefira alimentos mornos e macios
+• Bastante água ajuda na cicatrização
+
+🪥 *HIGIENE — FUNDAMENTAL:*
+• Escove suavemente com escova macia desde o primeiro dia
+• Use fio dental diariamente (gentilmente)
+• Bochecho com clorexidina 0,12% conforme prescrito (2x/dia por 7 dias) — se prescrito
+• Escova interdental nas áreas indicadas
+
+❌ *EVITE:*
+• Fumar (atrasa muito a cicatrização gengival)
+• Bebidas alcoólicas nas primeiras 24h
+• Escovação agressiva
+
+✨ *RESULTADO ESPERADO:*
+• Em 7-14 dias: gengiva mais firme, rosa e sem sangrar
+• A sensibilidade tende a diminuir gradualmente
+• Hálito muito mais agradável
+
+⚠️ *ME AVISE SE:*
+• Sangramento intenso após 48h
+• Dor crescente em vez de melhorar
+• Inchaço ou pus
+• Febre
+
+📅 *RETORNO:* Reavaliação em 30-60 dias para checar a saúde gengival.
+
+A periodontia é cuidado contínuo — vamos juntas! 💛
+
+Dra. Rossana Fucks — CRO/SC 21403`},
+];
+
+// Categorias para filtro
+function getOrientCats(orients){
+  const cats=["Todos"];
+  orients.forEach(o=>{if(o.cat&&!cats.includes(o.cat))cats.push(o.cat);});
+  return cats;
+}
+
+// Mescla padrão com edições do usuário
+function getOrientacoes(){
+  let customs=[];
+  try{const raw=localStorage.getItem("rof_orientacoes");if(raw)customs=JSON.parse(raw)||[];}catch(e){}
+  // Mescla por id
+  const merged=ORIENT_PADRAO.map(o=>{
+    const edited=customs.find(c=>c.id===o.id);
+    return edited?{...o,...edited}:o;
+  });
+  // Adiciona novas criadas pelo usuário
+  customs.filter(c=>!ORIENT_PADRAO.find(o=>o.id===c.id)).forEach(c=>merged.push(c));
+  return merged;
+}
+
+function pageOrientacoes(){
+  const orients=getOrientacoes();
+  const cats=getOrientCats(orients);
+  const catSel=ST.orientCat||"Todos";
+  const filtered=catSel==="Todos"?orients:orients.filter(o=>o.cat===catSel);
+
+  const escapeHTML=(s)=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+
+  const catBtns=cats.map(c=>`
+    <button onclick="set({orientCat:'${c}'})" class="bg" style="padding:6px 12px;font-size:11px;background:${catSel===c?'#C6A46D22':'transparent'};color:${catSel===c?'#E2C99A':'#666'};border-color:${catSel===c?'rgba(198,164,109,0.4)':'rgba(198,164,109,0.12)'}">${c}</button>
+  `).join("");
+
+  const cards=filtered.map(o=>`
+    <div class="card" style="padding:14px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:start;justify-content:space-between;gap:8px">
+        <div style="flex:1;min-width:0">
+          <div style="color:#E2C99A;font-size:13px;font-weight:800;line-height:1.3">${o.ic} ${escapeHTML(o.titulo)}</div>
+          <div style="color:#888;font-size:10px;margin-top:3px"><span style="background:rgba(198,164,109,0.1);padding:2px 8px;border-radius:6px">${escapeHTML(o.cat||"Outros")}</span></div>
+        </div>
+      </div>
+      <div style="color:#777;font-size:11px;line-height:1.5;max-height:48px;overflow:hidden;text-overflow:ellipsis">${escapeHTML(o.msg.substring(0,140))}...</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button onclick="enviarOrientacao('${o.id}')" class="bp" style="flex:1;min-width:0;padding:8px;font-size:11px;font-weight:700">📱 Enviar p/ Paciente</button>
+        <button onclick="visualizarOrientacao('${o.id}')" class="bg" style="padding:8px 12px;font-size:11px" title="Visualizar texto completo">👁️</button>
+        <button onclick="editarOrientacao('${o.id}')" class="bg" style="padding:8px 12px;font-size:11px" title="Editar template">✏️</button>
+      </div>
+    </div>
+  `).join("");
+
+  return `
+    ${stitle("Orientações Pós-Procedimento")}
+    <div style="color:#888;font-size:12px;margin-bottom:14px;line-height:1.6">
+      Biblioteca de orientações prontas para enviar aos pacientes via WhatsApp. 
+      Clique em <b style="color:#E2C99A">📱 Enviar</b> para escolher um paciente e enviar.
+    </div>
+
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+      ${catBtns}
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:18px">
+      ${cards}
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:16px">
+      <button onclick="criarNovaOrientacao()" class="bp" style="padding:10px 16px;font-size:12px">+ Criar Nova Orientação</button>
+      <button onclick="resetarTodasOrientacoes()" class="bg" style="padding:10px 14px;font-size:11px;color:#888">↺ Restaurar padrão de fábrica</button>
+    </div>
+  `;
+}
+
+// Visualizar texto completo da orientação
+window.visualizarOrientacao=function(id){
+  const orients=getOrientacoes();
+  const o=orients.find(x=>x.id===id);
+  if(!o)return;
+  document.getElementById("orient-view-modal")?.remove();
+  const m=document.createElement("div");
+  m.className="mbg";m.id="orient-view-modal";
+  const escapeHTML=(s)=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  m.innerHTML=`<div class="mbx" style="max-width:560px">
+    <div class="mhd">
+      <div class="mhd-title">${o.ic} ${escapeHTML(o.titulo)}</div>
+      <button onclick="document.getElementById('orient-view-modal').remove()" style="background:none;border:none;color:#555;font-size:22px;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <div class="mbd">
+      <div style="background:#0a0a0a;border-radius:8px;padding:14px;font-size:12px;line-height:1.7;color:#bbb;white-space:pre-wrap;max-height:60vh;overflow-y:auto;font-family:inherit">${escapeHTML(o.msg)}</div>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button onclick="document.getElementById('orient-view-modal').remove();enviarOrientacao('${o.id}')" class="bp" style="flex:1;padding:10px;font-size:12px;font-weight:700">📱 Enviar para Paciente</button>
+        <button onclick="document.getElementById('orient-view-modal').remove();editarOrientacao('${o.id}')" class="bg" style="padding:10px 14px;font-size:11px">✏️ Editar</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  m.addEventListener("click",e=>{if(e.target===m)m.remove();});
+};
+
+// Enviar orientação → escolhe paciente
+window.enviarOrientacao=function(id){
+  const orients=getOrientacoes();
+  const o=orients.find(x=>x.id===id);
+  if(!o)return;
+  // Lista pacientes com telefone
+  const ptsComFone=ST.pts.filter(p=>p.phone&&p.phone.replace(/\D/g,"").length>=10);
+  if(ptsComFone.length===0){toast("Nenhum paciente com telefone cadastrado.","warning");return;}
+  document.getElementById("orient-send-modal")?.remove();
+  const m=document.createElement("div");
+  m.className="mbg";m.id="orient-send-modal";
+  const escapeHTML=(s)=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  m.innerHTML=`<div class="mbx" style="max-width:480px">
+    <div class="mhd">
+      <div class="mhd-title">📱 Enviar: ${o.ic} ${escapeHTML(o.titulo)}</div>
+      <button onclick="document.getElementById('orient-send-modal').remove()" style="background:none;border:none;color:#555;font-size:22px;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <div class="mbd">
+      <label class="lbl">Buscar paciente</label>
+      <input type="text" id="orient-search" placeholder="Digite o nome..." class="inp" style="margin-bottom:10px" oninput="filtrarPtsOrient(this.value,'${o.id}')"/>
+      <div id="orient-pts-list" style="max-height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
+        ${ptsComFone.map(p=>`<div onclick="enviarOrientacaoParaPt(${p.id},'${o.id}')" style="padding:10px 12px;background:#0d0d0d;border:1px solid rgba(198,164,109,0.1);border-radius:8px;cursor:pointer;transition:all .15s" onmouseenter="this.style.borderColor='rgba(198,164,109,0.4)'" onmouseleave="this.style.borderColor='rgba(198,164,109,0.1)'">
+          <div style="color:#E2C99A;font-size:12px;font-weight:700">${escapeHTML(p.name)}</div>
+          <div style="color:#666;font-size:10px;margin-top:2px">📱 ${escapeHTML(p.phone)}</div>
+        </div>`).join("")}
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  m.addEventListener("click",e=>{if(e.target===m)m.remove();});
+};
+
+window.filtrarPtsOrient=function(termo,orientId){
+  const t=(termo||"").toLowerCase();
+  const ptsComFone=ST.pts.filter(p=>p.phone&&p.phone.replace(/\D/g,"").length>=10);
+  const filtrados=ptsComFone.filter(p=>p.name.toLowerCase().includes(t)||(p.phone||"").includes(t));
+  const list=document.getElementById("orient-pts-list");
+  if(!list)return;
+  const escapeHTML=(s)=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  list.innerHTML=filtrados.length===0
+    ?`<div style="color:#666;font-size:12px;text-align:center;padding:14px">Nenhum paciente encontrado.</div>`
+    :filtrados.map(p=>`<div onclick="enviarOrientacaoParaPt(${p.id},'${orientId}')" style="padding:10px 12px;background:#0d0d0d;border:1px solid rgba(198,164,109,0.1);border-radius:8px;cursor:pointer;transition:all .15s" onmouseenter="this.style.borderColor='rgba(198,164,109,0.4)'" onmouseleave="this.style.borderColor='rgba(198,164,109,0.1)'">
+        <div style="color:#E2C99A;font-size:12px;font-weight:700">${escapeHTML(p.name)}</div>
+        <div style="color:#666;font-size:10px;margin-top:2px">📱 ${escapeHTML(p.phone)}</div>
+      </div>`).join("");
+};
+
+window.enviarOrientacaoParaPt=function(ptId,orientId){
+  const p=ST.pts.find(x=>x.id===ptId);
+  if(!p)return;
+  const orients=getOrientacoes();
+  const o=orients.find(x=>x.id===orientId);
+  if(!o)return;
+  let phone=(p.phone||"").replace(/\D/g,"");
+  if(phone.length===10||phone.length===11)phone="55"+phone;
+  const primeiroNome=p.name.split(" ")[0];
+  const msg=o.msg.replace(/\{nome\}/g,primeiroNome);
+  const url="https://wa.me/"+phone+"?text="+encodeURIComponent(msg);
+  window.open(url,"_blank");
+  document.getElementById("orient-send-modal")?.remove();
+  toast("WhatsApp aberto com a orientação ✓","success");
+};
+
+// Editar orientação
+window.editarOrientacao=function(id){
+  const orients=getOrientacoes();
+  const o=orients.find(x=>x.id===id);
+  if(!o)return;
+  document.getElementById("orient-edit-modal")?.remove();
+  const m=document.createElement("div");
+  m.className="mbg";m.id="orient-edit-modal";
+  m.style.zIndex="10001";
+  const escapeHTML=(s)=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  m.innerHTML=`<div class="mbx" style="max-width:560px">
+    <div class="mhd">
+      <div class="mhd-title">✏️ Editar Orientação</div>
+      <button onclick="document.getElementById('orient-edit-modal').remove()" style="background:none;border:none;color:#555;font-size:22px;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <div class="mbd">
+      <div style="background:rgba(198,164,109,0.06);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:#888;line-height:1.6">
+        💡 Use <code style="color:#E2C99A">{nome}</code> para inserir o primeiro nome do paciente automaticamente.
+      </div>
+      <div style="display:grid;grid-template-columns:60px 1fr;gap:8px;margin-bottom:10px">
+        <div>
+          <label class="lbl">Ícone</label>
+          <input type="text" id="orient-edit-ic" value="${escapeHTML(o.ic||"📋")}" class="inp" style="text-align:center;font-size:18px"/>
+        </div>
+        <div>
+          <label class="lbl">Título</label>
+          <input type="text" id="orient-edit-titulo" value="${escapeHTML(o.titulo)}" class="inp"/>
+        </div>
+      </div>
+      <label class="lbl">Categoria</label>
+      <input type="text" id="orient-edit-cat" value="${escapeHTML(o.cat||"Outros")}" class="inp" style="margin-bottom:10px" placeholder="Ex: Cirúrgico, Harmonização, Estético..."/>
+      <label class="lbl">Mensagem (use {nome} como variável)</label>
+      <textarea id="orient-edit-msg" rows="16" class="inp" style="resize:vertical;font-size:12px;line-height:1.5;font-family:inherit">${escapeHTML(o.msg)}</textarea>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button onclick="resetarOrientacao('${id}')" class="bg" style="padding:10px 14px;font-size:11px;color:#888">↺ Restaurar padrão</button>
+        <button onclick="salvarOrientacao('${id}')" class="bp" style="flex:1;padding:10px;font-size:12px;font-weight:800">💾 Salvar Alterações</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  m.addEventListener("click",e=>{if(e.target===m)m.remove();});
+};
+
+window.salvarOrientacao=function(id){
+  const titulo=document.getElementById("orient-edit-titulo").value.trim();
+  const msg=document.getElementById("orient-edit-msg").value.trim();
+  const ic=document.getElementById("orient-edit-ic").value.trim()||"📋";
+  const cat=document.getElementById("orient-edit-cat").value.trim()||"Outros";
+  if(!titulo||!msg){toast("Preencha título e mensagem.","warning");return;}
+  let customs=[];
+  try{const raw=localStorage.getItem("rof_orientacoes");if(raw)customs=JSON.parse(raw)||[];}catch(e){}
+  const idx=customs.findIndex(c=>c.id===id);
+  const novo={id,titulo,msg,ic,cat};
+  if(idx>=0)customs[idx]=novo;else customs.push(novo);
+  localStorage.setItem("rof_orientacoes",JSON.stringify(customs));
+  toast("Orientação salva ✓","success");
+  document.getElementById("orient-edit-modal").remove();
+  render();
+};
+
+window.resetarOrientacao=function(id){
+  if(!confirm("Restaurar esta orientação ao texto padrão? Sua versão personalizada será perdida."))return;
+  let customs=[];
+  try{const raw=localStorage.getItem("rof_orientacoes");if(raw)customs=JSON.parse(raw)||[];}catch(e){}
+  customs=customs.filter(c=>c.id!==id);
+  localStorage.setItem("rof_orientacoes",JSON.stringify(customs));
+  toast("Orientação restaurada ✓","success");
+  document.getElementById("orient-edit-modal").remove();
+  render();
+};
+
+window.criarNovaOrientacao=function(){
+  const novoId="custom_"+Date.now();
+  let customs=[];
+  try{const raw=localStorage.getItem("rof_orientacoes");if(raw)customs=JSON.parse(raw)||[];}catch(e){}
+  customs.push({
+    id:novoId,
+    ic:"📋",
+    titulo:"Nova orientação",
+    cat:"Personalizado",
+    msg:`Olá, {nome}! 😊\n\n[Escreva aqui as orientações]\n\nQualquer dúvida estou à disposição!\n\nDra. Rossana Fucks — CRO/SC 21403`
+  });
+  localStorage.setItem("rof_orientacoes",JSON.stringify(customs));
+  render();
+  setTimeout(()=>editarOrientacao(novoId),200);
+};
+
+window.resetarTodasOrientacoes=function(){
+  if(!confirm("Restaurar TODAS as orientações ao padrão original? Suas edições e orientações criadas serão perdidas."))return;
+  localStorage.removeItem("rof_orientacoes");
+  toast("Todas as orientações restauradas ✓","success");
+  render();
+};
+
+
 function render(){
   buildNav();
   let c="";
@@ -6887,6 +7763,7 @@ function render(){
   else if(ST.page==="financeiro")c=pageFinanceiro();
   else if(ST.page==="relatorios")c=pageRelatorios();
   else if(ST.page==="crm")c=pageCRM();
+  else if(ST.page==="orientacoes")c=pageOrientacoes();
   else if(ST.page==="terms")c=pageTerms();
   else if(ST.page==="ai")c=pageAI();
   const ct=document.getElementById("content");
