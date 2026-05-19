@@ -1542,8 +1542,8 @@ const LOGO_B64="iVBORw0KGgoAAAANSUhEUgAAAG4AAABuCAYAAADGWyb7AAAgpklEQVR42u2deZhd
 // CONFIGURAÇÃO — preencha com seus dados do Supabase se quiser
 // sincronização em nuvem. Deixe em branco para usar só localStorage.
 // ══════════════════════════════════════════════════════════════════
-const SUPABASE_URL      = '';   // ex: 'https://xyzxyz.supabase.co'
-const SUPABASE_ANON_KEY = '';   // ex: 'eyJhbGci...'
+const SUPABASE_URL      = 'https://dhgfoxdxihjkhzmctaea.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_tn4i8425nfjfR5gKkWFb-A_wNwBd6Ec';
 const APP_PASSWORD      = 'rof2024';
 const AUTH_TOKEN_KEY    = 'rof_auth_token';
 const AUTH_TOKEN_KEYS   = [AUTH_TOKEN_KEY,'rof_jwt','rof_token'];
@@ -3161,8 +3161,8 @@ window.doLogin=async function(){
     sbOpen=!isMob();applySB();
     const _hasData=ST.pts.length>0||ST.apts.length>0||ST.apts.length>0;
     if(_hasData){render();}else{buildNav();showSkeleton();}
-    if(localOnly)toast("Modo local ativado. A Júlia IA volta quando a sessão online estiver disponível.","warning");
-    else await syncFromCloud();
+    if(_sbEnabled)await syncFromCloud();
+    if(localOnly&&!_sbEnabled)toast("Modo local ativado. A Júlia IA volta quando a sessão online estiver disponível.","warning");
   }else{
     const inp=document.getElementById("ls-pwd");
     if(inp){
