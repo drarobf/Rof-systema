@@ -9145,7 +9145,16 @@ window.addEventListener("beforeinstallprompt",e=>{
   document.getElementById("ib-btn").onclick=async()=>{dP.prompt();await dP.userChoice;b.remove();};
 });
 window.addEventListener("appinstalled",()=>{const b=document.getElementById("ib");if(b)b.remove();});
-if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+if("serviceWorker"in navigator){
+  navigator.serviceWorker.getRegistrations()
+    .then(regs=>regs.forEach(reg=>reg.unregister()))
+    .catch(()=>{});
+}
+if(window.caches){
+  caches.keys()
+    .then(keys=>keys.forEach(key=>caches.delete(key)))
+    .catch(()=>{});
+}
 
 // INIT
 applySB();render();
