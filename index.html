@@ -790,6 +790,17 @@ pre { white-space: pre-wrap; font-family: var(--font-body); }
   box-shadow: 0 0 0 3px rgba(198,164,109,0.06);
 }
 .inp::placeholder { color: var(--gray2); }
+select.inp,
+select.inp option,
+datalist option {
+  background: #11100E;
+  color: #F7F2EA;
+}
+select.inp option:checked,
+select.inp option:hover {
+  background: #2A2318;
+  color: #F0D69C;
+}
 .lbl {
   color: var(--gold); font-size: 10px;
   letter-spacing: 1.5px; text-transform: uppercase;
@@ -1032,6 +1043,10 @@ body {
 }
 .inp:focus {
   background: rgba(255,255,255,0.052);
+}
+select.inp option {
+  background: #11100E;
+  color: #F7F2EA;
 }
 
 /* Dashboard refresh */
@@ -3179,7 +3194,7 @@ window.doLogin=async function(){
   }
   if(ok){
     enterApp(localOnly);
-    if(!localOnly&&_sbEnabled)await syncFromCloud();
+    if(_sbEnabled)await syncFromCloud();
   }else{
     const inp=document.getElementById("ls-pwd");
     if(inp){
@@ -3698,7 +3713,7 @@ function pageAgenda(){
         <div style="position:relative">
           <input id="ap-pat" class="inp" placeholder="🔍 Buscar ou cadastrar novo paciente..." value="${(ST.aptPatName||'').replace(/"/g,'&quot;')}" data-pt-id="${ST.aptPatId||''}"
             oninput="aptSearch(this.value)" autocomplete="off"/>
-          <div id="ap-drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:#0F0F0F;border:1px solid rgba(198,164,109,0.3);border-radius:0 0 10px 10px;z-index:999;max-height:210px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.8)"></div>
+          <div id="ap-drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:#11100E;color:#F7F2EA;border:1px solid rgba(198,164,109,0.3);border-radius:0 0 10px 10px;z-index:999;max-height:210px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.8);scrollbar-color:#C6A46D #11100E"></div>
         </div>
         <div id="ap-pat-badge" style="font-size:11px;margin-top:4px;font-weight:600">${ST.aptPatId?'<span style="color:#22c55e">✓ Paciente cadastrado</span>':''}</div>
       </div>
@@ -3932,13 +3947,13 @@ window.aptSearch=function(val){
   html2+=matches.map(function(p){
     var age=p.birthday?(" · "+calcAge(p.birthday)+" anos"):"";
     return "<div data-name='"+p.name.replace(/'/g,"&#39;")+"' onclick='aptSelectPt(this)' "
-      +"style='display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(198,164,109,0.07);transition:background 0.1s' "
-      +"onmouseenter=\"this.style.background='rgba(198,164,109,0.08)'\" onmouseleave=\"this.style.background='transparent'\">"
+      +"style='display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(198,164,109,0.07);transition:background 0.1s;background:#11100E;color:#F7F2EA' "
+      +"onmouseenter=\"this.style.background='#241F17'\" onmouseleave=\"this.style.background='#11100E'\">"
       +(p.photo
         ?"<img src='"+p.photo+"' style='width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid rgba(198,164,109,0.3)'/>"
         :"<div style='width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#8B6914,#C6A46D);display:flex;align-items:center;justify-content:center;color:#000;font-weight:700;font-size:13px;flex-shrink:0'>"+p.name[0]+"</div>")
-      +"<div style='flex:1;min-width:0'>"
-      +"<div style='color:#EAEAEA;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>"+p.name+"</div>"
+      +"<div style='flex:1;min-width:0;color:#F7F2EA'>"
+      +"<div style='color:#F7F2EA;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>"+p.name+"</div>"
       +"<div style='color:#666;font-size:10px'>"+(p.treatment||"Sem tratamento")+age+"</div>"
       +"</div></div>";
   }).join("");
@@ -3947,8 +3962,8 @@ window.aptSearch=function(val){
   var alreadyExact=matches.some(function(p){return p.name.toLowerCase()===val.toLowerCase();});
   if(!alreadyExact&&val.length>1){
     html2+="<div onclick='openQuickReg()' "
-      +"style='display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-top:1px solid rgba(198,164,109,0.1);transition:background 0.1s' "
-      +"onmouseenter=\"this.style.background='rgba(198,164,109,0.06)'\" onmouseleave=\"this.style.background='transparent'\">"
+      +"style='display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-top:1px solid rgba(198,164,109,0.1);transition:background 0.1s;background:#11100E;color:#F7F2EA' "
+      +"onmouseenter=\"this.style.background='#241F17'\" onmouseleave=\"this.style.background='#11100E'\">"
       +"<div style='width:32px;height:32px;border-radius:50%;background:rgba(198,164,109,0.1);border:1px dashed rgba(198,164,109,0.4);display:flex;align-items:center;justify-content:center;color:#C6A46D;font-size:18px;flex-shrink:0'>+</div>"
       +"<div>"
       +"<div style='color:#C6A46D;font-size:12px;font-weight:600'>Cadastrar novo paciente</div>"
@@ -5332,7 +5347,7 @@ function pagePts(){
     }).join("")}
   </div>
   <div class="card" style="padding:0;overflow:hidden">
-    ${filtered.length===0?emptyState("🦷","Nenhum paciente encontrado","Tente outro nome ou cadastre um novo paciente.","+ Novo Paciente","set({selPt:'new'})")
+    ${filtered.length===0?emptyState("🦷","Nenhum paciente encontrado","Tente outro nome ou cadastre um novo paciente.","+ Novo Paciente","addPt()")
     :filtered.map(pt=>`<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid rgba(198,164,109,0.12);transition:background .1s"
       onmouseenter="this.style.background='#C6A46D0d'" onmouseleave="this.style.background='transparent'">
       <div onclick="set({selPt:${pt.id},ptTab:'info'})" style="display:flex;align-items:center;gap:10px;flex:1;cursor:pointer;min-width:0">
@@ -6332,10 +6347,32 @@ window.addPt=()=>{
     photo:null,xrays:[],notes:"",docs:[],odontogram:{},anamBucal:null,anamFacial:null};
   const nps=[...ST.pts,np];save("rof_pts",nps);set({pts:nps,selPt:np.id,ptTab:"info"});
 };
+let _ptSaveTimer=null;
+function flushPtSave(){
+  if(_ptSaveTimer){
+    clearTimeout(_ptSaveTimer);
+    _ptSaveTimer=null;
+    save("rof_pts",ST.pts);
+  }
+}
+function schedulePtSave(){
+  if(_ptSaveTimer)clearTimeout(_ptSaveTimer);
+  _ptSaveTimer=setTimeout(()=>{
+    _ptSaveTimer=null;
+    save("rof_pts",ST.pts);
+  },500);
+}
+window.addEventListener("beforeunload",flushPtSave);
 window.updPt=(id,key,val,immediate)=>{
   const nps=ST.pts.map(x=>x.id===id?{...x,[key]:val}:x);
-  ST.pts=nps;save("rof_pts",nps);
-  if(immediate)set({pts:nps});
+  ST.pts=nps;
+  if(immediate){
+    flushPtSave();
+    save("rof_pts",nps);
+    set({pts:nps});
+  }else{
+    schedulePtSave();
+  }
 };
 window.setPtPhoto=(id,inp)=>{const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{updPt(id,"photo",ev.target.result,true);toast("Foto salva!","success");};r.readAsDataURL(f);};
 window.addXray=(id,inp)=>{Array.from(inp.files).forEach(file=>{const r=new FileReader();r.onload=ev=>{const p=ST.pts.find(x=>x.id===id);updPt(id,"xrays",[...(p.xrays||[]),{name:file.name,data:ev.target.result}]);};r.readAsDataURL(file);});};
@@ -9178,11 +9215,11 @@ window.procSearch=function(val){
     var d=document.createElement("div");
     d.setAttribute("data-id",String(p.id));
     d.setAttribute("data-name",p.n);
-    d.style.cssText="padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(198,164,109,0.07)";
-    d.addEventListener("mouseenter",function(){this.style.background="rgba(198,164,109,0.08)";});
-    d.addEventListener("mouseleave",function(){this.style.background="";});
+    d.style.cssText="padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(198,164,109,0.07);background:#11100E;color:#F7F2EA";
+    d.addEventListener("mouseenter",function(){this.style.background="#241F17";});
+    d.addEventListener("mouseleave",function(){this.style.background="#11100E";});
     d.addEventListener("click",function(){procSelect(this);});
-    d.innerHTML="<div style='color:#EAEAEA;font-size:13px;font-weight:500'>"+p.n+"</div>"
+    d.innerHTML="<div style='color:#F7F2EA;font-size:13px;font-weight:500'>"+p.n+"</div>"
       +"<div style='color:#666;font-size:10px'>"+p.c+" · R$ "+p.p.toLocaleString("pt-BR")+"</div>";
     drop.appendChild(d);
   });
