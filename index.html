@@ -1637,7 +1637,7 @@ window.renderContrato=function(p){
       <div style="font-size:12px;color:#888;line-height:2">
         <b style="color:#E2C99A;font-size:13px">Dra. Rossana Batista Fucks</b> — Cirurgiã-Dentista<br/>
         CPF: 546.313.190-20 &nbsp;·&nbsp; CRO/SC 21403<br/>
-        R. 220, nº 200 - Sala 02, Bairro Meia Praia — Itapema/SC
+        R. 220, nº 200 - Sala 02 - Edifício Paris, Bairro Meia Praia — Itapema/SC
       </div>
     </div>
 
@@ -1853,7 +1853,7 @@ window.printContrato=function(ptId){
   </style></head><body>
 
   <h1>Contrato de Prestação de Serviços Odontológicos</h1>
-  <div class="sub">CRO/SC 21403 &nbsp;·&nbsp; R. 220, nº 200 - Sala 02, Meia Praia — Itapema/SC</div>
+  <div class="sub">CRO/SC 21403 &nbsp;·&nbsp; R. 220, nº 200 - Sala 02, Ed. Paris, Meia Praia — Itapema/SC</div>
 
   <h2>Partes</h2>
   <div class="box">
@@ -1862,7 +1862,7 @@ window.printContrato=function(ptId){
   </div>
   <div class="box">
     <b>CONTRATADO(A):</b> Dra. Rossana Batista Fucks, Cirurgiã-Dentista, inscrita no CPF 546.313.190-20 e CRO/SC 21403,
-    situada na R. 220, nº 200 - Sala 02, Bairro Meia Praia, Itapema/SC.
+    situada na R. 220, nº 200 - Sala 02, Ed. Paris, Bairro Meia Praia, Itapema/SC.
   </div>
 
   <h2>Cláusula Primeira — Do Objeto</h2>
@@ -2228,41 +2228,253 @@ window.openWhatsMsgTemplates=function(phone,nome,interesse){
   let fmtPhone=phone.replace(/\D/g,"");
   if(fmtPhone.length===10||fmtPhone.length===11)fmtPhone="55"+fmtPhone;
   const primeiroNome=(nome||"").split(" ")[0];
-  const templates=[
-    {ic:"👋",titulo:"Primeiro contato",msg:`Olá, ${primeiroNome}! 😊\n\nTudo bem? Vi que você entrou em contato conosco!\n\nSou a Dra. Rossana, especialista em Método ROF™ — Reabilitação Oral & Facial Integrada.\n\nPodemos agendar uma avaliação gratuita? Quando você teria disponibilidade? 🗓️`},
-    {ic:"📅",titulo:"Confirmação de consulta",msg:`Olá, ${primeiroNome}! 😊\n\nPassando para confirmar sua consulta amanhã no Método ROF™.\n\nQualquer dúvida ou precisar reagendar, é só me avisar!\n\nDra. Rossana — CRO/SC 21403`},
-    {ic:"💰",titulo:"Orçamento enviado",msg:`Olá, ${primeiroNome}! 😊\n\nConforme conversamos, segue o orçamento do seu tratamento${interesse?" de "+interesse:""}.\n\nTemos condições especiais de parcelamento! 💳\n\nQualquer dúvida estou à disposição.\n\nDra. Rossana Batista Fucks — Método ROF™`},
-    {ic:"⏳",titulo:"Lembrete de retorno",msg:`Olá, ${primeiroNome}! Tudo bem? 😊\n\nPassando para lembrar que está na hora do seu retorno!\n\nVamos agendar? Tenho horários disponíveis esta semana. 📅\n\nDra. Rossana — Método ROF™`},
-    {ic:"🎉",titulo:"Pós-procedimento",msg:`Olá, ${primeiroNome}! 😊\n\nEspero que esteja se sentindo bem após o procedimento de hoje!\n\nLembre-se das orientações que passei. Qualquer desconforto ou dúvida, pode me chamar a qualquer hora. 💛\n\nDra. Rossana — Método ROF™`},
-    {ic:"🌟",titulo:"Avaliação / Feedback",msg:`Olá, ${primeiroNome}! Tudo bem? 😊\n\nFoi um prazer atendê-la(o)! ✨\n\nSua opinião é muito importante para mim. Se quiser, pode deixar uma avaliação no Google — leva só 1 minuto e ajuda muito!\n\nGrande abraço 💛\nDra. Rossana — Método ROF™`},
-    {ic:"📋",titulo:"Orientações pós-procedimento",msg:`Olá, ${primeiroNome}! 😊\n\nSegue um resumo das orientações pós-procedimento:\n\n• Evite alimentos quentes nas próximas 2h\n• Não fume ou consuma álcool por 24h\n• Tome a medicação conforme prescrito\n• Em caso de dor intensa ou inchaço, me avise\n\nQualquer dúvida estou aqui! 💛\nDra. Rossana — Método ROF™`},
-    {ic:"📆",titulo:"Reagendamento",msg:`Olá, ${primeiroNome}! 😊\n\nVi que sua consulta não pôde ser realizada. Sem problema!\n\nVamos remarcar? Qual dia fica melhor para você esta semana? 📅\n\nDra. Rossana — Método ROF™`},
+  // Guarda o telefone no window pro envio funcionar do botão
+  window._whatsCtx={phone:fmtPhone,nome:nome||"",interesse:interesse||""};
+
+  // ── TEMPLATES PADRÃO (com placeholders {nome} e {interesse}) ──
+  const TEMPLATES_PADRAO=[
+    {id:"primeiro",ic:"👋",titulo:"Primeiro contato",msg:`Olá, {nome}! 😊\n\nTudo bem? Vi que você entrou em contato conosco!\n\nSou a Dra. Rossana Fucks, cirurgiã-dentista em Itapema, especialista em reabilitação oral e harmonização facial integrada.\n\nPodemos agendar sua avaliação? Quando você teria disponibilidade essa semana? 🗓️`},
+    {id:"confirma",ic:"📅",titulo:"Confirmação de consulta",msg:`Olá, {nome}! 😊\n\nPassando para confirmar sua consulta amanhã com a Dra. Rossana Fucks.\n\n📍 Rua 220, nº 200, Sala 2 — Edifício Paris — Meia Praia, Itapema/SC\n\nQualquer dúvida ou se precisar reagendar, é só me avisar por aqui!\n\nDra. Rossana Fucks — CRO/SC 21403`},
+    {id:"orcamento",ic:"💰",titulo:"Orçamento enviado",msg:`Olá, {nome}! 😊\n\nConforme conversamos, segue o orçamento do seu tratamento{interesse}.\n\nTemos condições especiais de parcelamento. 💳\n\nQualquer dúvida estou à disposição por aqui!\n\nDra. Rossana Fucks — CRO/SC 21403`},
+    {id:"retorno",ic:"⏳",titulo:"Lembrete de retorno",msg:`Olá, {nome}! Tudo bem? 😊\n\nPassando para lembrar que está na hora do seu retorno aqui no consultório.\n\nVamos agendar? Tenho horários disponíveis esta semana. 📅\n\nDra. Rossana Fucks — CRO/SC 21403`},
+    {id:"pos",ic:"🎉",titulo:"Pós-procedimento",msg:`Olá, {nome}! 😊\n\nEspero que esteja se sentindo bem após o procedimento de hoje!\n\nLembre-se das orientações que passei. Qualquer desconforto ou dúvida, pode me chamar a qualquer hora. 💛\n\nDra. Rossana Fucks`},
+    {id:"avaliacao",ic:"🌟",titulo:"Avaliação / Feedback",msg:`Olá, {nome}! Tudo bem? 😊\n\nFoi um prazer atendê-la(o)! ✨\n\nSua opinião é muito importante. Se quiser, pode deixar uma avaliação no Google — leva só 1 minuto e ajuda muito o consultório!\n\nGrande abraço 💛\nDra. Rossana Fucks`},
+    {id:"orientacoes",ic:"📋",titulo:"Orientações pós-procedimento",msg:`Olá, {nome}! 😊\n\nSegue um resumo das orientações pós-procedimento:\n\n• Evite alimentos quentes nas próximas 2h\n• Não fume ou consuma álcool por 24h\n• Tome a medicação conforme prescrito\n• Em caso de dor intensa ou inchaço, me avise imediatamente\n\nQualquer dúvida estou aqui! 💛\nDra. Rossana Fucks`},
+    {id:"reagendar",ic:"📆",titulo:"Reagendamento",msg:`Olá, {nome}! 😊\n\nVi que sua consulta não pôde ser realizada. Sem problema!\n\nVamos remarcar? Qual dia da semana fica melhor para você? 📅\n\nDra. Rossana Fucks — CRO/SC 21403`},
+    {id:"endereco",ic:"📍",titulo:"Endereço do consultório",msg:`Olá, {nome}! 😊\n\nSegue o endereço para sua consulta:\n\n📍 Rua 220, nº 200, Sala 2\nEdifício Paris\nMeia Praia — Itapema/SC\n\nQualquer dúvida na chegada, é só me chamar por aqui!\n\nDra. Rossana Fucks`},
+    {id:"aniversario",ic:"🎂",titulo:"Aniversário",msg:`Olá, {nome}! 🎂✨\n\nUm dia muito especial e cheio de luz pra você!\n\nQue este novo ciclo te traga muita saúde, sorrisos e realizações. 💛\n\nFeliz aniversário!\n\nDra. Rossana Fucks`},
   ];
+
+  // ── CARREGAR TEMPLATES PERSONALIZADOS (se existirem) ──
+  let customs=[];
+  try{
+    const raw=localStorage.getItem("rof_whats_templates");
+    if(raw)customs=JSON.parse(raw)||[];
+  }catch(e){customs=[];}
+
+  // Merge: padrão + edições do usuário (edição sobrescreve por id)
+  const mergedTemplates=TEMPLATES_PADRAO.map(t=>{
+    const edited=customs.find(c=>c.id===t.id);
+    return edited?{...t,msg:edited.msg,titulo:edited.titulo||t.titulo}:t;
+  });
+  // Adiciona templates novos criados pelo usuário (sem id em TEMPLATES_PADRAO)
+  customs.filter(c=>!TEMPLATES_PADRAO.find(t=>t.id===c.id)).forEach(c=>{
+    mergedTemplates.push({id:c.id,ic:c.ic||"💬",titulo:c.titulo||"Personalizado",msg:c.msg||""});
+  });
+
+  // Substitui placeholders {nome} e {interesse}
+  const renderMsg=(rawMsg)=>rawMsg
+    .replace(/\{nome\}/g,primeiroNome||"")
+    .replace(/\{interesse\}/g,interesse?" de "+interesse:"");
+
+  const templates=mergedTemplates.map(t=>({...t,msg:renderMsg(t.msg),rawMsg:t.msg}));
+
+  // Guarda templates no window pro handler acessar
+  window._whatsTpls=templates;
+  window._whatsTplsRaw=mergedTemplates;
+
+  // Remove modal antigo se existir
+  document.getElementById("whats-tpl-modal")?.remove();
   const modal=document.createElement("div");
   modal.className="mbg";modal.id="whats-tpl-modal";
-  modal.innerHTML=`<div class="mbx" style="max-width:520px">
+  // Escapa apenas HTML básico pra preview (sem mexer em aspas)
+  const escapeHTML=(s)=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  modal.innerHTML=`<div class="mbx" style="max-width:540px">
     <div class="mhd">
       <div class="mhd-title">📱 WhatsApp — Mensagens Prontas</div>
       <button onclick="document.getElementById('whats-tpl-modal').remove()" style="background:none;border:none;color:#555;font-size:22px;cursor:pointer;line-height:1">✕</button>
     </div>
     <div class="mbd">
-      <div style="color:#888;font-size:11px;margin-bottom:12px">Clique em uma mensagem para editar e enviar para <strong style="color:#E2C99A">${nome}</strong></div>
+      <div style="color:#888;font-size:11px;margin-bottom:12px">Clique em uma mensagem para usar, ou no ✏️ para editar o template padrão. Enviar para <strong style="color:#E2C99A">${escapeHTML(nome||"paciente")}</strong></div>
       <div style="margin-bottom:12px">
         <label class="lbl">Mensagem personalizada</label>
-        <textarea id="whats-custom-txt" rows="4" class="inp" style="resize:vertical;font-size:12px" placeholder="Digite ou edite uma mensagem personalizada..."></textarea>
-        <button onclick="(function(){var t=document.getElementById('whats-custom-txt').value.trim();if(!t){toast('Digite uma mensagem.','warning');return;}window.open('https://wa.me/${fmtPhone}?text='+encodeURIComponent(t),'_blank');document.getElementById('whats-tpl-modal').remove();})()" class="bp" style="width:100%;margin-top:8px;font-size:12px;padding:9px">📱 Enviar WhatsApp</button>
+        <textarea id="whats-custom-txt" rows="5" class="inp" style="resize:vertical;font-size:12px" placeholder="Digite ou edite uma mensagem personalizada..."></textarea>
+        <button id="whats-send-btn" class="bp" style="width:100%;margin-top:8px;font-size:13px;padding:11px;font-weight:800">📱 ENVIAR WHATSAPP</button>
       </div>
-      <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px">Templates rápidos</div>
-      <div style="display:flex;flex-direction:column;gap:6px">
-        ${templates.map(t=>`<div onclick="document.getElementById('whats-custom-txt').value=${JSON.stringify(t.msg)}" style="padding:9px 12px;background:#0D0D0D;border:1px solid rgba(198,164,109,0.12);border-radius:8px;cursor:pointer;transition:border-color .15s" onmouseenter="this.style.borderColor='rgba(198,164,109,0.35)'" onmouseleave="this.style.borderColor='rgba(198,164,109,0.12)'">
-          <div style="font-size:12px;color:#E2C99A;font-weight:600">${t.ic} ${t.titulo}</div>
-          <div style="font-size:10px;color:#555;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.msg.substring(0,80)}...</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700">Templates rápidos — clique para usar</div>
+        <button onclick="abrirGerenciadorTemplates()" class="bg" style="padding:4px 8px;font-size:10px">⚙️ Gerenciar</button>
+      </div>
+      <div id="whats-tpls-list" style="display:flex;flex-direction:column;gap:6px">
+        ${templates.map((t,i)=>`<div data-tpl-idx="${i}" style="padding:10px 12px;background:#0D0D0D;border:1px solid rgba(198,164,109,0.12);border-radius:8px;cursor:pointer;transition:all .15s;position:relative">
+          <div style="display:flex;justify-content:space-between;align-items:start;gap:8px">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;color:#E2C99A;font-weight:700">${t.ic} ${escapeHTML(t.titulo)}</div>
+              <div style="font-size:10px;color:#666;margin-top:4px;line-height:1.4;max-height:32px;overflow:hidden">${escapeHTML(t.msg.substring(0,110))}...</div>
+            </div>
+            <button onclick="event.stopPropagation();editarTemplate('${t.id}')" title="Editar template" style="background:none;border:1px solid rgba(198,164,109,0.2);border-radius:6px;color:#888;padding:4px 8px;cursor:pointer;font-size:11px;flex-shrink:0">✏️</button>
+          </div>
         </div>`).join("")}
       </div>
     </div>
   </div>`;
-  document.getElementById("whats-tpl-modal")?.remove();
   document.body.appendChild(modal);
+
+  // ── Handler do botão ENVIAR ──
+  const sendBtn=document.getElementById("whats-send-btn");
+  sendBtn.addEventListener("click",function(){
+    const txt=document.getElementById("whats-custom-txt").value.trim();
+    if(!txt){toast("Digite ou escolha uma mensagem antes de enviar.","warning");return;}
+    const url="https://wa.me/"+window._whatsCtx.phone+"?text="+encodeURIComponent(txt);
+    window.open(url,"_blank");
+    document.getElementById("whats-tpl-modal")?.remove();
+    toast("WhatsApp aberto em nova aba ✓","success");
+  });
+
+  // ── Handler dos templates (delegação) ──
+  const listEl=document.getElementById("whats-tpls-list");
+  listEl.addEventListener("click",function(e){
+    // Se clicou no botão editar, não preenche o textarea
+    if(e.target.closest("button"))return;
+    const card=e.target.closest("[data-tpl-idx]");
+    if(!card)return;
+    const idx=Number(card.dataset.tplIdx);
+    const tpl=window._whatsTpls?.[idx];
+    if(!tpl)return;
+    const ta=document.getElementById("whats-custom-txt");
+    ta.value=tpl.msg;
+    ta.focus();
+    // Feedback visual
+    card.style.borderColor="#22c55e";
+    card.style.background="rgba(34,197,94,0.06)";
+    setTimeout(()=>{
+      card.style.borderColor="rgba(198,164,109,0.12)";
+      card.style.background="#0D0D0D";
+    },800);
+    ta.scrollIntoView({behavior:"smooth",block:"center"});
+  });
+
+  // Hover dos cards
+  listEl.addEventListener("mouseover",function(e){
+    const card=e.target.closest("[data-tpl-idx]");
+    if(card&&!card.style.background.includes("34,197"))card.style.borderColor="rgba(198,164,109,0.4)";
+  });
+  listEl.addEventListener("mouseout",function(e){
+    const card=e.target.closest("[data-tpl-idx]");
+    if(card&&!card.style.background.includes("34,197"))card.style.borderColor="rgba(198,164,109,0.12)";
+  });
+
+  // Fecha modal ao clicar fora
+  modal.addEventListener("click",function(e){
+    if(e.target===modal)modal.remove();
+  });
+};
+
+// ════════════════════════════════════════════════════════════════
+// EDITOR DE TEMPLATES — editar uma mensagem específica
+// ════════════════════════════════════════════════════════════════
+window.editarTemplate=function(templateId){
+  const tpl=window._whatsTplsRaw?.find(t=>t.id===templateId);
+  if(!tpl)return;
+  // Remove modal de edição anterior se houver
+  document.getElementById("edit-tpl-modal")?.remove();
+  const m=document.createElement("div");
+  m.className="mbg";m.id="edit-tpl-modal";
+  m.style.zIndex="10001"; // Acima do modal principal
+  const escapeHTML=(s)=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  m.innerHTML=`<div class="mbx" style="max-width:520px">
+    <div class="mhd">
+      <div class="mhd-title">✏️ Editar Template — ${escapeHTML(tpl.titulo)}</div>
+      <button onclick="document.getElementById('edit-tpl-modal').remove()" style="background:none;border:none;color:#555;font-size:22px;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <div class="mbd">
+      <div style="background:rgba(198,164,109,0.06);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:#888;line-height:1.6">
+        💡 <b style="color:#C6A46D">Variáveis disponíveis:</b><br/>
+        <code style="color:#E2C99A">{nome}</code> — primeiro nome do paciente<br/>
+        <code style="color:#E2C99A">{interesse}</code> — interesse/tratamento (com " de " na frente)
+      </div>
+      <label class="lbl">Título do template</label>
+      <input type="text" id="edit-tpl-titulo" value="${escapeHTML(tpl.titulo)}" class="inp" style="margin-bottom:10px"/>
+      <label class="lbl">Mensagem (use {nome} e {interesse} como variáveis)</label>
+      <textarea id="edit-tpl-msg" rows="12" class="inp" style="resize:vertical;font-size:12px;line-height:1.5;font-family:inherit">${escapeHTML(tpl.msg)}</textarea>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button onclick="resetarTemplate('${templateId}')" class="bg" style="padding:10px 14px;font-size:11px;color:#888">↺ Restaurar padrão</button>
+        <button onclick="salvarTemplateEditado('${templateId}')" class="bp" style="flex:1;padding:10px;font-size:12px;font-weight:800">💾 Salvar Alterações</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  m.addEventListener("click",e=>{if(e.target===m)m.remove();});
+};
+
+window.salvarTemplateEditado=function(templateId){
+  const titulo=document.getElementById("edit-tpl-titulo").value.trim();
+  const msg=document.getElementById("edit-tpl-msg").value.trim();
+  if(!titulo||!msg){toast("Preencha título e mensagem.","warning");return;}
+  let customs=[];
+  try{const raw=localStorage.getItem("rof_whats_templates");if(raw)customs=JSON.parse(raw)||[];}catch(e){}
+  const idx=customs.findIndex(c=>c.id===templateId);
+  const novo={id:templateId,titulo,msg};
+  if(idx>=0)customs[idx]=novo;else customs.push(novo);
+  localStorage.setItem("rof_whats_templates",JSON.stringify(customs));
+  toast("Template salvo ✓","success");
+  document.getElementById("edit-tpl-modal").remove();
+  // Recarrega o modal principal com os templates atualizados
+  const ctx=window._whatsCtx;
+  if(ctx){
+    document.getElementById("whats-tpl-modal")?.remove();
+    openWhatsMsgTemplates(ctx.phone,ctx.nome,ctx.interesse);
+  }
+};
+
+window.resetarTemplate=function(templateId){
+  if(!confirm("Restaurar este template para o texto padrão? Sua versão personalizada será perdida."))return;
+  let customs=[];
+  try{const raw=localStorage.getItem("rof_whats_templates");if(raw)customs=JSON.parse(raw)||[];}catch(e){}
+  customs=customs.filter(c=>c.id!==templateId);
+  localStorage.setItem("rof_whats_templates",JSON.stringify(customs));
+  toast("Template restaurado ao padrão ✓","success");
+  document.getElementById("edit-tpl-modal").remove();
+  const ctx=window._whatsCtx;
+  if(ctx){
+    document.getElementById("whats-tpl-modal")?.remove();
+    openWhatsMsgTemplates(ctx.phone,ctx.nome,ctx.interesse);
+  }
+};
+
+// ════════════════════════════════════════════════════════════════
+// GERENCIADOR DE TEMPLATES — visão geral / resetar tudo
+// ════════════════════════════════════════════════════════════════
+window.abrirGerenciadorTemplates=function(){
+  let customs=[];
+  try{const raw=localStorage.getItem("rof_whats_templates");if(raw)customs=JSON.parse(raw)||[];}catch(e){}
+  document.getElementById("manage-tpl-modal")?.remove();
+  const m=document.createElement("div");
+  m.className="mbg";m.id="manage-tpl-modal";
+  m.style.zIndex="10001";
+  m.innerHTML=`<div class="mbx" style="max-width:480px">
+    <div class="mhd">
+      <div class="mhd-title">⚙️ Gerenciar Templates WhatsApp</div>
+      <button onclick="document.getElementById('manage-tpl-modal').remove()" style="background:none;border:none;color:#555;font-size:22px;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <div class="mbd">
+      <div style="color:#888;font-size:11px;margin-bottom:14px;line-height:1.6">
+        Você tem <b style="color:#E2C99A">${customs.length}</b> template(s) personalizado(s).<br/>
+        Clique no ✏️ ao lado de cada template para editá-lo individualmente.
+      </div>
+      ${customs.length>0?`
+        <div style="background:#0a0a0a;border-radius:8px;padding:10px;margin-bottom:14px">
+          <div style="color:#C6A46D;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:8px">Templates editados:</div>
+          ${customs.map(c=>`<div style="padding:6px 0;color:#aaa;font-size:11px;border-bottom:1px solid rgba(198,164,109,0.08)">• ${c.titulo||c.id}</div>`).join("")}
+        </div>
+      `:""}
+      <button onclick="resetarTodosTemplates()" class="bg" style="width:100%;padding:10px;font-size:11px;color:#ef4444;border-color:#ef444444">↺ Restaurar TODOS ao padrão</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  m.addEventListener("click",e=>{if(e.target===m)m.remove();});
+};
+
+window.resetarTodosTemplates=function(){
+  if(!confirm("Restaurar TODOS os templates ao padrão original? Todas as edições serão perdidas."))return;
+  localStorage.removeItem("rof_whats_templates");
+  toast("Todos os templates restaurados ✓","success");
+  document.getElementById("manage-tpl-modal").remove();
+  const ctx=window._whatsCtx;
+  if(ctx){
+    document.getElementById("whats-tpl-modal")?.remove();
+    openWhatsMsgTemplates(ctx.phone,ctx.nome,ctx.interesse);
+  }
 };
 
 // Atalho rápido para WhatsApp a partir de um paciente
@@ -2756,7 +2968,7 @@ function pageAgenda(){
 // ── ENDEREÇO DO CONSULTÓRIO (editável) ─────────────────────────
 const CONSULTORIO={
   nome:"Dra. Rossana Fucks",
-  end:"Rua das Palmeiras, 123 — Itapema/SC",
+  end:"Rua 220, nº 200, Sala 2 — Edifício Paris — Meia Praia, Itapema/SC",
   fone:"(47) 99999-9999",
 };
 
