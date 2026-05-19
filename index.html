@@ -1319,6 +1319,99 @@ body {
 .dash-action strong {
   font-size: 12px;
 }
+.sv-grid {
+  display: grid;
+  grid-template-columns: minmax(0,0.95fr) minmax(0,1.35fr);
+  gap: 14px;
+  align-items: start;
+}
+.sv-panel {
+  border: 1px solid rgba(226,201,154,0.12);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.03), transparent 28%),
+    var(--surface2);
+  box-shadow: var(--shadow-soft);
+  padding: 16px;
+}
+.sv-panel-title {
+  color: var(--white);
+  font-weight: 800;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.sv-panel-sub {
+  color: var(--gray2);
+  font-size: 11px;
+  margin-bottom: 14px;
+  line-height: 1.55;
+}
+.sv-template-grid {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 8px;
+}
+.sv-template {
+  min-height: 72px;
+  border: 1px solid rgba(226,201,154,0.12);
+  border-radius: var(--radius);
+  background: rgba(255,255,255,0.024);
+  color: var(--white);
+  cursor: pointer;
+  padding: 11px;
+  text-align: left;
+  transition: var(--transition);
+}
+.sv-template:hover,
+.sv-template.on {
+  border-color: rgba(240,214,156,0.42);
+  background: rgba(201,168,111,0.08);
+  transform: translateY(-1px);
+}
+.sv-template span {
+  display: block;
+  color: var(--gold-light);
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+.sv-template strong {
+  display: block;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.sv-template small {
+  display: block;
+  color: var(--gray2);
+  font-size: 10px;
+  margin-top: 4px;
+}
+.sv-msg {
+  min-height: 310px;
+  resize: vertical;
+  line-height: 1.65;
+  font-size: 13px;
+}
+.sv-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.sv-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+@media (max-width: 900px) {
+  .sv-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 620px) {
+  .sv-template-grid {
+    grid-template-columns: 1fr;
+  }
+}
 @media (max-width: 1100px) {
   .dash-hero {
     grid-template-columns: 1fr;
@@ -1452,6 +1545,40 @@ const LOGO_B64="iVBORw0KGgoAAAANSUhEUgAAAG4AAABuCAYAAADGWyb7AAAgpklEQVR42u2deZhd
 const SUPABASE_URL      = '';   // ex: 'https://xyzxyz.supabase.co'
 const SUPABASE_ANON_KEY = '';   // ex: 'eyJhbGci...'
 const APP_PASSWORD      = 'rof2024';
+const AUTH_TOKEN_KEY    = 'rof_auth_token';
+const AUTH_TOKEN_KEYS   = [AUTH_TOKEN_KEY,'rof_jwt','rof_token'];
+
+function getAuthToken(){
+  for(const key of AUTH_TOKEN_KEYS){
+    const token=localStorage.getItem(key);
+    if(token)return token;
+  }
+  return "";
+}
+function setAuthToken(token){
+  if(!token)return;
+  localStorage.setItem(AUTH_TOKEN_KEY,token);
+}
+function clearAuthToken(){
+  AUTH_TOKEN_KEYS.forEach(key=>localStorage.removeItem(key));
+}
+async function loginWithApi(password){
+  const res=await fetch("/api/auth",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({password})
+  });
+  let data={};
+  try{data=await res.json();}catch{}
+  if(!res.ok||!data.token){
+    const err=new Error(data.error||"Falha ao autenticar");
+    err.status=res.status;
+    throw err;
+  }
+  setAuthToken(data.token);
+  localStorage.setItem("rof_auth","ok");
+  return data.token;
+}
 
 // Cria cliente Supabase somente se as credenciais forem válidas
 const _sbEnabled = SUPABASE_URL.startsWith('https://') && SUPABASE_ANON_KEY.length > 20;
@@ -3010,16 +3137,28 @@ window.doLogin=async function(){
   const p=document.getElementById("ls-pwd")?.value||"";
   const btn=document.querySelector(".ls-btn");
   if(btn){btn.disabled=true;btn.querySelector("span").textContent="Verificando...";}
-  const ok=p===APP_PASSWORD;
-  if(ok||(!navigator.onLine&&localStorage.getItem("rof_auth")==="ok")){
-    if(ok)localStorage.setItem("rof_auth","ok");
+  let ok=false,localOnly=false;
+  try{
+    await loginWithApi(p);
+    ok=true;
+  }catch(err){
+    const canUseOffline=(!navigator.onLine&&localStorage.getItem("rof_auth")==="ok");
+    const apiUnavailable=!navigator.onLine||!err.status||err.status>=500;
+    if(apiUnavailable&&(p===APP_PASSWORD||canUseOffline)){
+      ok=true;
+      localOnly=true;
+      if(p===APP_PASSWORD)localStorage.setItem("rof_auth","ok");
+    }
+  }
+  if(ok){
     const ls=document.getElementById("ls"),app=document.getElementById("layout");
     if(ls){ls.classList.add("out");setTimeout(()=>ls.remove(),500);}
     if(app)setTimeout(()=>app.classList.add("show"),200);
     sbOpen=!isMob();applySB();
     const _hasData=ST.pts.length>0||ST.apts.length>0||ST.apts.length>0;
     if(_hasData){render();}else{buildNav();showSkeleton();}
-    if(ok)await syncFromCloud();
+    if(localOnly)toast("Modo local ativado. A Júlia IA volta quando a sessão online estiver disponível.","warning");
+    else await syncFromCloud();
   }else{
     const inp=document.getElementById("ls-pwd");
     if(inp){
@@ -3032,6 +3171,7 @@ window.doLogin=async function(){
 };
 window.doLogout=function(){
   localStorage.removeItem("rof_auth");
+  clearAuthToken();
   location.reload();
 };
 // Auto-login
@@ -3230,12 +3370,12 @@ function applySB(){
     });
   }
 }
-const NAV=[{id:"dashboard",e:"◈",l:"Dashboard"},{id:"agenda",e:"📅",l:"Agenda"},{id:"patients",e:"🦷",l:"Pacientes"},{id:"crm",e:"🎯",l:"CRM / Leads"},{id:"financeiro",e:"💵",l:"Financeiro"},{id:"stock",e:"📦",l:"Estoque"},{id:"procs",e:"🗂️",l:"Procedimentos"},{id:"orientacoes",e:"📋",l:"Orientações Pós"},{id:"relatorios",e:"📊",l:"Relatórios"},{id:"terms",e:"📜",l:"Termos ROF™"},{id:"ai",e:"🤖",l:"Júlia IA"}];
+const NAV=[{id:"dashboard",e:"◈",l:"Dashboard"},{id:"agenda",e:"📅",l:"Agenda"},{id:"ai",e:"💬",l:"Secretária Júlia"},{id:"patients",e:"🦷",l:"Pacientes"},{id:"crm",e:"🎯",l:"CRM / Leads"},{id:"financeiro",e:"💵",l:"Financeiro"},{id:"stock",e:"📦",l:"Estoque"},{id:"procs",e:"🗂️",l:"Procedimentos"},{id:"orientacoes",e:"📋",l:"Orientações Pós"},{id:"relatorios",e:"📊",l:"Relatórios"},{id:"terms",e:"📜",l:"Termos ROF™"}];
 function buildNav(){
   const grps=[
-    {sec:"Principal",ids:["dashboard","agenda","patients","crm"]},
+    {sec:"Principal",ids:["dashboard","agenda","ai","patients","crm"]},
     {sec:"Gestão",ids:["financeiro","stock","procs","orientacoes","relatorios"]},
-    {sec:"Documentos",ids:["terms","ai"]},
+    {sec:"Documentos",ids:["terms"]},
   ];
   const cl=document.getElementById("sidebar")?.classList.contains("closed");
   const navH=grps.map(g=>
@@ -3382,7 +3522,7 @@ function pageDashboard(){
               <button class="dash-action" onclick="go('agenda')"><span>📅</span><strong>Agenda</strong></button>
               <button class="dash-action" onclick="go('patients')"><span>🦷</span><strong>Pacientes</strong></button>
               <button class="dash-action" onclick="go('financeiro')"><span>💵</span><strong>Financeiro</strong></button>
-              <button class="dash-action" onclick="go('orientacoes')"><span>📋</span><strong>Orientações</strong></button>
+              <button class="dash-action" onclick="go('ai')"><span>💬</span><strong>Júlia</strong></button>
             </div>
           </section>
         </div>
@@ -7601,8 +7741,45 @@ window.sendAI=async()=>{
   const inp=document.getElementById("ai-inp");
   const msg=(ST.aiInp||inp?.value||"").trim();
   if(!msg||ST.aiLoad)return;
-  const nm=[...ST.aiMsgs,{r:"u",t:msg},{r:"a",t:"A Júlia IA não está disponível nesta versão. Para ativá-la, configure o deploy completo via Netlify CLI com as variáveis de ambiente ANTHROPIC_API_KEY. Todos os outros módulos — agenda, pacientes, financeiro e estoque — funcionam normalmente com sincronização em nuvem."}];
-  set({aiMsgs:nm,aiLoad:false,aiInp:""});
+  const nm=[...ST.aiMsgs,{r:"u",t:msg}];
+  const finish=t=>set({aiMsgs:[...nm,{r:"a",t}],aiLoad:false});
+  set({aiMsgs:nm,aiLoad:true,aiInp:""});
+
+  const token=getAuthToken();
+  if(!token){
+    finish("Estou em modo local e preciso de uma sessão online para acessar a Júlia IA. Entre novamente quando houver conexão; os demais módulos continuam funcionando normalmente.");
+    return;
+  }
+
+  try{
+    const res=await fetch("/api/ai",{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "Authorization":"Bearer "+token
+      },
+      body:JSON.stringify({messages:nm})
+    });
+    let data={};
+    try{data=await res.json();}catch{}
+
+    if(res.status===401){
+      clearAuthToken();
+      finish("Sua sessão online expirou. Faça login novamente para reativar a Júlia IA; seus dados locais permanecem salvos.");
+      return;
+    }
+    if(!res.ok)throw new Error(data.error||"Erro na Júlia IA");
+
+    const text=(data.text||"").trim();
+    if(!text)throw new Error("Resposta vazia da Júlia IA");
+    finish(text);
+  }catch(err){
+    console.warn("Júlia IA fallback:",err);
+    const fallback=!navigator.onLine
+      ?"Estou sem conexão agora, então não consigo consultar a Júlia IA neste momento. Assim que a internet voltar, tente enviar a mensagem novamente."
+      :"Não consegui falar com a Júlia IA agora. A conversa ficou salva na tela; tente novamente em instantes.";
+    finish(fallback);
+  }
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -8337,6 +8514,374 @@ window.resetarTodasOrientacoes=function(){
   render();
 };
 
+// ═══════════════════════════════════════════════════════════════════
+// SECRETÁRIA VIRTUAL — WhatsApp semi-automático gratuito
+// ═══════════════════════════════════════════════════════════════════
+const SECRETARIA_TEMPLATES=[
+  {id:"boasvindas",ic:"👋",t:"Boas-vindas",sub:"Primeiro contato",msg:`Olá, {nome}! 😊
+
+Tudo bem? Aqui é da clínica da *Dra. Rossana Fucks*.
+
+Recebemos seu contato e podemos te ajudar com o agendamento, informações sobre tratamentos e dúvidas iniciais.
+
+Para seguirmos, me conta rapidinho:
+1. Qual procedimento você procura?
+2. Você já é paciente da clínica?
+3. Tem preferência de dia ou horário?
+
+📍 {consultorio}
+
+Fico à disposição!`},
+  {id:"confirmacao",ic:"📅",t:"Confirmar consulta",sub:"Agenda",msg:`Olá, {nome}! 😊
+
+Passando para confirmar sua consulta com a *Dra. Rossana Fucks*:
+
+📅 *Data:* {data}
+🕐 *Horário:* {hora}
+💆 *Procedimento:* {procedimento}
+
+📍 *Endereço:* {consultorio}
+
+Por favor, confirme sua presença respondendo esta mensagem.
+
+Caso precise remarcar, pedimos que nos avise com pelo menos *24 horas de antecedência*.`},
+  {id:"lembrete",ic:"⏰",t:"Lembrete",sub:"Pré-consulta",msg:`Olá, {nome}! 😊
+
+Lembrando da sua consulta com a *Dra. Rossana Fucks*:
+
+📅 {data}
+🕐 {hora}
+💆 {procedimento}
+
+Se possível, chegue alguns minutinhos antes.
+
+📍 {consultorio}
+
+Te esperamos! ✨`},
+  {id:"reagendar",ic:"🔁",t:"Reagendar",sub:"Remarcação",msg:`Olá, {nome}! 😊
+
+Tudo bem? Passando para reagendarmos sua consulta.
+
+Você teria disponibilidade em algum destes períodos?
+
+• Manhã
+• Tarde
+• Final do dia
+
+Me envie as melhores opções de dia e horário que organizo por aqui.`},
+  {id:"retorno",ic:"🔎",t:"Retorno",sub:"Acompanhamento",msg:`Olá, {nome}! Tudo bem? 😊
+
+Passando para lembrar que está na hora de programarmos seu retorno/acompanhamento.
+
+Esse cuidado ajuda a manter seu tratamento em dia e acompanhar sua evolução.
+
+Qual dia da semana fica melhor para você?`},
+  {id:"orcamento",ic:"💳",t:"Orçamento",sub:"Condições",msg:`Olá, {nome}! 😊
+
+Conforme conversamos, estou à disposição para explicar o orçamento do seu tratamento:
+
+💆 *Tratamento:* {procedimento}
+
+Podemos verificar as melhores formas de pagamento e organizar o início do seu planejamento.
+
+Qualquer dúvida, pode me chamar por aqui.`},
+  {id:"pos",ic:"💛",t:"Pós-procedimento",sub:"Cuidado",msg:`Olá, {nome}! 😊
+
+Passando para saber como você está se sentindo após o procedimento.
+
+Siga as orientações enviadas pela Dra. Rossana e, se sentir dor intensa, inchaço importante ou qualquer desconforto fora do esperado, nos avise por aqui.
+
+Estamos acompanhando você. 💛`},
+  {id:"aniversario",ic:"🎂",t:"Aniversário",sub:"Relacionamento",msg:`🎂 Feliz aniversário, {nome}! 🎉
+
+Em nome da *Dra. Rossana Fucks* e de toda a equipe, desejamos um dia lindo, com muita saúde, alegria e motivos para sorrir.
+
+Obrigada por confiar em nosso cuidado. 💛`}
+];
+
+SECRETARIA_TEMPLATES.splice(0,SECRETARIA_TEMPLATES.length,
+  {id:"boasvindas",ic:"\u{1F44B}",t:"Boas-vindas",sub:"Primeiro contato",msg:`Olá, {nome}! \u{1F44B}
+
+Tudo bem? Aqui é da clínica da *Dra. Rossana Fucks*.
+
+Recebemos seu contato e podemos te ajudar com agendamento, informações sobre tratamentos e dúvidas iniciais.
+
+Para seguirmos, me conta rapidinho:
+1. Qual procedimento você procura?
+2. Você já é paciente da clínica?
+3. Tem preferência de dia ou horário?
+
+\u{1F4CD} {consultorio}
+
+Fico à disposição! \u{2728}`},
+  {id:"confirmacao",ic:"\u{1F4C5}",t:"Confirmar consulta",sub:"Agenda",msg:`Olá, {nome}! \u{1F44B}
+
+Passando para confirmar sua consulta com a *Dra. Rossana Fucks*:
+
+\u{1F4C5} *Data:* {data}
+\u{1F550} *Horário:* {hora}
+\u{1FA77} *Procedimento:* {procedimento}
+
+\u{1F4CD} *Endereço:* {consultorio}
+
+Por favor, confirme sua presença respondendo esta mensagem.
+
+Caso precise remarcar, pedimos que nos avise com pelo menos *24 horas de antecedência*.`},
+  {id:"lembrete",ic:"\u{23F0}",t:"Lembrete",sub:"Pré-consulta",msg:`Olá, {nome}! \u{23F0}
+
+Lembrando da sua consulta com a *Dra. Rossana Fucks*:
+
+\u{1F4C5} {data}
+\u{1F550} {hora}
+\u{1FA77} {procedimento}
+
+Se possível, chegue alguns minutinhos antes.
+
+\u{1F4CD} {consultorio}
+
+Te esperamos! \u{2728}`},
+  {id:"reagendar",ic:"\u{1F501}",t:"Reagendar",sub:"Remarcação",msg:`Olá, {nome}! \u{1F501}
+
+Tudo bem? Passando para reagendarmos sua consulta.
+
+Você teria disponibilidade em algum destes períodos?
+
+\u{25AA} Manhã
+\u{25AA} Tarde
+\u{25AA} Final do dia
+
+Me envie as melhores opções de dia e horário que organizo por aqui.`},
+  {id:"retorno",ic:"\u{1F50E}",t:"Retorno",sub:"Acompanhamento",msg:`Olá, {nome}! Tudo bem? \u{1F50E}
+
+Passando para lembrar que está na hora de programarmos seu retorno/acompanhamento.
+
+Esse cuidado ajuda a manter seu tratamento em dia e acompanhar sua evolução.
+
+Qual dia da semana fica melhor para você?`},
+  {id:"orcamento",ic:"\u{1F4B3}",t:"Orçamento",sub:"Condições",msg:`Olá, {nome}! \u{1F4B3}
+
+Conforme conversamos, estou à disposição para explicar o orçamento do seu tratamento:
+
+\u{1FA77} *Tratamento:* {procedimento}
+
+Podemos verificar as melhores formas de pagamento e organizar o início do seu planejamento.
+
+Qualquer dúvida, pode me chamar por aqui.`},
+  {id:"pos",ic:"\u{1F49B}",t:"Pós-procedimento",sub:"Cuidado",msg:`Olá, {nome}! \u{1F49B}
+
+Passando para saber como você está se sentindo após o procedimento.
+
+Siga as orientações enviadas pela Dra. Rossana e, se sentir dor intensa, inchaço importante ou qualquer desconforto fora do esperado, nos avise por aqui.
+
+Estamos acompanhando você. \u{1F49B}`},
+  {id:"aniversario",ic:"\u{1F382}",t:"Aniversário",sub:"Relacionamento",msg:`\u{1F382} Feliz aniversário, {nome}! \u{1F389}
+
+Em nome da *Dra. Rossana Fucks* e de toda a equipe, desejamos um dia lindo, com muita saúde, alegria e motivos para sorrir.
+
+Obrigada por confiar em nosso cuidado. \u{1F49B}`}
+);
+
+function svTemplateById(id){
+  return SECRETARIA_TEMPLATES.find(t=>t.id===id)||SECRETARIA_TEMPLATES[0];
+}
+
+function svSelectedPatient(){
+  const id=document.getElementById("sv-pt")?.value||"";
+  return ST.pts.find(p=>String(p.id)===String(id))||null;
+}
+
+function svVars(){
+  const p=svSelectedPatient();
+  const procSel=document.getElementById("sv-proc");
+  const proc=procSel?.selectedOptions?.[0]?.textContent||"consulta";
+  const date=document.getElementById("sv-date")?.value||todayISO();
+  const time=document.getElementById("sv-time")?.value||"";
+  return {
+    nome:p?.name?.split(" ")[0]||"paciente",
+    paciente:p?.name||"",
+    data:fmtDate(date),
+    hora:time||"a confirmar",
+    procedimento:proc||"consulta",
+    consultorio:CONSULTORIO.end
+  };
+}
+
+function svRenderMessage(tpl){
+  const vars=svVars();
+  return tpl.msg.replace(/\{(\w+)\}/g,function(_,k){return vars[k]||"";});
+}
+
+function svUpdatePatientInfo(){
+  const info=document.getElementById("sv-pt-info");
+  if(!info)return;
+  const p=svSelectedPatient();
+  if(!p){
+    info.innerHTML="Selecione um paciente para puxar nome e WhatsApp automaticamente.";
+    return;
+  }
+  const phone=p.phone||"Sem telefone";
+  const status=p.status||"Ativo";
+  info.innerHTML=`<b style="color:#E2C99A">${p.name}</b><br/>${phone} · ${status}`;
+}
+
+window.svUseTemplate=function(id){
+  const hid=document.getElementById("sv-template");
+  if(hid)hid.value=id;
+  document.querySelectorAll(".sv-template").forEach(btn=>btn.classList.toggle("on",btn.dataset.tpl===id));
+  svFillMessage();
+};
+
+window.svFillMessage=function(){
+  svUpdatePatientInfo();
+  const tpl=svTemplateById(document.getElementById("sv-template")?.value||"boasvindas");
+  const msg=document.getElementById("sv-msg");
+  if(msg)msg.value=svRenderMessage(tpl);
+};
+
+window.svSend=function(){
+  const p=svSelectedPatient();
+  if(!p){toast("Selecione um paciente primeiro.","warning");return;}
+  const phone=fmtPhone(p.phone||"");
+  if(!phone){toast("Paciente sem telefone cadastrado.","warning");return;}
+  const msg=(document.getElementById("sv-msg")?.value||"").trim();
+  if(!msg){toast("Escreva uma mensagem antes de enviar.","warning");return;}
+  window.open("https://wa.me/"+phone+"?text="+encodeURIComponent(msg),"_blank");
+  toast("WhatsApp aberto com a mensagem da secretária.","success");
+};
+
+window.svCopy=function(){
+  const msg=(document.getElementById("sv-msg")?.value||"").trim();
+  if(!msg){toast("Nada para copiar.","warning");return;}
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(msg).then(()=>toast("Mensagem copiada.","success")).catch(()=>svCopyFallback(msg));
+  }else svCopyFallback(msg);
+};
+
+function svCopyFallback(msg){
+  const ta=document.createElement("textarea");
+  ta.value=msg;document.body.appendChild(ta);ta.select();
+  try{document.execCommand("copy");toast("Mensagem copiada.","success");}
+  catch(e){toast("Não consegui copiar automaticamente.","warning");}
+  ta.remove();
+}
+
+window.svUseAppointment=function(aptId){
+  const a=ST.apts.find(x=>String(x.id)===String(aptId));
+  if(!a)return;
+  const p=ST.pts.find(x=>x.name===a.patient);
+  if(p){const sel=document.getElementById("sv-pt");if(sel)sel.value=p.id;}
+  const dt=document.getElementById("sv-date");if(dt)dt.value=a.date||todayISO();
+  const tm=document.getElementById("sv-time");if(tm)tm.value=a.time||"";
+  const pr=document.getElementById("sv-proc");if(pr&&a.procId)pr.value=String(a.procId);
+  svUseTemplate("confirmacao");
+};
+
+function pageSecretaria(){
+  const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  const pts=[...(ST.pts||[])].sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+  const today=todayISO();
+  const upcoming=[...(ST.apts||[])]
+    .filter(a=>String(a.date||"")>=today)
+    .sort((a,b)=>String(a.date||"").localeCompare(String(b.date||""))||String(a.time||"").localeCompare(String(b.time||"")))
+    .slice(0,5);
+  const firstTpl=SECRETARIA_TEMPLATES[0].id;
+  const procOpts=PROCS.map(p=>`<option value="${p.id}">${esc(p.n)}</option>`).join("");
+  const patientOpts=pts.map(p=>`<option value="${p.id}">${esc(p.name)}${p.phone?" · "+esc(p.phone):" · sem telefone"}</option>`).join("");
+  const upcomingRows=upcoming.map(a=>{
+    const p=ST.pts.find(x=>x.name===a.patient);
+    const pr=PROCS.find(x=>x.id===a.procId);
+    return`<div class="dash-compact-row">
+      ${p?ptAvatar(p.name,36):`<div class="pt-avatar" style="width:36px;height:36px;font-size:13px;background:#C6A46D18;color:#C6A46D;border:1px solid #C6A46D40">?</div>`}
+      <div class="dash-main">
+        <div class="dash-name">${esc(a.patient||"Paciente")}</div>
+        <div class="dash-detail">${fmtDate(a.date)} · ${esc(a.time||"--:--")} · ${esc(pr?.n||"Consulta")}</div>
+      </div>
+      <button class="dash-mini-btn" onclick="svUseAppointment(${a.id})">Usar</button>
+    </div>`;
+  }).join("")||emptyState("📅","Sem consultas futuras","Quando houver agenda, os próximos horários aparecerão aqui.");
+
+  setTimeout(function(){svUseTemplate(firstTpl);},0);
+  return`${stitle("Secretária Virtual")}
+  <div class="dash-shell">
+    <section class="dash-hero">
+      <div>
+        <div class="dash-kicker">Atendimento semi-automático gratuito</div>
+        <h1>Secretária Virtual Júlia</h1>
+        <p>Monte mensagens profissionais para pacientes usando os dados já cadastrados e envie pelo WhatsApp Business sem mensalidade.</p>
+      </div>
+      <div class="dash-hero-side">
+        <div class="dash-today-card">
+          <div class="dash-label">Pacientes</div>
+          <div class="dash-date">${pts.length}</div>
+          <div class="dash-sub">cadastros disponíveis</div>
+        </div>
+        <div class="dash-load-card">
+          <div class="dash-label">Próximas consultas</div>
+          <div class="dash-date">${upcoming.length}</div>
+          <div class="dash-sub">atalhos para confirmação</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="sv-grid">
+      <section class="sv-panel">
+        <div class="sv-panel-title">Dados do atendimento</div>
+        <div class="sv-panel-sub">Escolha o paciente, ajuste data/procedimento e clique em um modelo.</div>
+        <input type="hidden" id="sv-template" value="${firstTpl}"/>
+        <div style="display:grid;gap:10px">
+          <div>
+            <label class="lbl">Paciente</label>
+            <select id="sv-pt" class="inp" onchange="svFillMessage()">
+              <option value="">Selecionar paciente...</option>
+              ${patientOpts}
+            </select>
+          </div>
+          <div id="sv-pt-info" style="color:#777;font-size:11px;line-height:1.6;background:rgba(255,255,255,0.025);border:1px solid rgba(226,201,154,0.1);border-radius:8px;padding:10px">Selecione um paciente para puxar nome e WhatsApp automaticamente.</div>
+          <div class="g2">
+            <div>
+              <label class="lbl">Data</label>
+              <input id="sv-date" type="date" class="inp" value="${todayISO()}" onchange="svFillMessage()"/>
+            </div>
+            <div>
+              <label class="lbl">Hora</label>
+              <input id="sv-time" type="time" class="inp" value="09:00" onchange="svFillMessage()"/>
+            </div>
+          </div>
+          <div>
+            <label class="lbl">Procedimento</label>
+            <select id="sv-proc" class="inp" onchange="svFillMessage()">
+              ${procOpts}
+            </select>
+          </div>
+        </div>
+
+        <div style="height:14px"></div>
+        <div class="sv-panel-title">Modelos rápidos</div>
+        <div class="sv-template-grid">
+          ${SECRETARIA_TEMPLATES.map(t=>`<button class="sv-template${t.id===firstTpl?" on":""}" data-tpl="${t.id}" onclick="svUseTemplate('${t.id}')">
+            <span>${t.ic}</span><strong>${t.t}</strong><small>${t.sub}</small>
+          </button>`).join("")}
+        </div>
+      </section>
+
+      <section class="sv-panel">
+        <div class="sv-panel-title">Mensagem pronta</div>
+        <div class="sv-panel-sub">Você pode editar antes de enviar. O botão abre uma conversa no WhatsApp com o texto preenchido.</div>
+        <textarea id="sv-msg" class="inp sv-msg"></textarea>
+        <div class="sv-actions">
+          <button class="bp" onclick="svSend()" style="flex:1;min-width:180px">📱 Abrir WhatsApp</button>
+          <button class="bg" onclick="svCopy()">Copiar mensagem</button>
+          <button class="bg" onclick="svFillMessage()">Atualizar texto</button>
+        </div>
+        <div style="height:14px"></div>
+        <div class="sv-panel-title">Próximas consultas</div>
+        <div class="sv-panel-sub">Clique em “Usar” para preencher confirmação de consulta automaticamente.</div>
+        <div style="border:1px solid rgba(226,201,154,0.08);border-radius:8px;overflow:hidden">${upcomingRows}</div>
+      </section>
+    </div>
+  </div>`;
+}
+
 
 function render(){
   buildNav();
@@ -8351,7 +8896,7 @@ function render(){
   else if(ST.page==="crm")c=pageCRM();
   else if(ST.page==="orientacoes")c=pageOrientacoes();
   else if(ST.page==="terms")c=pageTerms();
-  else if(ST.page==="ai")c=pageAI();
+  else if(ST.page==="ai")c=pageSecretaria();
   const ct=document.getElementById("content");
   ct.innerHTML=c;
   ct.classList.remove("fade");void ct.offsetWidth;ct.classList.add("fade");
