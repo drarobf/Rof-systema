@@ -3146,6 +3146,15 @@ document.addEventListener("mousemove",function(e){
 });
 
 // â”€â”€ LOGIN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function enterApp(localOnly){
+  const ls=document.getElementById("ls"),app=document.getElementById("layout");
+  if(ls){ls.classList.add("out");setTimeout(()=>ls.remove(),500);}
+  if(app)setTimeout(()=>app.classList.add("show"),200);
+  sbOpen=!isMob();applySB();
+  const _hasData=ST.pts.length>0||ST.apts.length>0||ST.apts.length>0;
+  if(_hasData){render();}else{buildNav();showSkeleton();}
+  if(localOnly)toast("Acesso liberado em modo local.","success");
+}
 window.doLogin=async function(){
   const p=(document.getElementById("ls-pwd")?.value||"").trim().toLowerCase();
   const btn=document.querySelector(".ls-btn");
@@ -3169,14 +3178,8 @@ window.doLogin=async function(){
     }
   }
   if(ok){
-    const ls=document.getElementById("ls"),app=document.getElementById("layout");
-    if(ls){ls.classList.add("out");setTimeout(()=>ls.remove(),500);}
-    if(app)setTimeout(()=>app.classList.add("show"),200);
-    sbOpen=!isMob();applySB();
-    const _hasData=ST.pts.length>0||ST.apts.length>0||ST.apts.length>0;
-    if(_hasData){render();}else{buildNav();showSkeleton();}
-    if(_sbEnabled)await syncFromCloud();
-    if(localOnly&&!_sbEnabled)toast("Modo local ativado. A JÃºlia IA volta quando a sessÃ£o online estiver disponÃ­vel.","warning");
+    enterApp(localOnly);
+    if(!localOnly&&_sbEnabled)await syncFromCloud();
   }else{
     const inp=document.getElementById("ls-pwd");
     if(inp){
@@ -9372,4 +9375,5 @@ function renderMes(apts,monthDays,selDate){
 </script>
 </body>
 </html>
+
 
