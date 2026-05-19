@@ -5131,6 +5131,7 @@ function pagePts(){
   const{pts,selPt,ptTab}=ST;
   const src=(ST.ptSrc||"").toLowerCase();
   const ptTagFilter=ST.ptTagFilter||"Todos";
+  const safeAttr=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
   const filtered=pts.filter(p=>{
     const matchSrc=p.name.toLowerCase().includes(src)||(p.cpf||"").includes(src)||(p.phone||"").includes(src);
     const matchTag=ptTagFilter==="Todos"||(p.tags||[]).includes(ptTagFilter);
@@ -5334,7 +5335,7 @@ function pagePts(){
     <button onclick="limparDemo()" style="background:none;border:1px solid #f59e0b55;border-radius:20px;color:#f59e0b;cursor:pointer;font-size:11px;padding:5px 12px;font-family:Inter,sans-serif">🗑 Remover demo</button>
   </div>`:""}
   <div style="display:flex;gap:8px;margin-bottom:10px">
-    <input value="${ST.ptSrc||""}" oninput="set({ptSrc:this.value})"
+    <input id="pt-search" value="${safeAttr(ST.ptSrc||"")}" oninput="ptSearchInput(this)" onkeydown="if(event.key==='Enter')ptSearchApply(this)"
       placeholder="🔍 Buscar por nome, CPF ou telefone..." class="inp" style="flex:1"/>
     <button onclick="addPt()" class="bp" style="padding:9px 16px;font-size:16px;flex-shrink:0" title="Novo paciente">+</button>
   </div>
@@ -6345,7 +6346,35 @@ window.addPt=()=>{
   const np={id:Date.now(),name:"Novo Paciente",phone:"",email:"",cpf:"",rg:"",birthday:"",endereco:"",
     lastVisit:"—",treatment:"",tipo:"particular",convenio:"",status:"Pendente",
     photo:null,xrays:[],notes:"",docs:[],odontogram:{},anamBucal:null,anamFacial:null};
-  const nps=[...ST.pts,np];save("rof_pts",nps);set({pts:nps,selPt:np.id,ptTab:"info"});
+  const nps=[...ST.pts,np];save("rof_pts",nps);set({pts:nps,selPt:np.id,ptTab:"info",ptSrc:""});
+};
+let _ptSearchTimer=null;
+function refocusPtSearch(){
+  requestAnimationFrame(()=>{
+    const inp=document.getElementById("pt-search");
+    if(!inp)return;
+    inp.focus();
+    const pos=inp.value.length;
+    try{inp.setSelectionRange(pos,pos);}catch{}
+  });
+}
+window.ptSearchInput=(inp)=>{
+  ST.ptSrc=inp.value;
+  if(_ptSearchTimer)clearTimeout(_ptSearchTimer);
+  _ptSearchTimer=setTimeout(()=>{
+    _ptSearchTimer=null;
+    set({ptSrc:ST.ptSrc});
+    refocusPtSearch();
+  },350);
+};
+window.ptSearchApply=(inp)=>{
+  ST.ptSrc=inp.value;
+  if(_ptSearchTimer){
+    clearTimeout(_ptSearchTimer);
+    _ptSearchTimer=null;
+  }
+  set({ptSrc:ST.ptSrc});
+  refocusPtSearch();
 };
 let _ptSaveTimer=null;
 function flushPtSave(){
