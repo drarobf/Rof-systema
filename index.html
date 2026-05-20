@@ -5339,6 +5339,10 @@ function pagePts(){
       placeholder="🔍 Buscar por nome, CPF ou telefone..." class="inp" style="flex:1"/>
     <button onclick="addPt()" class="bp" style="padding:9px 16px;font-size:16px;flex-shrink:0" title="Novo paciente">+</button>
   </div>
+  <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+    <button onclick="gerarLinkCadastro()" class="bg" style="flex:1;min-width:160px;padding:10px 14px;font-size:12px;border-color:#C6A46D44;color:#C6A46D" title="Gera link único para o paciente preencher cadastro pelo celular">📨 Enviar link de cadastro</button>
+    <button onclick="openIntakeReview()" class="bg" style="flex:1;min-width:160px;padding:10px 14px;font-size:12px" title="Cadastros recebidos para revisão">🔔 Novos cadastros <span class="intake-badge" style="display:none;background:#22c55e;color:#000;font-weight:900;font-size:10px;padding:2px 7px;border-radius:50px;margin-left:4px;vertical-align:middle">0</span></button>
+  </div>
   <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">
     ${["Todos","VIP","Ortodontia","Implante","Clareamento","Urgência","Retorno","Convênio"].map(tag=>{
       const active=(ST.ptTagFilter||"Todos")===tag;
