@@ -247,6 +247,7 @@ pre { white-space: pre-wrap; font-family: var(--font-body); }
 /* ── SYNC BADGE ANIMADO ─────────────────────────────────────────── */
 .sync-pulse { display: inline-block; animation: syncPulse 1.4s ease-in-out infinite; }
 @keyframes syncPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.85)} }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.65;transform:scale(1.12)} }
 .sync-spin { display: inline-block; animation: syncSpin 1.2s linear infinite; }
 @keyframes syncSpin { to{transform:rotate(360deg)} }
 
@@ -1645,15 +1646,21 @@ async function syncFromCloud(){
     if(error)throw error;
     (rows||[]).forEach(({key:k,data:v})=>{
       localStorage.setItem(k,JSON.stringify(v));
+      // Atualiza o estado em memória ST.* para que a UI reflita imediatamente
       if(k==='rof_pts'&&Array.isArray(v))ST.pts=v;
       else if(k==='rof_apts'&&Array.isArray(v))ST.apts=v;
       else if(k==='rof_stk'&&Array.isArray(v))ST.stk=v;
       else if(k==='rof_procs'&&Array.isArray(v))PROCS=v;
+      else if(k==='rof_caixa'&&Array.isArray(v))ST.caixa=v;
+      else if(k==='rof_leads'&&Array.isArray(v))ST.leads=v;
     });
     _setSyncBadge(true);
     if(typeof render==="function")render();
     if(typeof checkBirthdays==="function")checkBirthdays();
-  }catch{_setSyncBadge(false);}
+  }catch(err){
+    console.warn("[ROF Sync] Falha ao sincronizar:",err?.message||err);
+    _setSyncBadge(false);
+  }
 }
 window.addEventListener("online",()=>{if(_sbEnabled){_flushQ();syncFromCloud();}});
 window.addEventListener("offline",()=>_setSyncBadge(false));
@@ -1975,6 +1982,81 @@ window.exportFinanceiroCSV=function(){
 // ══════════════════════════════════════════════════════════════════
 // TAGS DE PACIENTES
 // ══════════════════════════════════════════════════════════════════
+// Lista centralizada — usar em todos os lugares onde tags aparecem
+const TAGS_PT=["Ativo","Inativo","Retorno","Avaliação","Tratamento","VIP","Convênio","Particular","Urgência","Lead"];
+const TAGS_COLORS={
+  "Ativo":"#22c55e",
+  "Inativo":"#6B6B6B",
+  "Retorno":"#f59e0b",
+  "Avaliação":"#60a5fa",
+  "Tratamento":"#c084fc",
+  "VIP":"#C6A46D",
+  "Convênio":"#3b82f6",
+  "Particular":"#a78bfa",
+  "Urgência":"#ef4444",
+  "Lead":"#ec4899",
+  "Todos":"#888"
+};
+
+// Gera o texto do alerta de saúde a partir da anamnese (bucal + facial)
+function compilarAlertaSaude(p){
+  if(!p)return "";
+  const itens=[];
+  const ab=p.anamBucal||{};
+  const af=p.anamFacial||{};
+
+  // ── Alertas de Saúde Geral (anamnese bucal) ──
+  if(ab.diabetes==="sim")itens.push("Diabetes");
+  if(ab.hipertensao==="sim")itens.push("Pressão alta (hipertensão)");
+  if(ab.anticoag==="sim")itens.push("Uso de anticoagulantes");
+  if(ab.marcapasso==="sim")itens.push("Marca-passo / implante cardíaco");
+  if(ab.sangramento==="sim")itens.push("Histórico de sangramento excessivo");
+  if(ab.anest==="sim")itens.push("⚠️ Reação prévia à anestesia local");
+  if(ab.gravida==="sim")itens.push("Grávida / amamentando");
+  if(ab.latex==="sim")itens.push("Alergia ao látex");
+  if(ab.alergia&&ab.alergia.trim())itens.push("Alergia: "+ab.alergia.trim());
+  if(ab.doenca&&ab.doenca.trim())itens.push("Outras doenças: "+ab.doenca.trim());
+  if(ab.medicamentos&&ab.medicamentos.trim())itens.push("Medicamentos: "+ab.medicamentos.trim());
+
+  // ── Alertas da Anamnese Facial ──
+  if(af.f_auto==="sim")itens.push("Doença autoimune");
+  if(af.f_tireoide==="sim")itens.push("Doença da tireoide");
+  if(af.f_grav==="sim"&&ab.gravida!=="sim")itens.push("Grávida / amamentando");
+  if(af.f_anti==="sim"&&ab.anticoag!=="sim")itens.push("Anticoagulantes");
+  if(af.f_alergia_abelha==="sim")itens.push("Alergia veneno de abelha");
+  if(af.f_herpes==="sim")itens.push("Herpes labial recorrente");
+  if(af.f_kel==="sim")itens.push("Quelóide");
+  if(af.f_roac==="sim")itens.push("⚠️ Uso de Roacutan (isotretinoína)");
+  if(af.f_alergia&&af.f_alergia.trim()&&!ab.alergia)itens.push("Alergia: "+af.f_alergia.trim());
+
+  return itens.join(" · ");
+}
+
+// Adiciona um item rápido ao alerta de saúde
+window.addAlertaQuick=function(ptId,tag){
+  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  let atual=(p.alertaSaude||"").trim();
+  // Se ainda não há alerta manual, parte do auto-compilado
+  if(!atual)atual=compilarAlertaSaude(p);
+  // Mapeamento de prompt amigável
+  const prompts={
+    "Alergia":"Alergia a quê? (ex: penicilina, sulfa, dipirona)",
+    "Hipertensão":"Toma medicação? (deixe em branco se não souber)",
+    "Diabetes":"Tipo 1, Tipo 2 ou gestacional? (em branco se não souber)",
+    "Cardiopata":"Especifique condição (ex: arritmia, infarto prévio)",
+    "Anticoagulante":"Qual? (ex: Marevan, Xarelto, AAS)",
+    "Doença autoimune":"Qual? (ex: lúpus, Hashimoto, artrite reumatoide)",
+  };
+  let texto=tag;
+  if(prompts[tag]){
+    const det=prompt(prompts[tag]);
+    if(det===null)return; // cancelou
+    if(det.trim())texto=tag+": "+det.trim();
+  }
+  const novo=atual?atual+" · "+texto:texto;
+  updPt(ptId,"alertaSaude",novo,true);
+};
+
 window.toggleTag=function(ptId,tag){
   const pts=ST.pts.map(p=>{
     if(p.id!==ptId)return p;
@@ -1985,6 +2067,26 @@ window.toggleTag=function(ptId,tag){
   });
   set({pts});
   save("rof_pts",pts);
+};
+
+// ══════════════════════════════════════════════════════════════════
+// CONCLUSÃO DE CADASTRO (botão "✓ CONCLUIR CADASTRO")
+// ══════════════════════════════════════════════════════════════════
+// Tudo já está salvo via auto-save (oninput). Este botão só dá feedback final + validação.
+window.concluirCadastroPaciente=function(ptId){
+  const p=ST.pts.find(x=>x.id===ptId);
+  if(!p){toast("Paciente não encontrado.","error");return;}
+  // Validação básica
+  if(!p.name||!p.name.trim()){
+    toast("⚠️ O nome do paciente é obrigatório.","warning");
+    return;
+  }
+  // Garante save imediato
+  flushPtSave();
+  save("rof_pts",ST.pts);
+  toast("✓ Cadastro concluído e salvo com sucesso!","success");
+  // Pisca o indicador "✓ Salvo" também
+  _showSaveIndicator();
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -3253,7 +3355,7 @@ const tMins=t=>{const[h,m]=t.split(":").map(Number);return h*60+m;};
 const minsT=m=>`${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`;
 const durLabel=d=>{const h=Math.floor(d/60),m=d%60;return h>0?(m?`${h}h${m}min`:`${h}h`):`${d}min`;};
 function badge(txt){const c={Ativo:"#22c55e",Confirmado:"#22c55e",Pendente:G,Aguardando:G,Inativo:"#ef4444",Cancelado:"#ef4444"}[txt]||G;return`<span class="bdg" style="background:${c}22;color:${c};border:1px solid ${c}44">${txt}</span>`;}
-function tipoBadge(tipo,conv){if(tipo==="convenio"){const ic=conv==="Dental Uni"?"🦷":conv==="IMPAO"?"🏛️":conv==="Care Plus"?"➕":"🏥";return`<span class="bdg" style="background:#3b82f622;color:#60a5fa;border:1px solid #3b82f644">${ic} ${conv||"Convênio"}</span>`;}return`<span class="bdg" style="background:#C6A46D22;color:#C6A46D;border:1px solid #C6A46D44">💰 Particular</span>`;}
+function tipoBadge(tipo,conv){if(tipo==="convenio"){const ic=conv==="DentalUni"?"🦷":conv==="IMPAO"?"🏛️":conv==="Plus Care"?"➕":"🏥";return`<span class="bdg" style="background:#3b82f622;color:#60a5fa;border:1px solid #3b82f644">${ic} ${conv||"Convênio"}</span>`;}return`<span class="bdg" style="background:#C6A46D22;color:#C6A46D;border:1px solid #C6A46D44">💰 Particular</span>`;}
 function stitle(t){return`<div class="stl"><div class="stl-l"></div><h2>${t}</h2><div class="stl-r"></div></div>`;}
 
 // slots
@@ -3654,6 +3756,10 @@ function pageAgenda(){
     }
     if(inf&&inf.start){
       const a=inf.a;const pr=PROCS.find(p=>p.id===a.procId);const cor=a.tipo==="convenio"?"#3b82f6":G;
+      // Verifica se o paciente tem alerta de saúde
+      const ptApt=a.patientId?ST.pts.find(pp=>pp.id===a.patientId):ST.pts.find(pp=>(pp.name||"").toLowerCase().trim()===(a.patient||"").toLowerCase().trim());
+      const temAlerta=ptApt&&((ptApt.alertaSaude&&ptApt.alertaSaude.trim())||(compilarAlertaSaude(ptApt).trim()));
+      const tooltipAlerta=temAlerta?(ptApt.alertaSaude||compilarAlertaSaude(ptApt)):"";
       return`<div style="padding:10px 14px;border-top:1px solid rgba(198,164,109,0.12);border-left:4px solid ${cor};background:${a.tipo==="convenio"?"#3b82f60a":"#C6A46D0a"};cursor:pointer;transition:background .15s"
         onclick="openEditApt(${a.id})"
         onmouseenter="this.style.background='${a.tipo==="convenio"?"#3b82f614":"#C6A46D10"}'"
@@ -3661,7 +3767,8 @@ function pageAgenda(){
         <div style="display:flex;align-items:center;gap:8px">
           <div style="width:46px;color:${cor};font-weight:800;font-size:12px;flex-shrink:0">${slot}</div>
           <div style="flex:1;min-width:0">
-            <div style="color:#E2C99A;font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.patient}</div>
+            <div onclick="event.stopPropagation();abrirFichaDoApt(${a.id})" style="color:#E2C99A;font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" title="Clique para abrir a ficha do paciente">${temAlerta?`<span style="color:#ef4444;font-size:14px;margin-right:4px" title="${tooltipAlerta.replace(/"/g,'&quot;')}">⚠️</span>`:""}${a.patient} 👤</div>
+            ${temAlerta?`<div style="color:#ef4444;font-size:10px;margin-top:3px;font-weight:600;background:rgba(239,68,68,0.08);padding:3px 7px;border-radius:5px;border-left:2px solid #ef4444;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${tooltipAlerta.replace(/"/g,'&quot;')}">⚠️ ${tooltipAlerta.substring(0,80)}${tooltipAlerta.length>80?"...":""}</div>`:""}
             <div style="color:#888;font-size:11px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${pr?.n||"—"}</div>
             <div style="display:flex;gap:5px;margin-top:5px;flex-wrap:wrap;align-items:center">
               ${tipoBadge(a.tipo,a.conv)}
@@ -3737,7 +3844,7 @@ function pageAgenda(){
         <button onclick="set({aptTipo:'convenio'})" class="bg" style="flex:1;padding:8px 12px;font-size:12px;background:${aptTipo==="convenio"?"#3b82f622":"transparent"};color:${aptTipo==="convenio"?"#60a5fa":"#555"}">🏥 Convênio</button>
       </div>
       ${aptTipo==="convenio"?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
-        ${["Dental Uni","IMPAO","Care Plus"].map(cv=>`<button onclick="set({aptConv:'${cv}'})" class="bg" style="padding:6px 12px;font-size:11px;background:${ST.aptConv===cv?'#3b82f622':'transparent'};color:${ST.aptConv===cv?'#60a5fa':'#555'}">${cv}</button>`).join("")}
+        ${["DentalUni","IMPAO","Plus Care"].map(cv=>`<button onclick="set({aptConv:'${cv}'})" class="bg" style="padding:6px 12px;font-size:11px;background:${ST.aptConv===cv?'#3b82f622':'transparent'};color:${ST.aptConv===cv?'#60a5fa':'#555'}">${cv}</button>`).join("")}
       </div>
       <input id="ap-conv" value="${aptConv}" oninput="set({aptConv:this.value})" placeholder="Ou digite outro convênio..." class="inp" style="font-size:12px"/>`:""}
     </div>
@@ -4047,7 +4154,7 @@ window.openQuickReg=function(){
     +"</div>"
     +"<div id='qr-conv-row' style='display:none'>"
     +"<div style='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px'>"
-    +["Dental Uni","IMPAO","Care Plus"].map(function(c){return "<button onclick=\"document.getElementById('qr-convenio').value='"+c+"'\" class='bg' style='padding:5px 10px;font-size:10px'>"+c+"</button>";}).join("")
+    +["DentalUni","IMPAO","Plus Care"].map(function(c){return "<button onclick=\"document.getElementById('qr-convenio').value='"+c+"'\" class='bg' style='padding:5px 10px;font-size:10px'>"+c+"</button>";}).join("")
     +"</div>"
     +"<input id='qr-convenio' class='inp' placeholder='Ou digite o convênio...'/>"
     +"</div>"
@@ -4119,11 +4226,105 @@ window.saveQuickReg=function(){
 };
 
 // ── EDITAR CONSULTA ─────────────────────────────────────────────
+// Abre a ficha completa do paciente vinculado a uma consulta da agenda
+window.abrirFichaDoApt=function(aptId){
+  var a=ST.apts.find(function(x){return x.id===aptId;});if(!a)return;
+  // Tenta achar pelo patientId (mais confiável), depois pelo nome
+  var pt=null;
+  if(a.patientId)pt=ST.pts.find(function(p){return p.id===a.patientId;});
+  if(!pt&&a.patient){
+    var nome=a.patient.toLowerCase().trim();
+    pt=ST.pts.find(function(p){return (p.name||"").toLowerCase().trim()===nome;});
+  }
+  if(!pt){
+    toast("Paciente não encontrado no cadastro. Verifique se a consulta está vinculada a um paciente cadastrado.","warning");
+    return;
+  }
+  // Vai pra página de Pacientes e abre a ficha
+  set({page:"patients",selPt:pt.id,ptTab:"info"});
+};
+
+// Wrap interno — mostra modal de confirmação de alerta se paciente tem doença/condição
 window.openEditApt=function(aptId){
+  var a=ST.apts.find(function(x){return x.id===aptId;});if(!a)return;
+  // Checa alerta de saúde do paciente vinculado
+  var pt=null;
+  if(a.patientId)pt=ST.pts.find(function(p){return p.id===a.patientId;});
+  if(!pt&&a.patient){
+    var nm=a.patient.toLowerCase().trim();
+    pt=ST.pts.find(function(p){return (p.name||"").toLowerCase().trim()===nm;});
+  }
+  var alerta=pt?(pt.alertaSaude&&pt.alertaSaude.trim()?pt.alertaSaude:compilarAlertaSaude(pt)):"";
+  // Se já visualizou o alerta dessa consulta na sessão, não mostra de novo
+  ST._alertasVistos=ST._alertasVistos||new Set();
+  if(alerta&&alerta.trim()&&!ST._alertasVistos.has(aptId)){
+    mostrarModalAlertaSaude(aptId,pt,alerta);
+    return;
+  }
+  _openEditAptReal(aptId);
+};
+
+// Modal de confirmação vermelho — exibido ANTES de editar a consulta
+function mostrarModalAlertaSaude(aptId,pt,alerta){
+  document.getElementById("alerta-saude-modal")?.remove();
+  var primeiroNome=(pt.name||"").split(" ")[0];
+  var idade=pt.birthday?(function(){
+    var b=new Date(pt.birthday+"T12:00:00");var d=new Date();
+    var i=d.getFullYear()-b.getFullYear();
+    if(d.getMonth()<b.getMonth()||(d.getMonth()===b.getMonth()&&d.getDate()<b.getDate()))i--;
+    return i;
+  })():null;
+  var listaAlertas=alerta.split(" · ").map(function(item){
+    return "<li style='padding:6px 10px;background:rgba(239,68,68,0.08);border-left:3px solid #ef4444;border-radius:4px;margin-bottom:5px;color:#fca5a5;font-size:13px;font-weight:600'>"+item.replace(/</g,"&lt;")+"</li>";
+  }).join("");
+  var m=document.createElement("div");m.className="mbg";m.id="alerta-saude-modal";
+  m.style.zIndex="10500";
+  m.innerHTML=
+    "<div class='mbx' style='max-width:480px;border:2px solid #ef4444;box-shadow:0 0 40px rgba(239,68,68,0.4)'>"
+    +"<div class='mhd' style='background:linear-gradient(135deg,rgba(239,68,68,0.18),rgba(239,68,68,0.05));border-bottom:1px solid #ef444444'>"
+    +"<div style='display:flex;align-items:center;gap:10px;width:100%'>"
+    +"<span style='font-size:28px;animation:pulse 1.5s infinite'>⚠️</span>"
+    +"<div style='flex:1'>"
+    +"<div style='color:#ef4444;font-weight:900;font-size:15px;letter-spacing:1px'>ATENÇÃO — ALERTA DE SAÚDE</div>"
+    +"<div style='color:#888;font-size:11px;margin-top:2px'>"+primeiroNome+(idade?" ("+idade+" anos)":"")+"</div>"
+    +"</div>"
+    +"</div></div>"
+    +"<div class='mbd'>"
+    +"<div style='color:#aaa;font-size:12px;margin-bottom:12px;line-height:1.6'>Este(a) paciente apresenta as seguintes condições que requerem atenção especial:</div>"
+    +"<ul style='list-style:none;padding:0;margin:0 0 14px 0'>"+listaAlertas+"</ul>"
+    +"<div style='background:#0a0a0a;border-radius:6px;padding:10px 12px;margin-bottom:14px;font-size:11px;color:#888;line-height:1.6'>"
+    +"💡 <b style='color:#C6A46D'>Recomendações:</b> Verifique anamnese antes de iniciar procedimento. Confirme medicamentos atuais. Em caso de dúvida sobre interações ou contraindicações, considere interconsulta com médico assistente."
+    +"</div>"
+    +"<div style='display:flex;gap:8px;flex-wrap:wrap'>"
+    +"<button onclick='document.getElementById(\"alerta-saude-modal\").remove()' class='bg' style='flex:1;padding:11px;font-size:12px'>Cancelar</button>"
+    +"<button onclick='confirmarAlertaEAbrir("+aptId+")' class='bp' style='flex:2;padding:11px;font-size:12px;font-weight:800;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;border:none'>✓ Estou ciente — abrir consulta</button>"
+    +"</div>"
+    +"<div style='text-align:center;margin-top:10px'>"
+    +"<button onclick='abrirFichaPtDoAlerta("+pt.id+")' style='background:none;border:none;color:#888;cursor:pointer;font-size:11px;text-decoration:underline'>📋 Ver ficha completa do paciente</button>"
+    +"</div>"
+    +"</div></div>";
+  document.body.appendChild(m);
+  m.addEventListener("click",function(e){if(e.target===m)m.remove();});
+}
+
+window.confirmarAlertaEAbrir=function(aptId){
+  ST._alertasVistos=ST._alertasVistos||new Set();
+  ST._alertasVistos.add(aptId);
+  document.getElementById("alerta-saude-modal")?.remove();
+  _openEditAptReal(aptId);
+};
+
+window.abrirFichaPtDoAlerta=function(ptId){
+  document.getElementById("alerta-saude-modal")?.remove();
+  set({page:"patients",selPt:ptId,ptTab:"info"});
+};
+
+// Função interna original (renomeada) — abre direto o modal de edição
+function _openEditAptReal(aptId){
   var a=ST.apts.find(function(x){return x.id===aptId;});if(!a)return;
   var pr=PROCS.find(function(p){return p.id===a.procId;});
   var cats=["Todos",...new Set(PROCS.map(function(p){return p.c;}))];
-  var procOpts=PROCS.map(function(p){return "<option value='"+p.id+"'"+(a.procId===p.id?" selected":"")+">"+p.n+" — R$ "+p.p.toLocaleString("pt-BR")+"</option>";}).join("");
+  var procOpts=PROCS.map(function(p){return "<option value='"+p.id+"'"+(a.procId===p.id?" selected":"")+">"+p.n+"</option>";}).join("");
   var statusOpts=["Aguardando","Confirmado","Cancelado"].map(function(s){return "<option value='"+s+"'"+(a.status===s?" selected":"")+">"+s+"</option>";}).join("");
   var durOpts=[{v:30,l:"30 min"},{v:60,l:"1 hora"},{v:90,l:"1h 30min"},{v:120,l:"2 horas"},{v:150,l:"2h 30min"},{v:180,l:"3 horas"},{v:240,l:"4 horas"}]
     .map(function(d){return "<option value='"+d.v+"'"+((a.dur||60)===d.v?" selected":"")+">"+d.l+"</option>";}).join("");
@@ -4155,7 +4356,7 @@ window.openEditApt=function(aptId){
     +"</div>"
     +"<div id='ea-conv-row' style='margin-top:8px;"+(a.tipo==="convenio"?"":"display:none")+"'>"
     +"<div style='display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px'>"
-    +["Dental Uni","IMPAO","Care Plus"].map(function(c){return "<button onclick=\"document.getElementById('ea-convenio').value='"+c+"'\" class='bg' style='padding:4px 10px;font-size:10px'>"+c+"</button>";}).join("")
+    +["DentalUni","IMPAO","Plus Care"].map(function(c){return "<button onclick=\"document.getElementById('ea-convenio').value='"+c+"'\" class='bg' style='padding:4px 10px;font-size:10px'>"+c+"</button>";}).join("")
     +"</div>"
     +"<input id='ea-convenio' value='"+(a.conv||"").replace(/'/g,"&#39;")+"' class='inp' placeholder='Convênio...'/>"
     +"</div>"
@@ -4517,8 +4718,8 @@ window.abrirPlanoClinicoModal=function(tooth,cond,faces){
   const condInfo=COND[cond]||{l:cond,c:"#888"};
   const facesLbl=faces.length===5?"todas as faces":faces.map(f=>FACES_LIST.find(x=>x.k===f)?.l||f).join(", ");
   const sugeridos=getProcsSugeridos(cond);
-  const procOpts=sugeridos.map(pr=>`<option value="${pr.id}">${pr.n} — R$ ${pr.p.toLocaleString("pt-BR")}</option>`).join("");
-  const todosOpts=PROCS.map(pr=>`<option value="${pr.id}">${pr.n} — R$ ${pr.p.toLocaleString("pt-BR")}</option>`).join("");
+  const procOpts=sugeridos.map(pr=>`<option value="${pr.id}">${pr.n}</option>`).join("");
+  const todosOpts=PROCS.map(pr=>`<option value="${pr.id}">${pr.n}</option>`).join("");
   // Itens já planejados para esse dente
   const planClin=p.planoClinico||[];
   const jaPlanejados=planClin.filter(it=>it.tooth===tooth);
@@ -5148,7 +5349,48 @@ function pagePts(){
     let tc="";
 
     if(ptTab==="info"){
-      tc=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      // Compila alerta de saúde automaticamente da anamnese (sobrescreve só se vazio)
+      const alertaAuto=compilarAlertaSaude(p);
+      const alertaFinal=p.alertaSaude||alertaAuto;
+      const temAlerta=alertaFinal&&alertaFinal.trim().length>0;
+      const editandoAlerta=ST.editingAlertaPt===p.id;
+
+      tc=`
+      <!-- ALERTA DE SAÚDE — caixa única (visualização OU edição) -->
+      ${temAlerta||editandoAlerta?`
+      <div style="background:linear-gradient(135deg,rgba(239,68,68,0.18),rgba(239,68,68,0.05));border:2px solid #ef4444;border-radius:10px;padding:12px 14px;margin-bottom:14px;position:relative">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="font-size:18px;animation:pulse 2s infinite">⚠️</span>
+          <span style="color:#ef4444;font-weight:900;font-size:12px;letter-spacing:1.5px;text-transform:uppercase">Alerta de Saúde</span>
+          ${editandoAlerta
+            ?`<button onclick="set({editingAlertaPt:null});toast('Alerta salvo ✓','success')" style="background:#22c55e;border:none;color:#fff;cursor:pointer;font-size:11px;font-weight:700;padding:4px 12px;border-radius:6px;margin-left:auto">✓ Concluir</button>`
+            :`<button onclick="set({editingAlertaPt:${p.id}})" style="background:none;border:1px solid #ef444466;color:#ef4444;cursor:pointer;font-size:11px;font-weight:600;padding:4px 12px;border-radius:6px;margin-left:auto">✏️ Editar</button>`
+          }
+        </div>
+        ${editandoAlerta?`
+          <textarea id="alerta-edit-${p.id}" oninput="updPt(${p.id},'alertaSaude',this.value)" rows="3" class="inp" style="resize:vertical;border-color:#ef444466;background:rgba(0,0,0,0.4);color:#fca5a5;font-size:13px;font-weight:600;width:100%;margin-bottom:8px" placeholder="Ex: Alérgica a penicilina · Hipertensa · Diabetes tipo 2 · Cardiopata">${p.alertaSaude||""}</textarea>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px">
+            ${["Alergia","Hipertensão","Diabetes","Cardiopata","Anticoagulante","Doença autoimune","Atípico","Especial"].map(tag=>`<button onclick="addAlertaQuick(${p.id},'${tag}')" class="bg" style="padding:3px 8px;font-size:9px;color:#ef4444;border-color:#ef444444">+ ${tag}</button>`).join("")}
+          </div>
+        `:`
+          <div style="color:#fca5a5;font-size:13px;font-weight:600;line-height:1.5;white-space:pre-line">${alertaFinal.replace(/</g,"&lt;")}</div>
+          ${!p.alertaSaude&&alertaAuto?`<div style="color:#888;font-size:9px;margin-top:6px;font-style:italic">↻ Alerta gerado automaticamente da anamnese.</div>`:""}
+        `}
+      </div>`:`
+      <!-- Sem alerta: botão pra adicionar -->
+      <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+        <button onclick="set({editingAlertaPt:${p.id}})" class="bg" style="font-size:10px;padding:5px 12px;color:#ef4444;border-color:#ef444444">⚠️ + Adicionar alerta de saúde</button>
+      </div>`}
+
+      <!-- Aviso discreto sobre auto-save -->
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(34,197,94,0.06);border-radius:8px;border:1px solid rgba(34,197,94,0.15);margin-bottom:14px">
+        <span style="font-size:14px">💾</span>
+        <div style="flex:1;color:#888;font-size:10px;line-height:1.4">
+          As alterações são <b style="color:#22c55e">salvas automaticamente</b> conforme você digita. Veja o ✓ Salvo no canto superior direito.
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div style="grid-column:1/-1"><label class="lbl">Nome completo</label>
           <input value="${(p.name||"").replace(/"/g,"&quot;")}" oninput="updPt(${p.id},'name',this.value)" class="inp"/></div>
         <div><label class="lbl">Data de nascimento</label>
@@ -5160,7 +5402,11 @@ function pagePts(){
         <div><label class="lbl">Telefone / WhatsApp</label>
           <input type="tel" value="${(p.phone||"").replace(/"/g,"&quot;")}" oninput="updPt(${p.id},'phone',this.value)" class="inp"/></div>
         <div><label class="lbl">E-mail</label>
-          <input type="email" value="${(p.email||"").replace(/"/g,"&quot;")}" oninput="updPt(${p.id},'email',this.value)" class="inp"/></div>
+          <input type="email" value="${(p.email||"").replace(/"/g,"&quot;")}" oninput="updPt(${p.id},'email',this.value)" class="inp" placeholder="email@exemplo.com"/></div>
+        <div><label class="lbl">Profissão</label>
+          <input value="${(p.profissao||"").replace(/"/g,"&quot;")}" oninput="updPt(${p.id},'profissao',this.value)" class="inp" placeholder="Ex: Advogada, Empresária..."/></div>
+        <div><label class="lbl">Instagram</label>
+          <input value="${(p.instagram||"").replace(/"/g,"&quot;")}" oninput="updPt(${p.id},'instagram',this.value)" class="inp" placeholder="@usuario"/></div>
         <div style="grid-column:1/-1"><label class="lbl">Endereço completo</label>
           <input value="${(p.endereco||"").replace(/"/g,"&quot;")}" oninput="updPt(${p.id},'endereco',this.value)" class="inp" placeholder="Rua, número, bairro, cidade — UF, CEP"/></div>
         <div style="grid-column:1/-1"><label class="lbl">Tratamento atual</label>
@@ -5175,27 +5421,39 @@ function pagePts(){
               background:${p.tipo==="convenio"?"#3b82f622":"transparent"};
               color:${p.tipo==="convenio"?"#60a5fa":"#555"}">🏥 Convênio</button>
           </div>
-          ${p.tipo==="convenio"?`<input value="${(p.convenio||"").replace(/"/g,"&quot;")}" oninput="updPt(${p.id},'convenio',this.value)" class="inp" placeholder="Nome do convênio..."/>`:""}
+          ${p.tipo==="convenio"?`
+            <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+              ${["DentalUni","IMPAO","Plus Care"].map(cv=>`<button onclick="updPt(${p.id},'convenio','${cv}',true)" class="bg" style="padding:6px 12px;font-size:11px;background:${p.convenio===cv?'#3b82f622':'transparent'};color:${p.convenio===cv?'#60a5fa':'#555'}">${cv}</button>`).join("")}
+            </div>
+            <input value="${(p.convenio||"").replace(/"/g,"&quot;")}" oninput="updPt(${p.id},'convenio',this.value)" class="inp" placeholder="Ou digite outro convênio..."/>
+          `:""}
         </div>
         <div style="grid-column:1/-1"><label class="lbl">Tags do paciente</label>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-            ${["VIP","Ortodontia","Implante","Clareamento","Urgência","Inativo","Retorno","Convênio"].map(tag=>{
+            ${TAGS_PT.map(tag=>{
               const has=(p.tags||[]).includes(tag);
-              const tagColors={"VIP":"#C6A46D","Ortodontia":"#60a5fa","Implante":"#c084fc","Clareamento":"#f59e0b","Urgência":"#ef4444","Inativo":"#6B6B6B","Retorno":"#22c55e","Convênio":"#3b82f6"};
-              const c=tagColors[tag]||"#888";
+              const c=TAGS_COLORS[tag]||"#888";
               return`<button onclick="toggleTag(${p.id},'${tag}')" class="pt-tag" style="color:${c};background:${has?c+"22":"transparent"};border-color:${c}${has?"":"44"}">${has?"✓ ":""}${tag}</button>`;
             }).join("")}
           </div>
         </div>
         <div style="grid-column:1/-1"><label class="lbl">Notas clínicas e observações</label>
           <textarea oninput="updPt(${p.id},'notes',this.value)" rows="3" class="inp" style="resize:vertical">${p.notes||""}</textarea></div>
-        <div style="grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap">
+        <div style="grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
           ${["Ativo","Pendente","Inativo"].map(s=>`<button onclick="updPt(${p.id},'status','${s}',true)" class="bg"
             style="padding:6px 14px;font-size:11px;
             background:${p.status===s?"#C6A46D22":"transparent"};
             color:${p.status===s?GL:"#555"}">${s}</button>`).join("")}
           <button onclick="delPt(${p.id})"
             class="bg" style="margin-left:auto;font-size:11px;padding:6px 12px;border-color:#ef444444;color:#ef4444">🗑 Excluir</button>
+        </div>
+
+        <!-- BOTÃO GRANDE DE CONCLUIR CADASTRO -->
+        <div style="grid-column:1/-1;margin-top:14px;padding-top:14px;border-top:1px solid rgba(198,164,109,0.12)">
+          <button onclick="concluirCadastroPaciente(${p.id})" class="bp" style="width:100%;padding:14px;font-size:13px;font-weight:900;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;letter-spacing:1px">✓ CONCLUIR CADASTRO</button>
+          <div style="text-align:center;color:#666;font-size:10px;margin-top:6px;font-style:italic">
+            Tudo já foi salvo automaticamente. Este botão é só pra confirmar que você terminou.
+          </div>
         </div>
       </div>`;
     }
@@ -5312,7 +5570,7 @@ function pagePts(){
           ${p.birthday?`<span style="color:#555;font-size:10px">${calcAge(p.birthday)} anos</span>`:""}
           ${p.anamBucal?`<span class="bdg" style="background:#22c55e22;color:#22c55e;border:1px solid #22c55e44">✓ Bucal</span>`:""}
           ${p.anamFacial?`<span class="bdg" style="background:#22c55e22;color:#22c55e;border:1px solid #22c55e44">✓ Facial</span>`:""}
-          ${(p.tags||[]).map(tag=>{const tagColors={"VIP":"#C6A46D","Ortodontia":"#60a5fa","Implante":"#c084fc","Clareamento":"#f59e0b","Urgência":"#ef4444","Inativo":"#6B6B6B","Retorno":"#22c55e","Convênio":"#3b82f6"};const c=tagColors[tag]||"#888";return`<span class="pt-tag" style="color:${c};background:${c}22;border-color:${c}44;font-size:9px;padding:1px 7px">${tag}</span>`;}).join("")}
+          ${(p.tags||[]).map(tag=>{const c=TAGS_COLORS[tag]||"#888";return`<span class="pt-tag" style="color:${c};background:${c}22;border-color:${c}44;font-size:9px;padding:1px 7px">${tag}</span>`;}).join("")}
         </div>
         ${p.phone?`<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
           <button onclick="whatsPatient(${p.id})" class="whats-fab">📱 WhatsApp</button>
@@ -5340,14 +5598,13 @@ function pagePts(){
     <button onclick="addPt()" class="bp" style="padding:9px 16px;font-size:16px;flex-shrink:0" title="Novo paciente">+</button>
   </div>
   <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-    <button onclick="gerarLinkCadastro()" class="bg" style="flex:1;min-width:160px;padding:10px 14px;font-size:12px;border-color:#C6A46D44;color:#C6A46D" title="Gera link único para o paciente preencher cadastro pelo celular">📨 Enviar link de cadastro</button>
-    <button onclick="openIntakeReview()" class="bg" style="flex:1;min-width:160px;padding:10px 14px;font-size:12px" title="Cadastros recebidos para revisão">🔔 Novos cadastros <span class="intake-badge" style="display:none;background:#22c55e;color:#000;font-weight:900;font-size:10px;padding:2px 7px;border-radius:50px;margin-left:4px;vertical-align:middle">0</span></button>
+    <button onclick="gerarLinkCadastro()" class="bg" style="flex:1;min-width:200px;padding:12px 16px;font-size:13px;font-weight:700;background:linear-gradient(135deg,rgba(34,197,94,0.15),rgba(34,197,94,0.05));border:1px solid #22c55e66;color:#22c55e" title="Gera link único para o paciente preencher cadastro pelo celular via WhatsApp">📱 Enviar link de cadastro por WhatsApp</button>
+    <button onclick="openIntakeReview()" class="bg" style="flex:1;min-width:160px;padding:12px 16px;font-size:12px" title="Cadastros recebidos para revisão">🔔 Novos cadastros recebidos <span class="intake-badge" style="display:none;background:#22c55e;color:#000;font-weight:900;font-size:10px;padding:2px 7px;border-radius:50px;margin-left:4px;vertical-align:middle">0</span></button>
   </div>
   <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">
-    ${["Todos","VIP","Ortodontia","Implante","Clareamento","Urgência","Retorno","Convênio"].map(tag=>{
+    ${["Todos",...TAGS_PT].map(tag=>{
       const active=(ST.ptTagFilter||"Todos")===tag;
-      const tagColors={"VIP":"#C6A46D","Ortodontia":"#60a5fa","Implante":"#c084fc","Clareamento":"#f59e0b","Urgência":"#ef4444","Retorno":"#22c55e","Convênio":"#3b82f6","Todos":"#888"};
-      const c=tagColors[tag]||"#888";
+      const c=TAGS_COLORS[tag]||"#888";
       return`<button onclick="set({ptTagFilter:'${tag}'})" class="bg" style="padding:3px 11px;font-size:10px;border-radius:50px;background:${active?c+"22":"transparent"};color:${active?c:"#555"};border-color:${active?c+"55":"rgba(198,164,109,0.1)"}">${tag}</button>`;
     }).join("")}
   </div>
@@ -5643,7 +5900,7 @@ function renderPlano(p){
   }).join("");
 
   var procOpts=procsFilt.map(function(pr){
-    return "<option value='"+pr.id+"'>"+pr.n+" — R$ "+pr.p.toLocaleString("pt-BR")+"</option>";
+    return "<option value='"+pr.id+"'>"+pr.n+"</option>";
   }).join("");
 
   var itensRows=itens.length===0
@@ -5673,9 +5930,9 @@ function renderPlano(p){
     +"<div style='display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px'>"+catBtns+"</div>"
     +"<div class='g2'>"
     +"<div style='grid-column:1/-1'><label class='lbl'>Procedimento</label>"
-    +"<select id='plano-proc' class='inp'><option value=''>Selecionar...</option>"+procOpts+"</select></div>"
+    +"<select id='plano-proc' class='inp' onchange=\"(function(){var sel=document.getElementById('plano-proc');var pid=Number(sel.value);if(!pid){document.getElementById('plano-price').value='';return;}var pr=PROCS.find(function(x){return x.id===pid;});if(pr)document.getElementById('plano-price').value=pr.p;})()\"><option value=''>Selecionar...</option>"+procOpts+"</select></div>"
     +"<div><label class='lbl'>Quantidade</label><input type='number' id='plano-qty' value='1' min='1' max='99' class='inp'/></div>"
-    +"<div><label class='lbl'>Valor unitário (R$)</label><input type='number' id='plano-price' value='' min='0' class='inp' placeholder='Deixe em branco = padrão'/></div>"
+    +"<div><label class='lbl'>Valor unitário (R$)</label><input type='number' id='plano-price' value='' min='0' class='inp' placeholder='Selecione o procedimento'/></div>"
     +"</div>"
     +"<button onclick='planoAdd("+p.id+")' class='bp' style='width:100%;margin-top:10px;padding:10px'>+ Adicionar ao Orçamento</button>"
     +"</div>"
@@ -6250,7 +6507,25 @@ window.copiarLink=function(link){
   navigator.clipboard.writeText(link).then(()=>toast("Link copiado!","success")).catch(()=>toast("Não foi possível copiar.","error"));
 };
 window.whatsLink=function(link,label){
-  const msg=`Olá! Para agilizar nossa próxima consulta, por favor preencha seu cadastro neste link seguro:\n\n${link}\n\nÉ rápido (~5 minutos), 100% digital e seus dados ficam protegidos. Qualquer dúvida, é só me chamar! — Dra. Rossana`;
+  const msg=`Olá! 😊
+
+Aqui é a Dra. Rossana Fucks.
+
+Para agilizar nossa próxima consulta e proporcionar um atendimento ainda mais personalizado, preparei um link seguro onde você pode preencher pelo seu celular:
+
+✅ *Cadastro completo* (dados pessoais e contato)
+✅ *Anamnese Bucal* (saúde geral e história odontológica)
+✅ *Anamnese Facial* (caso tenha interesse em harmonização)
+
+👉 ${link}
+
+⏱️ Leva aproximadamente 10 minutinhos.
+🔒 Seus dados ficam protegidos e são usados apenas no seu prontuário.
+
+Qualquer dúvida, é só me chamar por aqui!
+
+Dra. Rossana Fucks — CRO/SC 21403
+📍 Rua 220, nº 200, Sala 2 — Ed. Paris — Meia Praia, Itapema/SC`;
   window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank");
 };
 
@@ -6406,7 +6681,24 @@ window.updPt=(id,key,val,immediate)=>{
   }else{
     schedulePtSave();
   }
+  // Feedback visual: pisca "✓ Salvo" no canto quando o usuário edita o cadastro
+  if(ST.page==="patients"&&ST.selPt===id&&ST.ptTab==="info")_showSaveIndicator();
 };
+
+// Indicador "✓ Salvo" no canto superior direito (aparece e some)
+function _showSaveIndicator(){
+  let el=document.getElementById("rof-save-indicator");
+  if(!el){
+    el=document.createElement("div");
+    el.id="rof-save-indicator";
+    el.style.cssText="position:fixed;top:18px;right:18px;background:linear-gradient(135deg,rgba(34,197,94,0.95),rgba(22,163,74,0.9));color:#fff;padding:7px 16px;border-radius:50px;font-size:11px;font-weight:700;letter-spacing:0.5px;z-index:99999;box-shadow:0 4px 16px rgba(34,197,94,0.4);opacity:0;transition:opacity 0.25s ease;pointer-events:none";
+    el.innerHTML="✓ Salvo automaticamente";
+    document.body.appendChild(el);
+  }
+  el.style.opacity="1";
+  clearTimeout(window._saveIndTimer);
+  window._saveIndTimer=setTimeout(()=>{el.style.opacity="0";},1400);
+}
 window.setPtPhoto=(id,inp)=>{const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{updPt(id,"photo",ev.target.result,true);toast("Foto salva!","success");};r.readAsDataURL(f);};
 window.addXray=(id,inp)=>{Array.from(inp.files).forEach(file=>{const r=new FileReader();r.onload=ev=>{const p=ST.pts.find(x=>x.id===id);updPt(id,"xrays",[...(p.xrays||[]),{name:file.name,data:ev.target.result}]);};r.readAsDataURL(file);});};
 window.delXray=(id,i)=>{const p=ST.pts.find(x=>x.id===id);updPt(id,"xrays",p.xrays.filter((_,j)=>j!==i));};
@@ -7005,8 +7297,8 @@ window.openNewProc=()=>{
       <input id="np-nome" class="inp" placeholder="Ex: Restauração resina 5 faces"/></div>
     <div class="g2" style="margin-bottom:10px">
       <div><label class="lbl">Categoria</label>
-        <input id="np-cat" class="inp" list="ncat-list" placeholder="Ex: Restaurações"/>
-        <datalist id="ncat-list">${allCats.map(c=>`<option value="${c}"/>`).join("")}</datalist>
+        <input id="np-cat" class="inp" list="np-cat-list" placeholder="Ex: Restaurações"/>
+        <datalist id="np-cat-list">${allCats.map(c=>`<option value="${c}"/>`).join("")}</datalist>
       </div>
       <div><label class="lbl">Valor (R$)</label>
         <input id="np-val" type="number" min="0" class="inp" placeholder="0"/></div>
@@ -9411,9 +9703,13 @@ function renderWeek(apts,weekDays,selDate){
         var pr=PROCS.find(function(p){return p.id===a.procId;});
         var cor=a.tipo==="convenio"?"#3b82f6":G;
         var firstName=(a.patient||"").split(" ")[0];
-        h+="<div onclick='openEditApt("+a.id+")' style='background:"+cor+"22;border-left:2px solid "+cor+";padding:2px 4px;border-radius:3px;cursor:pointer;margin-bottom:2px' title='"+a.time+" - "+(a.patient||"")+" - "+(pr?pr.n:"")+"'>"
-          +"<div style='color:"+cor+";font-size:8px;font-weight:700;line-height:1.1'>"+a.time+"</div>"
-          +"<div style='color:#EAEAEA;font-size:9px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.2'>"+firstName+"</div>"
+        // Detecta alerta de saúde
+        var ptApt=a.patientId?ST.pts.find(function(pp){return pp.id===a.patientId;}):ST.pts.find(function(pp){return (pp.name||"").toLowerCase().trim()===(a.patient||"").toLowerCase().trim();});
+        var temAlerta=ptApt&&((ptApt.alertaSaude&&ptApt.alertaSaude.trim())||(compilarAlertaSaude(ptApt).trim()));
+        var alertaTxt=temAlerta?(ptApt.alertaSaude||compilarAlertaSaude(ptApt)):"";
+        h+="<div style='background:"+cor+"22;border-left:2px solid "+(temAlerta?"#ef4444":cor)+";padding:2px 4px;border-radius:3px;margin-bottom:2px' title='"+a.time+" - "+(a.patient||"")+(temAlerta?" — ALERTA: "+alertaTxt.replace(/'/g,'')+" ":" - "+(pr?pr.n:""))+"'>"
+          +"<div onclick='openEditApt("+a.id+")' style='color:"+cor+";font-size:8px;font-weight:700;line-height:1.1;cursor:pointer' title='Editar consulta'>"+a.time+" ✏️</div>"
+          +"<div onclick='abrirFichaDoApt("+a.id+")' style='color:#EAEAEA;font-size:9px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.2;cursor:pointer' title='Abrir ficha do paciente'>"+(temAlerta?"<span style=color:#ef4444>⚠️</span>":"")+firstName+" 👤</div>"
           +"</div>";
       });
       h+="</td>";
