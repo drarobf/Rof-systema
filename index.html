@@ -3621,7 +3621,14 @@ function normalizePt(p,i){
   return {...p,id:p.id??("pt_"+i),name:p.name||p.nome||"Paciente sem nome"};
 }
 ST.pts=(Array.isArray(ST.pts)?ST.pts:[]).map(normalizePt);
-function findPtById(id){return (ST.pts||[]).find(p=>sameId(p.id,id))||null;}
+function findPtById(id){
+  if(id&&typeof id==="object"&&Object.prototype.hasOwnProperty.call(id,"id"))id=id.id;
+  const sid=String(id??"");
+  let pt=(ST.pts||[]).find(p=>sameId(p.id,id));
+  if(!pt&&/^\d+$/.test(sid))pt=(ST.pts||[])[Number(sid)]||null;
+  if(!pt&&sid)pt=(ST.pts||[]).find(p=>sameId(p.name,id)||sameId(p.nome,id));
+  return pt||null;
+}
 function jsArg(v){return JSON.stringify(v==null?"":String(v)).replace(/</g,"\\u003c");}
 function normalizePatch(p){
   if(p&&Object.prototype.hasOwnProperty.call(p,"selPt")&&p.selPt!==null){
@@ -3634,8 +3641,13 @@ function set(p){Object.assign(ST,normalizePatch(p));render();}
 window.set=set;
 window.openPt=function(ptId,tab){
   const pt=findPtById(ptId);
-  if(!pt){toast("Paciente nao encontrado no cadastro.","warning");return;}
+  if(!pt){toast("Paciente não encontrado no cadastro.","warning");return;}
   set({page:"patients",selPt:pt.id,ptTab:tab||"info"});
+  if(isMob())closeSB();
+};
+window.openPtFromRow=function(el,tab){
+  if(!el)return;
+  openPt(el.getAttribute("data-pt-id"),tab||"info");
 };
 
 // ── SIDEBAR ────────────────────────────────────────────────────────
@@ -5823,9 +5835,9 @@ function pagePts(){
   </div>
   <div class="card" style="padding:0;overflow:hidden">
     ${filtered.length===0?emptyState("🦷","Nenhum paciente encontrado","Tente outro nome ou cadastre um novo paciente.","+ Novo Paciente","addPt()")
-    :filtered.map(pt=>`<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid rgba(198,164,109,0.12);transition:background .1s"
+    :filtered.map(pt=>`<div data-pt-id="${safeAttr(pt.id)}" role="button" tabindex="0" onclick="openPtFromRow(this,'info')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openPtFromRow(this,'info')}" style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid rgba(198,164,109,0.12);transition:background .1s;cursor:pointer"
       onmouseenter="this.style.background='#C6A46D0d'" onmouseleave="this.style.background='transparent'">
-      <div onclick="openPt(${jsArg(pt.id)},'info')" style="display:flex;align-items:center;gap:10px;flex:1;cursor:pointer;min-width:0">
+      <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
         ${pt.photo?`<img src="${pt.photo}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid #C6A46D55;flex-shrink:0"/>`:ptAvatar(pt.name,44)}
         <div style="flex:1;min-width:0">
           <div style="color:#ddd;font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${pt.name}</div>
@@ -5836,7 +5848,7 @@ function pagePts(){
         ${badge(pt.status)}
         <span style="color:#444;font-size:16px;flex-shrink:0">›</span>
       </div>
-      <button onclick="delPt(${jsArg(pt.id)})" style="background:none;border:1px solid rgba(239,68,68,0.2);border-radius:8px;color:#ef444466;cursor:pointer;font-size:16px;padding:6px 10px;flex-shrink:0" title="Excluir">🗑</button>
+      <button onclick="event.stopPropagation();delPt(${jsArg(pt.id)})" style="background:none;border:1px solid rgba(239,68,68,0.2);border-radius:8px;color:#ef444466;cursor:pointer;font-size:16px;padding:6px 10px;flex-shrink:0" title="Excluir">🗑</button>
     </div>`).join("")}
   </div>`;
 }
