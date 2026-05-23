@@ -6739,25 +6739,31 @@ window.openPhotoMenu=function(ptId){
   var sheet=document.createElement("div");
   sheet.setAttribute("style","background:#0F0F0F;border:1px solid rgba(198,164,109,0.3);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:24px 20px 36px");
 
-  // TÉCNICA CORRETA para iOS Safari:
-  // - Input fica dentro do label (sem for/id), com display:none
-  // - iOS Safari abre o seletor nativo ao tocar no label
-  // - capture="environment" NÃO funciona no iOS — o próprio iOS mostra
-  //   a folha "Tirar Foto / Escolher da Biblioteca" automaticamente
+  // ANDROID: capture="environment" abre câmera traseira diretamente.
+  // Input fica DENTRO do label com display:none — padrão mais confiável
+  // sem nenhum JavaScript intermediário (sem click(), sem setTimeout).
   sheet.innerHTML=
     "<div style='text-align:center;margin-bottom:20px'>"
     +"<div style='width:40px;height:4px;background:rgba(198,164,109,0.25);border-radius:2px;margin:0 auto 16px'></div>"
     +"<div style='font-family:Playfair Display,Georgia,serif;color:#E2C99A;font-size:16px;font-weight:600'>Foto do Paciente</div>"
-    +"<div style='color:#666;font-size:12px;margin-top:4px'>Toque para escolher</div>"
+    +"<div style='color:#666;font-size:12px;margin-top:4px'>Escolha como deseja adicionar</div>"
     +"</div>"
     +"<div style='display:flex;flex-direction:column;gap:10px'>"
 
-    // ── Câmera / Galeria — um botão só (iOS mostra folha nativa com as duas opções) ──
-    +"<label id='pm-pick-label' style='display:flex;align-items:center;gap:16px;padding:16px 20px;background:#141414;border:1px solid rgba(198,164,109,0.3);border-radius:12px;cursor:pointer;width:100%;box-sizing:border-box'>"
-    +"<input id='"+camId+"' type='file' accept='image/*' style='display:none'/>"
+    // ── Câmera: capture="environment" → abre câmera traseira direto no Android ──
+    +"<label style='display:flex;align-items:center;gap:16px;padding:16px 20px;background:#141414;border:1px solid rgba(198,164,109,0.3);border-radius:12px;cursor:pointer;width:100%;box-sizing:border-box'>"
+    +"<input id='"+camId+"' type='file' accept='image/*' capture='environment' style='display:none'/>"
     +"<div style='width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#8B6914,#C6A46D);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0'>📷</div>"
-    +"<div><div style='color:#EAEAEA;font-size:15px;font-weight:700;font-family:Inter,sans-serif'>Adicionar foto</div>"
-    +"<div style='color:#888;font-size:12px;margin-top:3px;font-family:Inter,sans-serif'>Câmera ou galeria — escolha ao tocar</div></div>"
+    +"<div><div style='color:#EAEAEA;font-size:15px;font-weight:700;font-family:Inter,sans-serif'>Tirar foto agora</div>"
+    +"<div style='color:#888;font-size:12px;margin-top:3px;font-family:Inter,sans-serif'>Abre a câmera traseira</div></div>"
+    +"</label>"
+
+    // ── Galeria: sem capture → abre galeria/arquivos do Android ──
+    +"<label style='display:flex;align-items:center;gap:16px;padding:16px 20px;background:#141414;border:1px solid rgba(198,164,109,0.15);border-radius:12px;cursor:pointer;width:100%;box-sizing:border-box'>"
+    +"<input id='"+galId+"' type='file' accept='image/*' style='display:none'/>"
+    +"<div style='width:44px;height:44px;border-radius:10px;background:#1A1A1A;border:1px solid rgba(198,164,109,0.2);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0'>🖼️</div>"
+    +"<div><div style='color:#EAEAEA;font-size:15px;font-weight:700;font-family:Inter,sans-serif'>Escolher da galeria</div>"
+    +"<div style='color:#888;font-size:12px;margin-top:3px;font-family:Inter,sans-serif'>Selecionar foto existente</div></div>"
     +"</label>"
 
     // ── Excluir (só aparece se já tiver foto) ──
@@ -6776,13 +6782,15 @@ window.openPhotoMenu=function(ptId){
   m.addEventListener("click",function(e){if(e.target===m)m.remove();});
   document.body.appendChild(m);
 
-  // Conecta o input depois do DOM estar montado
-  document.getElementById(camId).onchange=function(){
-    if(this.files&&this.files[0]){
+  // Conecta os dois inputs depois do DOM estar montado
+  function _onPhotoChosen(inp){
+    if(inp.files&&inp.files[0]){
       document.getElementById("photo-menu")?.remove();
-      window.setPtPhotoF(ptId,this.files[0]);
+      window.setPtPhotoF(ptId,inp.files[0]);
     }
-  };
+  }
+  document.getElementById(camId).onchange=function(){_onPhotoChosen(this);};
+  document.getElementById(galId).onchange=function(){_onPhotoChosen(this);};
   var del=document.getElementById("pm-del");
   if(del)del.onclick=function(){
     m.remove();
