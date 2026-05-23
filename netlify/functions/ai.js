@@ -11,6 +11,7 @@
 
 const jwt = require('jsonwebtoken');
 
+
 const JWT_SECRET     = process.env.JWT_SECRET;
 const ANTHROPIC_KEY  = process.env.ANTHROPIC_API_KEY;
 const ANTHROPIC_URL  = 'https://api.anthropic.com/v1/messages';
@@ -22,6 +23,34 @@ const CORS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+function reply(statusCode, body) {
+  return { statusCode, headers: CORS, body: JSON.stringify(body) };
+}
+
+function normalizeMessages(messages) {
+  const normalized = [];
+  for (const message of Array.isArray(messages) ? messages : []) {
+    const role =
+      message?.r === 'a' || message?.role === 'assistant' ? 'assistant' :
+      message?.r === 'u' || message?.role === 'user' ? 'user' :
+      '';
+    const content = typeof message?.t === 'string'
+      ? message.t.trim()
+      : typeof message?.content === 'string'
+        ? message.content.trim()
+        : '';
+
+    if (!role || !content) continue;
+
+    const previous = normalized[normalized.length - 1];
+    if (previous?.role === role) previous.content += `\n\n${content}`;
+    else normalized.push({ role, content });
+  }
+
+  while (normalized[0]?.role === 'assistant') normalized.shift();
+  return normalized.slice(-16);
+}
+
 const SYS_AI = `Você é Júlia, secretária virtual do Método ROF™ — Reabilitação Oral & Facial Integrada da Dra. Rossana Batista Fucks, CRO/SC 21403, Porto Belo/SC. Atenda com elegância, calor humano e profissionalismo. Protocolos disponíveis: ROF White Glow™ (clareamento), ROF Veneer Glow™ (facetas resina), ROF Upper Lift™ (toxina botulínica), ROF Lips™ (preenchimento labial), ROF Balance™ (bruxismo/ATM), ROF Skin™ (pele), ROF Contour™ (harmonização estrutural), ROF Rejuvenate™ (bioestimuladores + Profhilo®), ROF Osseum™ (implantes + enxerto + PRF), ROF Prime™ (transformação completa face + sorriso + pele). Filosofia ROF™: "Função gera equilíbrio. Equilíbrio gera estética. Função e estética integradas geram harmonia facial.™" Nunca forneça diagnósticos definitivos, preços fechados ou garantias de resultado sem avaliação presencial. Incentive sempre a agendar uma consulta. Responda em português brasileiro com elegância. Máximo 3 parágrafos curtos e objetivos.`;
 
 exports.handler = async (event) => {
@@ -30,7 +59,7 @@ exports.handler = async (event) => {
   }
 
   if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, headers: CORS, body: JSON.stringify({ error: 'Method not allowed' }) };
+    return reply(405, { error: 'Method not allowed' });
   }
 
   // Verificar JWT
