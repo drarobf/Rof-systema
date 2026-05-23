@@ -1525,7 +1525,7 @@ select.inp option {
       <button class="sb-out-btn" onclick="doLogout()">
         <span>⏻</span><span id="sb-out-lbl">Sair do sistema</span>
       </button>
-      <div id="sync-badge" style="font-size:9px;letter-spacing:1px;text-align:center;padding:5px 0 2px;color:#6B6B6B;transition:color 0.4s">○ Offline</div>
+      <div id="sync-badge" onclick="syncFromCloud()" title="Clique para forçar sincronização entre dispositivos" style="font-size:9px;letter-spacing:1px;text-align:center;padding:5px 0 2px;color:#6B6B6B;transition:color 0.4s;cursor:pointer">○ Offline</div>
       <div class="sb-quote" id="sb-q">
         "Função gera equilíbrio.<br/>Equilíbrio gera estética."
       </div>
@@ -1614,7 +1614,7 @@ const _sb = _sbEnabled
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : { from: () => ({ select: () => Promise.resolve({data:[],error:null}), upsert: () => Promise.resolve({error:null}) }) };
 
-const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_stk','rof_procs','rof_caixa','rof_leads']);
+const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_stk','rof_procs','rof_caixa','rof_leads','rof_whats_templates','rof_orientacoes']);
 const _syncQ = JSON.parse(localStorage.getItem("rof_sync_q")||"[]");
 const _flushQ = async () => {
   if(!_sbEnabled||!navigator.onLine||!_syncQ.length)return;
@@ -1645,15 +1645,22 @@ async function syncFromCloud(){
     if(error)throw error;
     (rows||[]).forEach(({key:k,data:v})=>{
       localStorage.setItem(k,JSON.stringify(v));
+      // ── Atualiza o estado em memória conforme o tipo ──
       if(k==='rof_pts'&&Array.isArray(v))ST.pts=v;
       else if(k==='rof_apts'&&Array.isArray(v))ST.apts=v;
       else if(k==='rof_stk'&&Array.isArray(v))ST.stk=v;
       else if(k==='rof_procs'&&Array.isArray(v))PROCS=v;
+      else if(k==='rof_caixa'&&Array.isArray(v))ST.caixa=v;
+      else if(k==='rof_leads'&&Array.isArray(v))ST.leads=v;
+      // (rof_whats_templates e rof_orientacoes são lidos sob demanda do localStorage)
     });
     _setSyncBadge(true);
     if(typeof render==="function")render();
     if(typeof checkBirthdays==="function")checkBirthdays();
-  }catch{_setSyncBadge(false);}
+  }catch(e){
+    console.warn("syncFromCloud falhou:",e);
+    _setSyncBadge(false);
+  }
 }
 window.addEventListener("online",()=>{if(_sbEnabled){_flushQ();syncFromCloud();}});
 window.addEventListener("offline",()=>_setSyncBadge(false));
@@ -6405,6 +6412,19 @@ window.aprovarIntake=async function(intakeId){
     lastVisit:"—",treatment:"",tipo:"particular",convenio:"",status:"Pendente",
     photo:null,xrays:[],notes:"",docs:[],odontogram:{},
     anamBucal:d.anamBucal||null,anamFacial:d.anamFacial||null};
+
+  // ── CRÍTICO: sincronizar do cloud ANTES de adicionar ──
+  // Garante que não vamos sobrescrever pacientes adicionados em outros dispositivos
+  if(_sbEnabled&&navigator.onLine){
+    try{
+      const {data:rows}=await _sb.from('rof_store').select('key,data').eq('key','rof_pts').maybeSingle();
+      if(rows&&Array.isArray(rows.data)){
+        ST.pts=rows.data;
+        localStorage.setItem("rof_pts",JSON.stringify(rows.data));
+      }
+    }catch(e){console.warn("Sync pré-aprovação falhou:",e);}
+  }
+
   const nps=[...ST.pts,np];save("rof_pts",nps);
   try{await _sb.from('rof_intake').update({status:'approved'}).eq('id',intakeId);}catch(e){}
   ST.intakes=(ST.intakes||[]).filter(x=>x.id!==intakeId);
@@ -6425,7 +6445,22 @@ window.rejeitarIntake=function(intakeId){
 };
 
 // Auto-carregar e atualizar periodicamente
-if(_sbEnabled){loadIntakes();setInterval(loadIntakes,30000);}
+if(_sbEnabled){
+  loadIntakes();
+  setInterval(loadIntakes,30000);
+  // Sincronização periódica entre dispositivos (a cada 60s)
+  // Garante que alterações feitas em outro celular/computador apareçam aqui
+  setInterval(()=>{
+    if(document.hidden)return; // não sincroniza se a aba não está visível
+    syncFromCloud();
+  },60000);
+  // Sincroniza sempre que a aba volta a ter foco (você abriu de novo)
+  document.addEventListener("visibilitychange",()=>{
+    if(!document.hidden&&_sbEnabled&&navigator.onLine){
+      syncFromCloud();
+    }
+  });
+}
 
 window.addPt=()=>{
   const np={id:Date.now(),name:"Novo Paciente",phone:"",email:"",cpf:"",rg:"",birthday:"",endereco:"",
