@@ -6772,6 +6772,11 @@ window.openPhotoMenu=function(ptId){
     m.remove();
     delPtPhoto(ptId);
   };
+  var del=document.getElementById("pm-del");
+  if(del)del.onclick=function(){
+    m.remove();
+    delPtPhoto(ptId);
+  };
   document.getElementById("pm-cancel").onclick=function(){m.remove();};
 };
 
