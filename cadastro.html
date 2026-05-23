@@ -608,7 +608,7 @@ async function submitForm(){
       error = result.error;
     } else {
       // ── MODO PÚBLICO ── cria uma fichinha nova com o nome que o paciente digitou
-      const nomePaciente = (data.nome || "").trim() || "Cadastro público sem nome";
+      const nomePaciente = (data.dados?.name || "").trim() || "Cadastro público sem nome";
       const result = await sb.from("rof_intake").insert({
         dr_label: "🌐 " + nomePaciente,   // 🌐 marca que veio do link público
         data: data,
