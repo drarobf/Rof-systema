@@ -1982,6 +1982,79 @@ window.exportFinanceiroCSV=function(){
 // ══════════════════════════════════════════════════════════════════
 // TAGS DE PACIENTES
 // ══════════════════════════════════════════════════════════════════
+// Lista centralizada — usar em todos os lugares onde tags aparecem
+const TAGS_PT=["Ativo","Inativo","Retorno","Avaliação","Tratamento","VIP","Convênio","Particular","Urgência","Lead"];
+const TAGS_COLORS={
+  "Ativo":"#22c55e",
+  "Inativo":"#6B6B6B",
+  "Retorno":"#f59e0b",
+  "Avaliação":"#60a5fa",
+  "Tratamento":"#c084fc",
+  "VIP":"#C6A46D",
+  "Convênio":"#3b82f6",
+  "Particular":"#a78bfa",
+  "Urgência":"#ef4444",
+  "Lead":"#ec4899",
+  "Todos":"#888"
+};
+
+// ── Gera texto do alerta de saúde automaticamente da anamnese ──
+function compilarAlertaSaude(p){
+  if(!p)return "";
+  const itens=[];
+  const ab=p.anamBucal||{};
+  const af=p.anamFacial||{};
+
+  // Alertas da Anamnese Bucal
+  if(ab.diabetes==="sim")itens.push("Diabetes");
+  if(ab.hipertensao==="sim")itens.push("Pressão alta (hipertensão)");
+  if(ab.anticoag==="sim")itens.push("Uso de anticoagulantes");
+  if(ab.marcapasso==="sim")itens.push("Marca-passo / implante cardíaco");
+  if(ab.sangramento==="sim")itens.push("Histórico de sangramento excessivo");
+  if(ab.anest==="sim")itens.push("⚠️ Reação prévia à anestesia local");
+  if(ab.gravida==="sim")itens.push("Grávida / amamentando");
+  if(ab.latex==="sim")itens.push("Alergia ao látex");
+  if(ab.alergia&&ab.alergia.trim())itens.push("Alergia: "+ab.alergia.trim());
+  if(ab.doenca&&ab.doenca.trim())itens.push("Outras doenças: "+ab.doenca.trim());
+  if(ab.medicamentos&&ab.medicamentos.trim())itens.push("Medicamentos: "+ab.medicamentos.trim());
+
+  // Alertas da Anamnese Facial
+  if(af.f_auto==="sim")itens.push("Doença autoimune");
+  if(af.f_tireoide==="sim")itens.push("Doença da tireoide");
+  if(af.f_grav==="sim"&&ab.gravida!=="sim")itens.push("Grávida / amamentando");
+  if(af.f_anti==="sim"&&ab.anticoag!=="sim")itens.push("Anticoagulantes");
+  if(af.f_alergia_abelha==="sim")itens.push("Alergia veneno de abelha");
+  if(af.f_herpes==="sim")itens.push("Herpes labial recorrente");
+  if(af.f_kel==="sim")itens.push("Quelóide");
+  if(af.f_roac==="sim")itens.push("⚠️ Uso de Roacutan (isotretinoína)");
+  if(af.f_alergia&&af.f_alergia.trim()&&!ab.alergia)itens.push("Alergia: "+af.f_alergia.trim());
+
+  return itens.join(" · ");
+}
+
+// ── Adicionar item rápido ao alerta de saúde ──
+window.addAlertaQuick=function(ptId,tag){
+  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  let atual=(p.alertaSaude||"").trim();
+  if(!atual)atual=compilarAlertaSaude(p);
+  const prompts={
+    "Alergia":"Alergia a quê? (ex: penicilina, sulfa, dipirona)",
+    "Hipertensão":"Toma medicação? (deixe em branco se não souber)",
+    "Diabetes":"Tipo 1, Tipo 2 ou gestacional? (em branco se não souber)",
+    "Cardiopata":"Especifique condição (ex: arritmia, infarto prévio)",
+    "Anticoagulante":"Qual? (ex: Marevan, Xarelto, AAS)",
+    "Doença autoimune":"Qual? (ex: lúpus, Hashimoto, artrite reumatoide)"
+  };
+  let texto=tag;
+  if(prompts[tag]){
+    const det=prompt(prompts[tag]);
+    if(det===null)return;
+    if(det.trim())texto=tag+": "+det.trim();
+  }
+  const novo=atual?atual+" · "+texto:texto;
+  updPt(ptId,"alertaSaude",novo,true);
+};
+
 window.toggleTag=function(ptId,tag){
   const pts=ST.pts.map(p=>{
     if(p.id!==ptId)return p;
@@ -3233,8 +3306,26 @@ const todayISO=()=>new Date().toISOString().slice(0,10);
 const todayFmt=()=>new Date().toLocaleDateString("pt-BR");
 const fmtDate=s=>{if(!s||s==="—")return"—";if(s.includes("/"))return s;const[y,m,d]=s.split("-");return`${d}/${m}/${y}`;};
 const load=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}};
+// Indicador visual "✓ Salvo automaticamente" — disponível globalmente
+function _showSaveIndicator(){
+  let el=document.getElementById("rof-save-indicator");
+  if(!el){
+    el=document.createElement("div");
+    el.id="rof-save-indicator";
+    el.style.cssText="position:fixed;top:18px;right:18px;background:linear-gradient(135deg,rgba(34,197,94,0.95),rgba(22,163,74,0.9));color:#fff;padding:7px 16px;border-radius:50px;font-size:11px;font-weight:700;letter-spacing:0.5px;z-index:99999;box-shadow:0 4px 16px rgba(34,197,94,0.4);opacity:0;transition:opacity 0.25s ease;pointer-events:none";
+    el.innerHTML="✓ Salvo automaticamente";
+    document.body.appendChild(el);
+  }
+  el.style.opacity="1";
+  clearTimeout(window._saveIndTimer);
+  window._saveIndTimer=setTimeout(()=>{el.style.opacity="0";},1400);
+}
+window._showSaveIndicator=_showSaveIndicator;
+
 const save=(k,v)=>{
   try{localStorage.setItem(k,JSON.stringify(v));}catch{}
+  // Feedback visual GLOBAL: pisca "✓ Salvo" no canto sempre que algo é salvo
+  if(typeof _showSaveIndicator==="function")_showSaveIndicator();
   if(SYNC_KEYS.has(k)){
     if(navigator.onLine){
       _sb.from('rof_store').upsert({key:k,data:v},{onConflict:'key'})
@@ -3369,14 +3460,145 @@ let PROCS=load("rof_procs",DEF_PROCS);
 const DEFPTS=[]
 const DEFAPTS=[];
 const DEFSTK=[
-  {id:1,item:"Anestesia Articaína 4%",cat:"Anestésicos",qty:45,min:20,unit:"ampola"},
-  {id:2,item:"Resina Composta A2",cat:"Resinas",qty:8,min:10,unit:"seringa"},
-  {id:3,item:"Gel Clareador 35%",cat:"Estética",qty:2,min:5,unit:"seringa"},
-  {id:4,item:"Implante Nobel Active 4.3",cat:"Implantes",qty:6,min:4,unit:"un"},
-  {id:5,item:"Ácido Hialurônico 1ml",cat:"Harmonização",qty:4,min:6,unit:"seringa"},
-  {id:6,item:"Toxina Botulínica 100U",cat:"Harmonização",qty:3,min:3,unit:"frasco"},
-  {id:7,item:"Profhilo® 2ml",cat:"Harmonização",qty:2,min:4,unit:"seringa"},
-  {id:8,item:"Luvas M (caixa)",cat:"EPI",qty:12,min:5,unit:"caixa"},
+  // ── ANESTÉSICOS ──
+  {id:1,item:"Anestésico Articaína 4% c/ epi 1:100.000",cat:"Anestésicos",qty:45,min:20,unit:"tubete"},
+  {id:2,item:"Anestésico Lidocaína 2% c/ epi 1:100.000",cat:"Anestésicos",qty:30,min:15,unit:"tubete"},
+  {id:3,item:"Anestésico Mepivacaína 3% sem vaso",cat:"Anestésicos",qty:20,min:10,unit:"tubete"},
+  {id:4,item:"Anestésico Tópico em gel (Benzotop)",cat:"Anestésicos",qty:5,min:2,unit:"pote"},
+  {id:5,item:"Agulha gengival curta 30G",cat:"Anestésicos",qty:100,min:50,unit:"un"},
+  {id:6,item:"Agulha gengival longa 27G",cat:"Anestésicos",qty:80,min:40,unit:"un"},
+
+  // ── DENTÍSTICA / RESTAURADOR ──
+  {id:10,item:"Resina Composta A1",cat:"Dentística",qty:6,min:4,unit:"seringa"},
+  {id:11,item:"Resina Composta A2",cat:"Dentística",qty:8,min:6,unit:"seringa"},
+  {id:12,item:"Resina Composta A3",cat:"Dentística",qty:7,min:5,unit:"seringa"},
+  {id:13,item:"Resina Composta A3,5",cat:"Dentística",qty:4,min:3,unit:"seringa"},
+  {id:14,item:"Resina Composta B1 (Estética)",cat:"Dentística",qty:5,min:3,unit:"seringa"},
+  {id:15,item:"Adesivo Universal (Single Bond)",cat:"Dentística",qty:3,min:2,unit:"frasco"},
+  {id:16,item:"Ácido Fosfórico 37%",cat:"Dentística",qty:8,min:4,unit:"seringa"},
+  {id:17,item:"Ionômero de vidro restaurador",cat:"Dentística",qty:4,min:2,unit:"kit"},
+  {id:18,item:"Matriz metálica 0,05mm",cat:"Dentística",qty:50,min:20,unit:"un"},
+  {id:19,item:"Cunha de madeira (sortida)",cat:"Dentística",qty:100,min:30,unit:"un"},
+
+  // ── ENDODONTIA ──
+  {id:30,item:"Lima manual K-File #15-40 (kit)",cat:"Endodontia",qty:6,min:3,unit:"kit"},
+  {id:31,item:"Lima rotatória ProTaper Gold (Set)",cat:"Endodontia",qty:3,min:2,unit:"kit"},
+  {id:32,item:"Hipoclorito de Sódio 2,5%",cat:"Endodontia",qty:4,min:2,unit:"frasco"},
+  {id:33,item:"EDTA Trissódico 17%",cat:"Endodontia",qty:3,min:2,unit:"frasco"},
+  {id:34,item:"Cones de Guta-Percha (kit)",cat:"Endodontia",qty:5,min:3,unit:"caixa"},
+  {id:35,item:"Cimento endodôntico AH Plus",cat:"Endodontia",qty:2,min:1,unit:"kit"},
+  {id:36,item:"Hidróxido de Cálcio PA",cat:"Endodontia",qty:2,min:1,unit:"pote"},
+  {id:37,item:"Curativo Otosporin",cat:"Endodontia",qty:3,min:2,unit:"frasco"},
+
+  // ── PERIODONTIA / PROFILAXIA ──
+  {id:40,item:"Cureta Gracey 5/6",cat:"Periodontia",qty:3,min:2,unit:"un"},
+  {id:41,item:"Cureta Gracey 7/8",cat:"Periodontia",qty:3,min:2,unit:"un"},
+  {id:42,item:"Cureta Gracey 11/12",cat:"Periodontia",qty:3,min:2,unit:"un"},
+  {id:43,item:"Cureta Gracey 13/14",cat:"Periodontia",qty:3,min:2,unit:"un"},
+  {id:44,item:"Sonda periodontal Williams",cat:"Periodontia",qty:4,min:2,unit:"un"},
+  {id:45,item:"Pasta profilática (Herjos-F)",cat:"Periodontia",qty:3,min:2,unit:"pote"},
+  {id:46,item:"Taça de borracha p/ profilaxia",cat:"Periodontia",qty:30,min:15,unit:"un"},
+  {id:47,item:"Escova Robinson",cat:"Periodontia",qty:25,min:10,unit:"un"},
+  {id:48,item:"Bicarbonato sódio (Jet)",cat:"Periodontia",qty:3,min:2,unit:"pote"},
+
+  // ── CIRURGIA / IMPLANTES ──
+  {id:60,item:"Fio de sutura Nylon 4-0",cat:"Cirurgia",qty:10,min:5,unit:"un"},
+  {id:61,item:"Fio de sutura Seda 3-0",cat:"Cirurgia",qty:8,min:4,unit:"un"},
+  {id:62,item:"Fio de sutura Vicryl 4-0 (absorvível)",cat:"Cirurgia",qty:6,min:3,unit:"un"},
+  {id:63,item:"Lâmina de bisturi nº 15",cat:"Cirurgia",qty:30,min:15,unit:"un"},
+  {id:64,item:"Implante Neodent Drive 4.0x10mm",cat:"Implantes",qty:4,min:2,unit:"un"},
+  {id:65,item:"Implante Neodent Drive 4.0x11,5mm",cat:"Implantes",qty:4,min:2,unit:"un"},
+  {id:66,item:"Implante Neodent Drive 3.5x10mm",cat:"Implantes",qty:3,min:2,unit:"un"},
+  {id:67,item:"Cicatrizador 4.0x4mm",cat:"Implantes",qty:6,min:3,unit:"un"},
+  {id:68,item:"Cicatrizador 4.0x5mm",cat:"Implantes",qty:6,min:3,unit:"un"},
+  {id:69,item:"Pilar protético reto",cat:"Implantes",qty:4,min:2,unit:"un"},
+  {id:70,item:"Enxerto Bio-Oss 0,5g (Geistlich)",cat:"Implantes",qty:2,min:1,unit:"frasco"},
+  {id:71,item:"Membrana Bio-Gide 13x25mm",cat:"Implantes",qty:2,min:1,unit:"un"},
+
+  // ── PRÓTESE ──
+  {id:80,item:"Silicone de adição leve (Express)",cat:"Prótese",qty:3,min:2,unit:"tubo"},
+  {id:81,item:"Silicone de adição pesado (Express)",cat:"Prótese",qty:3,min:2,unit:"tubo"},
+  {id:82,item:"Alginato (Hydrogum 5)",cat:"Prótese",qty:4,min:2,unit:"pacote"},
+  {id:83,item:"Cimento resinoso RelyX U200",cat:"Prótese",qty:3,min:2,unit:"seringa"},
+  {id:84,item:"Cimento provisório (RelyX Temp)",cat:"Prótese",qty:2,min:1,unit:"tubo"},
+  {id:85,item:"Coroa provisória bisacrílica",cat:"Prótese",qty:3,min:2,unit:"cartucho"},
+  {id:86,item:"Moldeira inferior parcial (sortida)",cat:"Prótese",qty:10,min:5,unit:"un"},
+  {id:87,item:"Moldeira superior parcial (sortida)",cat:"Prótese",qty:10,min:5,unit:"un"},
+
+  // ── CLAREAMENTO / ESTÉTICA ──
+  {id:100,item:"Peróxido de Hidrogênio 35% (Whiteness HP)",cat:"Estética",qty:3,min:2,unit:"kit"},
+  {id:101,item:"Peróxido de Carbamida 16% (caseiro)",cat:"Estética",qty:5,min:3,unit:"seringa"},
+  {id:102,item:"Moldeira individual termoplástica",cat:"Estética",qty:10,min:5,unit:"un"},
+  {id:103,item:"Barreira gengival fotopolimerizável",cat:"Estética",qty:3,min:2,unit:"seringa"},
+  {id:104,item:"Dessensibilizante pós-clareamento",cat:"Estética",qty:3,min:2,unit:"frasco"},
+
+  // ── HARMONIZAÇÃO FACIAL ──
+  {id:120,item:"Toxina Botulínica 100U (Botox)",cat:"Harmonização",qty:3,min:2,unit:"frasco"},
+  {id:121,item:"Toxina Botulínica 50U (Dysport)",cat:"Harmonização",qty:2,min:1,unit:"frasco"},
+  {id:122,item:"Ácido Hialurônico 1ml (Juvederm Volift)",cat:"Harmonização",qty:4,min:3,unit:"seringa"},
+  {id:123,item:"Ácido Hialurônico 1ml (Restylane Lyft)",cat:"Harmonização",qty:3,min:2,unit:"seringa"},
+  {id:124,item:"Ácido Hialurônico labial (Juvederm Volbella)",cat:"Harmonização",qty:3,min:2,unit:"seringa"},
+  {id:125,item:"Hialuronidase 2000UTR (Hyalozima)",cat:"Harmonização",qty:2,min:2,unit:"ampola"},
+  {id:126,item:"Cânula 22G x 50mm",cat:"Harmonização",qty:20,min:10,unit:"un"},
+  {id:127,item:"Cânula 25G x 40mm",cat:"Harmonização",qty:20,min:10,unit:"un"},
+  {id:128,item:"Cânula 27G x 38mm",cat:"Harmonização",qty:20,min:10,unit:"un"},
+  {id:129,item:"Agulha hipodérmica 13x4,5",cat:"Harmonização",qty:50,min:25,unit:"un"},
+  {id:130,item:"Anestésico Lidocaína 2% tópico (Emla)",cat:"Harmonização",qty:3,min:2,unit:"tubo"},
+
+  // ── BIOESTIMULADORES E SKIN ──
+  {id:140,item:"Bioestimulador Sculptra (PLLA)",cat:"Skin/Bio",qty:2,min:2,unit:"frasco"},
+  {id:141,item:"Bioestimulador Radiesse 1,5ml (HA-CaHA)",cat:"Skin/Bio",qty:2,min:1,unit:"seringa"},
+  {id:142,item:"Bioestimulador Ellansé M",cat:"Skin/Bio",qty:1,min:1,unit:"seringa"},
+  {id:143,item:"PDRN injetável (Plinest)",cat:"Skin/Bio",qty:3,min:2,unit:"seringa"},
+  {id:144,item:"Skinbooster Profhilo 2ml",cat:"Skin/Bio",qty:3,min:2,unit:"seringa"},
+  {id:145,item:"Skinbooster Restylane Vital",cat:"Skin/Bio",qty:2,min:1,unit:"seringa"},
+  {id:146,item:"Microagulhamento (Dermapen) - cartucho",cat:"Skin/Bio",qty:20,min:10,unit:"un"},
+
+  // ── EPI / BIOSSEGURANÇA ──
+  {id:160,item:"Luvas procedimento M (caixa 100)",cat:"EPI",qty:8,min:4,unit:"caixa"},
+  {id:161,item:"Luvas procedimento P (caixa 100)",cat:"EPI",qty:6,min:3,unit:"caixa"},
+  {id:162,item:"Luvas cirúrgicas estéreis 7,5",cat:"EPI",qty:30,min:15,unit:"par"},
+  {id:163,item:"Máscara N95 (PFF2)",cat:"EPI",qty:50,min:20,unit:"un"},
+  {id:164,item:"Máscara descartável tripla",cat:"EPI",qty:200,min:100,unit:"un"},
+  {id:165,item:"Touca descartável",cat:"EPI",qty:200,min:100,unit:"un"},
+  {id:166,item:"Avental descartável",cat:"EPI",qty:100,min:50,unit:"un"},
+  {id:167,item:"Óculos de proteção",cat:"EPI",qty:5,min:3,unit:"un"},
+  {id:168,item:"Campo cirúrgico estéril",cat:"EPI",qty:30,min:15,unit:"un"},
+
+  // ── HIGIENE / DESINFECÇÃO ──
+  {id:180,item:"Álcool 70% 1L",cat:"Higiene",qty:10,min:5,unit:"frasco"},
+  {id:181,item:"Clorexidina 0,12% (solução bucal)",cat:"Higiene",qty:5,min:3,unit:"frasco"},
+  {id:182,item:"Clorexidina 2% (desinfetante)",cat:"Higiene",qty:3,min:2,unit:"frasco"},
+  {id:183,item:"Glutaraldeído 2%",cat:"Higiene",qty:2,min:1,unit:"galão"},
+  {id:184,item:"Detergente enzimático",cat:"Higiene",qty:3,min:2,unit:"frasco"},
+  {id:185,item:"Sabonete antisséptico",cat:"Higiene",qty:5,min:3,unit:"frasco"},
+  {id:186,item:"Papel toalha",cat:"Higiene",qty:20,min:10,unit:"pacote"},
+
+  // ── DESCARTÁVEIS ──
+  {id:200,item:"Sugador descartável",cat:"Descartáveis",qty:200,min:100,unit:"un"},
+  {id:201,item:"Babador descartável",cat:"Descartáveis",qty:300,min:100,unit:"un"},
+  {id:202,item:"Copo descartável 50ml",cat:"Descartáveis",qty:500,min:200,unit:"un"},
+  {id:203,item:"Rolo de algodão",cat:"Descartáveis",qty:10,min:5,unit:"pacote"},
+  {id:204,item:"Gaze estéril 7,5x7,5",cat:"Descartáveis",qty:30,min:15,unit:"pacote"},
+  {id:205,item:"Cotonete (haste flexível)",cat:"Descartáveis",qty:5,min:2,unit:"caixa"},
+
+  // ── RX / RADIOGRAFIA ──
+  {id:220,item:"Filme radiográfico periapical adulto",cat:"Radiologia",qty:30,min:15,unit:"un"},
+  {id:221,item:"Filme radiográfico oclusal",cat:"Radiologia",qty:10,min:5,unit:"un"},
+  {id:222,item:"Posicionador radiográfico (kit)",cat:"Radiologia",qty:1,min:1,unit:"kit"},
+
+  // ── BROCAS E PONTAS ──
+  {id:240,item:"Broca diamantada esférica (sortida)",cat:"Brocas",qty:20,min:10,unit:"un"},
+  {id:241,item:"Broca diamantada tronco-cônica",cat:"Brocas",qty:15,min:8,unit:"un"},
+  {id:242,item:"Broca Carbide cirúrgica longa",cat:"Brocas",qty:5,min:3,unit:"un"},
+  {id:243,item:"Ponta diamantada acabamento",cat:"Brocas",qty:15,min:8,unit:"un"},
+  {id:244,item:"Disco de polimento (kit)",cat:"Brocas",qty:5,min:3,unit:"kit"},
+
+  // ── MEDICAMENTOS / RECEITUÁRIO ──
+  {id:260,item:"Amoxicilina 500mg (referência)",cat:"Medicamentos",qty:1,min:1,unit:"caixa"},
+  {id:261,item:"Nimesulida 100mg (referência)",cat:"Medicamentos",qty:1,min:1,unit:"caixa"},
+  {id:262,item:"Dipirona 500mg (referência)",cat:"Medicamentos",qty:1,min:1,unit:"caixa"},
+  {id:263,item:"Ibuprofeno 600mg (referência)",cat:"Medicamentos",qty:1,min:1,unit:"caixa"}
 ];
 
 // ── STATE ─────────────────────────────────────────────────────────────
@@ -4163,11 +4385,103 @@ window.saveQuickReg=function(){
 };
 
 // ── EDITAR CONSULTA ─────────────────────────────────────────────
+// Wrap interno — mostra modal de confirmação de alerta se paciente tem doença/condição
 window.openEditApt=function(aptId){
+  var a=ST.apts.find(function(x){return x.id===aptId;});if(!a)return;
+  // Checa alerta de saúde do paciente vinculado
+  var pt=null;
+  if(a.patientId)pt=ST.pts.find(function(p){return p.id===a.patientId;});
+  if(!pt&&a.patient){
+    var nm=a.patient.toLowerCase().trim();
+    pt=ST.pts.find(function(p){return (p.name||"").toLowerCase().trim()===nm;});
+  }
+  var alerta=pt?(pt.alertaSaude&&pt.alertaSaude.trim()?pt.alertaSaude:compilarAlertaSaude(pt)):"";
+  // Se já visualizou o alerta dessa consulta na sessão, não mostra de novo
+  ST._alertasVistos=ST._alertasVistos||new Set();
+  if(alerta&&alerta.trim()&&!ST._alertasVistos.has(aptId)){
+    mostrarModalAlertaSaude(aptId,pt,alerta);
+    return;
+  }
+  _openEditAptReal(aptId);
+};
+
+// Modal de confirmação vermelho — exibido ANTES de editar a consulta
+function mostrarModalAlertaSaude(aptId,pt,alerta){
+  document.getElementById("alerta-saude-modal")?.remove();
+  var primeiroNome=(pt.name||"").split(" ")[0];
+  var idade=pt.birthday?(function(){
+    var b=new Date(pt.birthday+"T12:00:00");var d=new Date();
+    var i=d.getFullYear()-b.getFullYear();
+    if(d.getMonth()<b.getMonth()||(d.getMonth()===b.getMonth()&&d.getDate()<b.getDate()))i--;
+    return i;
+  })():null;
+  var listaAlertas=alerta.split(" · ").map(function(item){
+    return "<li style='padding:6px 10px;background:rgba(239,68,68,0.08);border-left:3px solid #ef4444;border-radius:4px;margin-bottom:5px;color:#fca5a5;font-size:13px;font-weight:600'>"+item.replace(/</g,"&lt;")+"</li>";
+  }).join("");
+  var m=document.createElement("div");m.className="mbg";m.id="alerta-saude-modal";
+  m.style.zIndex="10500";
+  m.innerHTML=
+    "<div class='mbx' style='max-width:480px;border:2px solid #ef4444;box-shadow:0 0 40px rgba(239,68,68,0.4)'>"
+    +"<div class='mhd' style='background:linear-gradient(135deg,rgba(239,68,68,0.18),rgba(239,68,68,0.05));border-bottom:1px solid #ef444444'>"
+    +"<div style='display:flex;align-items:center;gap:10px;width:100%'>"
+    +"<span style='font-size:28px;animation:pulse 1.5s infinite'>⚠️</span>"
+    +"<div style='flex:1'>"
+    +"<div style='color:#ef4444;font-weight:900;font-size:15px;letter-spacing:1px'>ATENÇÃO — ALERTA DE SAÚDE</div>"
+    +"<div style='color:#888;font-size:11px;margin-top:2px'>"+primeiroNome+(idade?" ("+idade+" anos)":"")+"</div>"
+    +"</div>"
+    +"</div></div>"
+    +"<div class='mbd'>"
+    +"<div style='color:#aaa;font-size:12px;margin-bottom:12px;line-height:1.6'>Este(a) paciente apresenta as seguintes condições que requerem atenção especial:</div>"
+    +"<ul style='list-style:none;padding:0;margin:0 0 14px 0'>"+listaAlertas+"</ul>"
+    +"<div style='background:#0a0a0a;border-radius:6px;padding:10px 12px;margin-bottom:14px;font-size:11px;color:#888;line-height:1.6'>"
+    +"💡 <b style='color:#C6A46D'>Recomendações:</b> Verifique anamnese antes de iniciar procedimento. Confirme medicamentos atuais. Em caso de dúvida sobre interações ou contraindicações, considere interconsulta com médico assistente."
+    +"</div>"
+    +"<div style='display:flex;gap:8px;flex-wrap:wrap'>"
+    +"<button onclick='document.getElementById(\"alerta-saude-modal\").remove()' class='bg' style='flex:1;padding:11px;font-size:12px'>Cancelar</button>"
+    +"<button onclick='confirmarAlertaEAbrir("+aptId+")' class='bp' style='flex:2;padding:11px;font-size:12px;font-weight:800;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;border:none'>✓ Estou ciente — abrir consulta</button>"
+    +"</div>"
+    +"<div style='text-align:center;margin-top:10px'>"
+    +"<button onclick='abrirFichaPtDoAlerta("+pt.id+")' style='background:none;border:none;color:#888;cursor:pointer;font-size:11px;text-decoration:underline'>📋 Ver ficha completa do paciente</button>"
+    +"</div>"
+    +"</div></div>";
+  document.body.appendChild(m);
+  m.addEventListener("click",function(e){if(e.target===m)m.remove();});
+}
+
+window.confirmarAlertaEAbrir=function(aptId){
+  ST._alertasVistos=ST._alertasVistos||new Set();
+  ST._alertasVistos.add(aptId);
+  document.getElementById("alerta-saude-modal")?.remove();
+  _openEditAptReal(aptId);
+};
+
+window.abrirFichaPtDoAlerta=function(ptId){
+  document.getElementById("alerta-saude-modal")?.remove();
+  set({page:"patients",selPt:ptId,ptTab:"info"});
+};
+
+// Abre a ficha completa do paciente vinculado a uma consulta da agenda
+window.abrirFichaDoApt=function(aptId){
+  var a=ST.apts.find(function(x){return x.id===aptId;});if(!a)return;
+  var pt=null;
+  if(a.patientId)pt=ST.pts.find(function(p){return p.id===a.patientId;});
+  if(!pt&&a.patient){
+    var nome=a.patient.toLowerCase().trim();
+    pt=ST.pts.find(function(p){return (p.name||"").toLowerCase().trim()===nome;});
+  }
+  if(!pt){
+    toast("Paciente não encontrado no cadastro. Verifique se a consulta está vinculada a um paciente cadastrado.","warning");
+    return;
+  }
+  set({page:"patients",selPt:pt.id,ptTab:"info"});
+};
+
+// Função interna original — abre direto o modal de edição
+function _openEditAptReal(aptId){
   var a=ST.apts.find(function(x){return x.id===aptId;});if(!a)return;
   var pr=PROCS.find(function(p){return p.id===a.procId;});
   var cats=["Todos",...new Set(PROCS.map(function(p){return p.c;}))];
-  var procOpts=PROCS.map(function(p){return "<option value='"+p.id+"'"+(a.procId===p.id?" selected":"")+">"+p.n+" — R$ "+p.p.toLocaleString("pt-BR")+"</option>";}).join("");
+  var procOpts=PROCS.map(function(p){return "<option value='"+p.id+"'"+(a.procId===p.id?" selected":"")+">"+p.n+"</option>";}).join("");
   var statusOpts=["Aguardando","Confirmado","Cancelado"].map(function(s){return "<option value='"+s+"'"+(a.status===s?" selected":"")+">"+s+"</option>";}).join("");
   var durOpts=[{v:30,l:"30 min"},{v:60,l:"1 hora"},{v:90,l:"1h 30min"},{v:120,l:"2 horas"},{v:150,l:"2h 30min"},{v:180,l:"3 horas"},{v:240,l:"4 horas"}]
     .map(function(d){return "<option value='"+d.v+"'"+((a.dur||60)===d.v?" selected":"")+">"+d.l+"</option>";}).join("");
@@ -4214,7 +4528,7 @@ window.openEditApt=function(aptId){
   document.getElementById("edit-apt-modal")?.remove();
   document.body.appendChild(m);
   ST._eaTipo=a.tipo||"particular";
-};
+}
 
 window.eaTipo=function(tipo){
   ST._eaTipo=tipo;
@@ -5192,7 +5506,48 @@ function pagePts(){
     let tc="";
 
     if(ptTab==="info"){
-      tc=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      // Compila alerta de saúde automaticamente da anamnese (sobrescreve só se vazio)
+      const alertaAuto=compilarAlertaSaude(p);
+      const alertaFinal=p.alertaSaude||alertaAuto;
+      const temAlerta=alertaFinal&&alertaFinal.trim().length>0;
+      const editandoAlerta=ST.editingAlertaPt===p.id;
+
+      tc=`
+      <!-- ALERTA DE SAÚDE — caixa única (visualização OU edição) -->
+      ${temAlerta||editandoAlerta?`
+      <div style="background:linear-gradient(135deg,rgba(239,68,68,0.18),rgba(239,68,68,0.05));border:2px solid #ef4444;border-radius:10px;padding:12px 14px;margin-bottom:14px;position:relative">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="font-size:18px;animation:pulse 2s infinite">⚠️</span>
+          <span style="color:#ef4444;font-weight:900;font-size:12px;letter-spacing:1.5px;text-transform:uppercase">Alerta de Saúde</span>
+          ${editandoAlerta
+            ?`<button onclick="set({editingAlertaPt:null});toast('Alerta salvo ✓','success')" style="background:#22c55e;border:none;color:#fff;cursor:pointer;font-size:11px;font-weight:700;padding:4px 12px;border-radius:6px;margin-left:auto">✓ Concluir</button>`
+            :`<button onclick="set({editingAlertaPt:${p.id}})" style="background:none;border:1px solid #ef444466;color:#ef4444;cursor:pointer;font-size:11px;font-weight:600;padding:4px 12px;border-radius:6px;margin-left:auto">✏️ Editar</button>`
+          }
+        </div>
+        ${editandoAlerta?`
+          <textarea id="alerta-edit-${p.id}" oninput="updPt(${p.id},'alertaSaude',this.value)" rows="3" class="inp" style="resize:vertical;border-color:#ef444466;background:rgba(0,0,0,0.4);color:#fca5a5;font-size:13px;font-weight:600;width:100%;margin-bottom:8px" placeholder="Ex: Alérgica a penicilina · Hipertensa · Diabetes tipo 2 · Cardiopata">${p.alertaSaude||""}</textarea>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px">
+            ${["Alergia","Hipertensão","Diabetes","Cardiopata","Anticoagulante","Doença autoimune","Atípico","Especial"].map(tag=>`<button onclick="addAlertaQuick(${p.id},'${tag}')" class="bg" style="padding:3px 8px;font-size:9px;color:#ef4444;border-color:#ef444444">+ ${tag}</button>`).join("")}
+          </div>
+        `:`
+          <div style="color:#fca5a5;font-size:13px;font-weight:600;line-height:1.5;white-space:pre-line">${alertaFinal.replace(/</g,"&lt;")}</div>
+          ${!p.alertaSaude&&alertaAuto?`<div style="color:#888;font-size:9px;margin-top:6px;font-style:italic">↻ Alerta gerado automaticamente da anamnese.</div>`:""}
+        `}
+      </div>`:`
+      <!-- Sem alerta: botão pra adicionar -->
+      <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+        <button onclick="set({editingAlertaPt:${p.id}})" class="bg" style="font-size:10px;padding:5px 12px;color:#ef4444;border-color:#ef444444">⚠️ + Adicionar alerta de saúde</button>
+      </div>`}
+
+      <!-- Aviso discreto sobre auto-save -->
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(34,197,94,0.06);border-radius:8px;border:1px solid rgba(34,197,94,0.15);margin-bottom:14px">
+        <span style="font-size:14px">💾</span>
+        <div style="flex:1;color:#888;font-size:10px;line-height:1.4">
+          As alterações são <b style="color:#22c55e">salvas automaticamente</b> conforme você digita.
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div style="grid-column:1/-1"><label class="lbl">Nome completo</label>
           <input value="${(p.name||"").replace(/"/g,"&quot;")}" oninput="updPt(${p.id},'name',this.value)" class="inp"/></div>
         <div><label class="lbl">Data de nascimento</label>
@@ -5273,8 +5628,17 @@ function pagePts(){
             style="padding:6px 14px;font-size:11px;
             background:${p.status===s?"#C6A46D22":"transparent"};
             color:${p.status===s?GL:"#555"}">${s}</button>`).join("")}
-          <button onclick="delPt(${p.id})"
-            class="bg" style="margin-left:auto;font-size:11px;padding:6px 12px;border-color:#ef444444;color:#ef4444">🗑 Excluir</button>
+        </div>
+
+        <!-- BOTÕES PRINCIPAIS: CONCLUIR / EXCLUIR -->
+        <div style="grid-column:1/-1;margin-top:14px;padding-top:14px;border-top:1px solid rgba(198,164,109,0.12)">
+          <button onclick="concluirCadastroPaciente(${p.id})" class="bp" style="width:100%;padding:14px;font-size:13px;font-weight:900;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;letter-spacing:1px">✓ CONCLUIR CADASTRO</button>
+          <div style="text-align:center;color:#666;font-size:10px;margin-top:6px;font-style:italic">
+            Tudo é salvo automaticamente. Este botão confirma que terminou.
+          </div>
+        </div>
+        <div style="grid-column:1/-1;margin-top:8px;padding-top:8px;border-top:1px solid rgba(239,68,68,0.08)">
+          <button onclick="confirmDelPt(${p.id})" class="bg" style="width:100%;padding:10px;font-size:11px;font-weight:600;border-color:#ef444466;color:#ef4444;background:rgba(239,68,68,0.04)">🗑 Excluir ficha do paciente permanentemente</button>
         </div>
       </div>`;
     }
@@ -5360,10 +5724,14 @@ function pagePts(){
       const docs=p.docs||[];
       tc=docs.length===0
         ?`<div style="color:#333;text-align:center;padding:22px 0;font-size:13px">📄 Nenhum documento assinado.<br/><span style="font-size:11px;color:#222;display:block;margin-top:6px">Acesse "Termos ROF™" para gerar termos.</span></div>`
-        :docs.map(doc=>`<div class="card" style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        :docs.map((doc,i)=>`<div class="card" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:12px">
           <span style="font-size:22px">📄</span>
-          <div style="flex:1"><div style="color:#ddd;font-weight:700;font-size:13px">${doc.title}</div><div style="color:#555;font-size:11px">Assinado em ${doc.date}</div></div>
-          <div style="width:8px;height:8px;border-radius:50%;background:#22c55e"></div>
+          <div style="flex:1;min-width:0"><div style="color:#ddd;font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${doc.title}</div><div style="color:#555;font-size:11px">Assinado em ${doc.date}</div></div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+            <div style="width:8px;height:8px;border-radius:50%;background:#22c55e" title="Documento assinado"></div>
+            ${doc.html?`<button onclick="verDocSalvo(${p.id},${i})" title="Visualizar / Imprimir" style="background:rgba(198,164,109,0.1);border:1px solid #C6A46D44;border-radius:6px;color:#C6A46D;cursor:pointer;font-size:11px;padding:5px 9px;font-weight:600">👁️ Ver</button>`:""}
+            <button onclick="delDoc(${p.id},${i})" title="Excluir documento" style="background:rgba(239,68,68,0.08);border:1px solid #ef444444;border-radius:6px;color:#ef4444;cursor:pointer;font-size:11px;padding:5px 9px;font-weight:600">🗑 Excluir</button>
+          </div>
         </div>`).join("");
     }
 
@@ -6066,6 +6434,42 @@ window.delFoto=function(ptId,fotoId){
   },"Excluir Foto");
 };
 
+// ── Excluir documento assinado (termo, contrato, etc.) ──
+window.delDoc=function(ptId,idx){
+  var p=ST.pts.find(function(x){return x.id===ptId;});
+  if(!p)return;
+  var doc=(p.docs||[])[idx];
+  if(!doc)return;
+  rConfirm(
+    "Excluir documento \""+doc.title+"\"?\n\nAssinado em "+doc.date+".\n\nEsta ação não pode ser desfeita.",
+    function(){
+      var nps=ST.pts.map(function(x){
+        if(x.id!==ptId)return x;
+        return Object.assign({},x,{docs:(x.docs||[]).filter(function(_,j){return j!==idx;})});
+      });
+      save("rof_pts",nps);
+      set({pts:nps});
+      toast("✓ Documento excluído.","success");
+    },
+    "Excluir documento"
+  );
+};
+
+// ── Visualizar / imprimir documento já assinado ──
+window.verDocSalvo=function(ptId,idx){
+  var p=ST.pts.find(function(x){return x.id===ptId;});
+  if(!p)return;
+  var doc=(p.docs||[])[idx];
+  if(!doc||!doc.html){toast("Documento sem conteúdo visualizável.","warning");return;}
+  var w=window.open("","_blank");
+  if(!w){toast("Permita pop-ups para visualizar.","warning");return;}
+  w.document.write("<html><head><title>"+doc.title+" — "+p.name+"</title>"
+    +"<style>body{font-family:Georgia,serif;background:#fff;color:#111;padding:20px;max-width:800px;margin:0 auto}</style>"
+    +"</head><body>"+doc.html+"</body></html>");
+  w.document.close();
+  setTimeout(function(){w.print();},500);
+};
+
 window.editFoto=function(ptId,fotoId){
   var p=ST.pts.find(function(x){return x.id===ptId;});
   var f=(p.fotos||[]).find(function(x){return x.id===fotoId;});
@@ -6250,6 +6654,36 @@ window.delPt=function(id){
     set({pts:nps,selPt:null});
     toast("Paciente excluído.","success");
   },"Excluir Paciente");
+};
+
+// Confirmação dupla para deletar ficha (extra segura)
+window.confirmDelPt=function(id){
+  var p=ST.pts.find(function(x){return x.id===id;});
+  if(!p)return;
+  rConfirm(
+    "⚠️ EXCLUIR FICHA PERMANENTEMENTE\n\nPaciente: \""+p.name+"\"\n\nEsta ação irá apagar:\n• Dados pessoais e contato\n• Anamnese bucal e facial\n• Odontograma e plano clínico\n• Histórico de consultas vinculadas\n• Receitas, atestados e contratos\n\n❌ NÃO pode ser desfeita.",
+    function(){
+      var nps=ST.pts.filter(function(x){return x.id!==id;});
+      save("rof_pts",nps);
+      set({pts:nps,selPt:null});
+      toast("✓ Ficha excluída permanentemente.","success");
+    },
+    "SIM, excluir definitivamente"
+  );
+};
+
+// Conclui o cadastro: força save + toast confirmando
+window.concluirCadastroPaciente=function(ptId){
+  const p=ST.pts.find(x=>x.id===ptId);
+  if(!p){toast("Paciente não encontrado.","error");return;}
+  if(!p.name||!p.name.trim()||p.name==="Novo Paciente"){
+    toast("⚠️ Por favor, preencha o nome do paciente antes de concluir.","warning");
+    return;
+  }
+  if(typeof flushPtSave==="function")flushPtSave();
+  save("rof_pts",ST.pts);
+  toast("✓ Cadastro concluído e salvo com sucesso!","success");
+  if(typeof _showSaveIndicator==="function")_showSaveIndicator();
 };
 
 window.limparDemo=function(){
@@ -6597,6 +7031,8 @@ window.updPt=(id,key,val,immediate)=>{
   }else{
     schedulePtSave();
   }
+  // Feedback visual: pisca "✓ Salvo" quando o usuário edita a ficha
+  if(ST.page==="patients"&&ST.selPt===id&&typeof _showSaveIndicator==="function")_showSaveIndicator();
 };
 window.setPtPhoto=(id,inp)=>{const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{updPt(id,"photo",ev.target.result,true);toast("Foto salva!","success");};r.readAsDataURL(f);};
 window.addXray=(id,inp)=>{Array.from(inp.files).forEach(file=>{const r=new FileReader();r.onload=ev=>{const p=ST.pts.find(x=>x.id===id);updPt(id,"xrays",[...(p.xrays||[]),{name:file.name,data:ev.target.result}]);};r.readAsDataURL(file);});};
@@ -6732,6 +7168,16 @@ function pageStock(){
   const fcat=ST.stkFilter||"Todos";
   const filtered=fcat==="Todos"?stk:stk.filter(s=>s.cat===fcat);
   return`${stitle("Controle de Estoque")}
+  ${stk.length<15?`<div style="background:linear-gradient(135deg,rgba(198,164,109,0.15),rgba(198,164,109,0.05));border:1px solid #C6A46D55;border-radius:12px;padding:16px;margin-bottom:14px">
+    <div style="color:${GL};font-weight:700;font-size:13px;margin-bottom:6px">💎 Estoque ROF™ — Sugestão</div>
+    <div style="color:#aaa;font-size:11px;line-height:1.6;margin-bottom:10px">
+      Posso popular o estoque com mais de 90 itens organizados por especialidade: Anestésicos, Dentística, Endodontia, Periodontia, Cirurgia, Implantes, Prótese, Estética, Harmonização Facial, Skin/Bio (bioestimuladores e PDRN), EPI, Higiene, Descartáveis, Radiologia, Brocas e Medicamentos.
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="popularEstoquePadrao()" class="bp" style="padding:10px 16px;font-size:12px;font-weight:700">📦 Popular com produtos ROF™</button>
+      <button onclick="popularEstoquePadrao(true)" class="bg" style="padding:10px 16px;font-size:12px">📦 Adicionar SEM apagar atuais</button>
+    </div>
+  </div>`:""}
   ${low.length>0?`<div style="background:#f59e0b10;border:1px solid #f59e0b44;border-radius:10px;padding:10px 14px;margin-bottom:12px;color:#f59e0b;font-size:12px">⚠️ <strong>${low.length} item(ns) abaixo do mínimo:</strong> ${low.map(i=>i.item).join(", ")}</div>`:""}
   <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
     <div style="display:flex;gap:4px;flex-wrap:wrap;flex:1">
@@ -6768,6 +7214,29 @@ function pageStock(){
 window.chStk=(id,d)=>{const ns=ST.stk.map(x=>x.id===id?{...x,qty:Math.max(0,x.qty+d)}:x);save("rof_stk",ns);set({stk:ns});};
 window.updStkMin=(id,v)=>{const ns=ST.stk.map(x=>x.id===id?{...x,min:Math.max(0,Number(v))}:x);save("rof_stk",ns);set({stk:ns});};
 window.delStk=id=>{rConfirm("Excluir este item do estoque?",()=>{const ns=ST.stk.filter(x=>x.id!==id);save("rof_stk",ns);set({stk:ns});toast("Item removido do estoque.","success");},"Excluir Item");};
+
+// Popular estoque com produtos padrão ROF™
+window.popularEstoquePadrao=function(adicionar){
+  if(adicionar){
+    const existingIds=new Set(ST.stk.map(s=>s.id));
+    const existingNames=new Set(ST.stk.map(s=>s.item.toLowerCase().trim()));
+    const novos=DEFSTK.filter(d=>!existingIds.has(d.id)&&!existingNames.has(d.item.toLowerCase().trim()));
+    if(novos.length===0){toast("Nenhum item novo para adicionar.","info");return;}
+    const ns=[...ST.stk,...novos];
+    save("rof_stk",ns);set({stk:ns});
+    toast("✓ "+novos.length+" produtos ROF\u2122 adicionados ao estoque!","success");
+  } else {
+    rConfirm(
+      "Substituir o estoque atual ("+ST.stk.length+" "+(ST.stk.length===1?"item":"itens")+") pelos "+DEFSTK.length+" produtos do catálogo ROF\u2122?\n\nVocê pode editar quantidades e mínimos depois.",
+      function(){
+        const ns=DEFSTK.slice();
+        save("rof_stk",ns);set({stk:ns});
+        toast("✓ Estoque populado com "+ns.length+" produtos ROF\u2122!","success");
+      },
+      "Substituir estoque"
+    );
+  }
+};
 window.editStk=id=>{
   const s=ST.stk.find(x=>x.id===id);if(!s)return;
   const cats=[...new Set(ST.stk.map(x=>x.cat))];
@@ -7473,7 +7942,7 @@ function renderReceita(p){
         +"<div style='display:flex;gap:4px'>"
         +"<button onclick='viewReceita("+p.id+","+rc.id+")' style='background:none;border:1px solid #C6A46D44;border-radius:6px;color:#C6A46D;cursor:pointer;font-size:12px;padding:4px 8px' title='Visualizar/PDF'>👁️ PDF</button>"
         +"<button onclick='sendWhats("+p.id+",\"receita\","+rc.id+")' style='background:none;border:1px solid #22c55e44;border-radius:6px;color:#22c55e;cursor:pointer;font-size:12px;padding:4px 8px' title='Enviar WhatsApp'>📱 WhatsApp</button>"
-        +"<button onclick='delReceita("+p.id+","+rc.id+")' style='background:none;border:none;color:#333;cursor:pointer;font-size:14px;padding:4px'>🗑</button>"
+        +"<button onclick='delReceita("+p.id+","+rc.id+")' title='Excluir receita' style='background:rgba(239,68,68,0.08);border:1px solid #ef444444;border-radius:6px;color:#ef4444;cursor:pointer;font-size:12px;padding:5px 9px;font-weight:600'>🗑 Excluir</button>"
         +"</div></div>"
         +"<div style='margin-top:8px;color:#bbb;font-size:12px;white-space:pre-wrap;background:#0a0a0a;border-radius:6px;padding:8px;line-height:1.6'>"+rc.texto+"</div>"
         +(rc.obs?"<div style='margin-top:5px;color:#888;font-size:11px;font-style:italic'>"+rc.obs+"</div>":"")
@@ -7673,7 +8142,7 @@ function renderAtestado(p){
         +"<div style='display:flex;gap:4px;flex-shrink:0'>"
         +"<button onclick='viewAtestado("+p.id+","+at.id+")' style='background:none;border:1px solid #C6A46D44;border-radius:6px;color:#C6A46D;cursor:pointer;font-size:12px;padding:4px 8px'>👁️ PDF</button>"
         +"<button onclick='sendWhats("+p.id+",\"atestado\","+at.id+")' style='background:none;border:1px solid #22c55e44;border-radius:6px;color:#22c55e;cursor:pointer;font-size:12px;padding:4px 8px'>📱 WhatsApp</button>"
-        +"<button onclick='delAtestado("+p.id+","+at.id+")' style='background:none;border:none;color:#333;cursor:pointer;font-size:14px;padding:4px'>🗑</button>"
+        +"<button onclick='delAtestado("+p.id+","+at.id+")' title='Excluir atestado' style='background:rgba(239,68,68,0.08);border:1px solid #ef444444;border-radius:6px;color:#ef4444;cursor:pointer;font-size:12px;padding:5px 9px;font-weight:600'>🗑 Excluir</button>"
         +"</div></div>"
         +"</div>";
     }).join(""))
