@@ -66,6 +66,12 @@ textarea{resize:vertical;min-height:60px}
 .yn button.sel-nao{background:rgba(239,68,68,0.10);border-color:var(--red);color:var(--red);font-weight:600}
 .yn button:active{transform:scale(0.97)}
 
+/* Botões "Como nos conheceu" */
+.origem-btn{padding:8px 14px;background:transparent;border:1px solid var(--border);border-radius:8px;color:#aaa;cursor:pointer;font-size:13px;transition:all .15s;font-family:inherit}
+.origem-btn:hover{border-color:var(--gold);color:var(--gold)}
+.origem-btn.selected{background:rgba(198,164,109,0.18);border-color:var(--gold);color:var(--gold);font-weight:600}
+.origem-btn:active{transform:scale(0.97)}
+
 /* Actions */
 .actions{display:flex;gap:10px;margin-top:6px;position:sticky;bottom:14px}
 .btn{flex:1;padding:14px 18px;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;
@@ -188,7 +194,29 @@ textarea{resize:vertical;min-height:60px}
           <div><label>Telefone / WhatsApp <span class="req">*</span></label><input type="tel" data-k="phone" inputmode="tel" required/></div>
         </div>
         <div class="fld"><label>E-mail</label><input type="email" data-k="email" inputmode="email"/></div>
+        <div class="fld-row">
+          <div><label>Profissão</label><input type="text" data-k="profissao" placeholder="Ex: Advogada"/></div>
+          <div><label>Instagram</label><input type="text" data-k="instagram" placeholder="@usuario"/></div>
+        </div>
         <div class="fld"><label>Endereço completo</label><textarea data-k="endereco" rows="2" placeholder="Rua, número, bairro, cidade — UF"></textarea></div>
+
+        <!-- Como nos conheceu (marketing) -->
+        <div class="fld">
+          <label>Como você conheceu a Dra. Rossana? <span style="color:#888;font-weight:normal">(opcional)</span></label>
+          <div class="origem-btns" id="origem-btns" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+            <button type="button" class="origem-btn" data-v="indicacao">👥 Indicação</button>
+            <button type="button" class="origem-btn" data-v="instagram">📷 Instagram</button>
+            <button type="button" class="origem-btn" data-v="google">🔍 Google</button>
+            <button type="button" class="origem-btn" data-v="facebook">📘 Facebook</button>
+            <button type="button" class="origem-btn" data-v="tiktok">🎵 TikTok</button>
+            <button type="button" class="origem-btn" data-v="site">🌐 Site</button>
+            <button type="button" class="origem-btn" data-v="convenio">🏥 Convênio</button>
+            <button type="button" class="origem-btn" data-v="placa">📍 Passei em frente</button>
+            <button type="button" class="origem-btn" data-v="outro">✨ Outro</button>
+          </div>
+          <input type="hidden" data-k="origem" id="origem-input"/>
+          <input type="text" data-k="origemDetalhe" id="origem-detalhe" placeholder="Nome de quem indicou..." style="display:none;margin-top:8px"/>
+        </div>
       </div>
     </div>
 
@@ -458,6 +486,29 @@ function showForm(){
       };
     });
   });
+
+  // Wire up botões "Como nos conheceu"
+  document.querySelectorAll(".origem-btn").forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll(".origem-btn").forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      const v = btn.dataset.v;
+      document.getElementById("origem-input").value = v;
+      // Mostra campo de detalhe se for "indicacao" ou "outro"
+      const det = document.getElementById("origem-detalhe");
+      if(v === "indicacao"){
+        det.placeholder = "Nome de quem indicou...";
+        det.style.display = "block";
+      } else if(v === "outro"){
+        det.placeholder = "Especifique...";
+        det.style.display = "block";
+      } else {
+        det.style.display = "none";
+        det.value = "";
+      }
+    };
+  });
+
   renderStep();
 }
 

@@ -3607,6 +3607,43 @@ function pageDashboard(){
     }).join("")||emptyState("📅","Nenhuma consulta agendada","Clique em Nova Consulta para começar.")}
   </div>
   <div class="card">
+    <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:12px">📊 De onde vêm seus pacientes</div>
+    ${(function(){
+      const origensInfo={
+        "indicacao":{e:"👥",l:"Indicação"},
+        "instagram":{e:"📷",l:"Instagram"},
+        "google":{e:"🔍",l:"Google"},
+        "facebook":{e:"📘",l:"Facebook"},
+        "tiktok":{e:"🎵",l:"TikTok"},
+        "site":{e:"🌐",l:"Site"},
+        "convenio":{e:"🏥",l:"Convênio"},
+        "placa":{e:"📍",l:"Passou em frente"},
+        "outro":{e:"✨",l:"Outro"}
+      };
+      const cont={};
+      (ST.pts||[]).forEach(p=>{if(p.origem){cont[p.origem]=(cont[p.origem]||0)+1;}});
+      const total=Object.values(cont).reduce((a,b)=>a+b,0);
+      if(total===0)return emptyState("📊","Sem dados de origem ainda","Conforme você cadastrar pacientes informando como te conheceram, aqui aparece o gráfico de marketing.");
+      const sorted=Object.entries(cont).sort((a,b)=>b[1]-a[1]);
+      return sorted.map(([k,v])=>{
+        const info=origensInfo[k]||{e:"❓",l:k};
+        const pct=Math.round((v/total)*100);
+        return `<div style="margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#ddd;margin-bottom:4px">
+            <span>${info.e}</span>
+            <span style="flex:1">${info.l}</span>
+            <span style="color:#C6A46D;font-weight:700">${v}</span>
+            <span style="color:#666;font-size:10px;min-width:34px;text-align:right">${pct}%</span>
+          </div>
+          <div style="height:6px;background:rgba(198,164,109,0.08);border-radius:3px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#8B6914,#C6A46D,#E2C99A);transition:width .4s"></div>
+          </div>
+        </div>`;
+      }).join("");
+    })()}
+    <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(198,164,109,0.08);color:#666;font-size:10px;font-style:italic">💡 Cadastre a origem dos novos pacientes para acompanhar o que funciona melhor no seu marketing.</div>
+  </div>
+  <div class="card">
     <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:12px">🎂 Próximos Aniversários</div>
     ${bdays.map(p=>`<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid rgba(198,164,109,0.12)">
       ${p.photo?`<img src="${p.photo}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid #C6A46D55;flex-shrink:0"/>`:`<div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#8B6914,#E2C99A,#C6A46D);display:flex;align-items:center;justify-content:center;color:#000;font-weight:900;font-size:13px;flex-shrink:0">${p.name[0]}</div>`}
@@ -5167,11 +5204,42 @@ function pagePts(){
         <div><label class="lbl">Telefone / WhatsApp</label>
           <input type="tel" value="${(p.phone||"").replace(/"/g,"&quot;")}" oninput="updPt(${p.id},'phone',this.value)" class="inp"/></div>
         <div><label class="lbl">E-mail</label>
-          <input type="email" value="${(p.email||"").replace(/"/g,"&quot;")}" oninput="updPt(${p.id},'email',this.value)" class="inp"/></div>
+          <input type="email" value="${(p.email||"").replace(/"/g,"&quot;")}" oninput="updPt(${p.id},'email',this.value)" class="inp" placeholder="email@exemplo.com"/></div>
+        <div><label class="lbl">Profissão</label>
+          <input value="${(p.profissao||"").replace(/"/g,"&quot;")}" oninput="updPt(${p.id},'profissao',this.value)" class="inp" placeholder="Ex: Advogada, Empresária..."/></div>
+        <div><label class="lbl">Instagram</label>
+          <input value="${(p.instagram||"").replace(/"/g,"&quot;")}" oninput="updPt(${p.id},'instagram',this.value)" class="inp" placeholder="@usuario"/></div>
         <div style="grid-column:1/-1"><label class="lbl">Endereço completo</label>
           <input value="${(p.endereco||"").replace(/"/g,"&quot;")}" oninput="updPt(${p.id},'endereco',this.value)" class="inp" placeholder="Rua, número, bairro, cidade — UF, CEP"/></div>
         <div style="grid-column:1/-1"><label class="lbl">Tratamento atual</label>
           <input value="${(p.treatment||"").replace(/"/g,"&quot;")}" oninput="updPt(${p.id},'treatment',this.value)" class="inp"/></div>
+
+        <!-- COMO NOS CONHECEU — campo de marketing -->
+        <div style="grid-column:1/-1;background:rgba(198,164,109,0.06);border-radius:10px;padding:12px;border:1px solid rgba(198,164,109,0.15)">
+          <label class="lbl" style="color:${GL}">📍 Como conheceu a Dra. Rossana?</label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;margin-top:6px">
+            ${[
+              {v:"indicacao",e:"👥",l:"Indicação"},
+              {v:"instagram",e:"📷",l:"Instagram"},
+              {v:"google",e:"🔍",l:"Google"},
+              {v:"facebook",e:"📘",l:"Facebook"},
+              {v:"tiktok",e:"🎵",l:"TikTok"},
+              {v:"site",e:"🌐",l:"Site"},
+              {v:"convenio",e:"🏥",l:"Convênio"},
+              {v:"placa",e:"📍",l:"Passou em frente"},
+              {v:"outro",e:"✨",l:"Outro"}
+            ].map(o=>{
+              const sel=(p.origem||"")===o.v;
+              return`<button onclick="updPt(${p.id},'origem','${o.v}',true)" class="bg" style="padding:7px 12px;font-size:11px;background:${sel?GL+'22':'transparent'};color:${sel?GL:'#555'};border-color:${sel?GL+'66':'rgba(198,164,109,0.15)'}">${o.e} ${o.l}</button>`;
+            }).join("")}
+          </div>
+          ${p.origem==="indicacao"?`
+            <input value="${(p.origemDetalhe||"").replace(/"/g,"&quot;")}" oninput="updPt(${p.id},'origemDetalhe',this.value)" class="inp" placeholder="Nome de quem indicou..." style="margin-top:4px"/>
+          `:p.origem==="outro"?`
+            <input value="${(p.origemDetalhe||"").replace(/"/g,"&quot;")}" oninput="updPt(${p.id},'origemDetalhe',this.value)" class="inp" placeholder="Especifique..." style="margin-top:4px"/>
+          `:""}
+        </div>
+
         <div style="grid-column:1/-1">
           <label class="lbl">Tipo de atendimento</label>
           <div style="display:flex;gap:8px;margin-bottom:8px">
@@ -5182,14 +5250,18 @@ function pagePts(){
               background:${p.tipo==="convenio"?"#3b82f622":"transparent"};
               color:${p.tipo==="convenio"?"#60a5fa":"#555"}">🏥 Convênio</button>
           </div>
-          ${p.tipo==="convenio"?`<input value="${(p.convenio||"").replace(/"/g,"&quot;")}" oninput="updPt(${p.id},'convenio',this.value)" class="inp" placeholder="Nome do convênio..."/>`:""}
+          ${p.tipo==="convenio"?`
+            <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+              ${["DentalUni","IMPAO","Plus Care"].map(cv=>`<button onclick="updPt(${p.id},'convenio','${cv}',true)" class="bg" style="padding:6px 12px;font-size:11px;background:${p.convenio===cv?'#3b82f622':'transparent'};color:${p.convenio===cv?'#60a5fa':'#555'}">${cv}</button>`).join("")}
+            </div>
+            <input value="${(p.convenio||"").replace(/"/g,"&quot;")}" oninput="updPt(${p.id},'convenio',this.value)" class="inp" placeholder="Ou digite outro convênio..."/>
+          `:""}
         </div>
         <div style="grid-column:1/-1"><label class="lbl">Tags do paciente</label>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-            ${["VIP","Ortodontia","Implante","Clareamento","Urgência","Inativo","Retorno","Convênio"].map(tag=>{
+            ${TAGS_PT.map(tag=>{
               const has=(p.tags||[]).includes(tag);
-              const tagColors={"VIP":"#C6A46D","Ortodontia":"#60a5fa","Implante":"#c084fc","Clareamento":"#f59e0b","Urgência":"#ef4444","Inativo":"#6B6B6B","Retorno":"#22c55e","Convênio":"#3b82f6"};
-              const c=tagColors[tag]||"#888";
+              const c=TAGS_COLORS[tag]||"#888";
               return`<button onclick="toggleTag(${p.id},'${tag}')" class="pt-tag" style="color:${c};background:${has?c+"22":"transparent"};border-color:${c}${has?"":"44"}">${has?"✓ ":""}${tag}</button>`;
             }).join("")}
           </div>
@@ -6407,9 +6479,11 @@ window.showIntakeDetail=function(intakeId){
 window.aprovarIntake=async function(intakeId){
   const i=(ST.intakes||[]).find(x=>x.id===intakeId);if(!i)return;
   const d=i.data||{},dd=d.dados||{};
-  const np={id:Date.now(),name:dd.name||"Paciente sem nome",phone:dd.phone||"",email:dd.email||"",
+  const np={id:Date.now(),name:dd.nome||dd.name||"Paciente sem nome",phone:dd.phone||"",email:dd.email||"",
     cpf:dd.cpf||"",rg:dd.rg||"",birthday:dd.birthday||"",endereco:dd.endereco||"",
-    lastVisit:"—",treatment:"",tipo:"particular",convenio:"",status:"Pendente",
+    profissao:dd.profissao||"",instagram:dd.instagram||"",
+    origem:dd.origem||"",origemDetalhe:dd.origemDetalhe||"",
+    lastVisit:"—",treatment:"",tipo:"particular",convenio:"",status:"Pendente",tags:[],
     photo:null,xrays:[],notes:"",docs:[],odontogram:{},
     anamBucal:d.anamBucal||null,anamFacial:d.anamFacial||null};
 
@@ -6464,7 +6538,8 @@ if(_sbEnabled){
 
 window.addPt=()=>{
   const np={id:Date.now(),name:"Novo Paciente",phone:"",email:"",cpf:"",rg:"",birthday:"",endereco:"",
-    lastVisit:"—",treatment:"",tipo:"particular",convenio:"",status:"Pendente",
+    profissao:"",instagram:"",origem:"",origemDetalhe:"",
+    lastVisit:"—",treatment:"",tipo:"particular",convenio:"",status:"Pendente",tags:[],
     photo:null,xrays:[],notes:"",docs:[],odontogram:{},anamBucal:null,anamFacial:null};
   const nps=[...ST.pts,np];save("rof_pts",nps);set({pts:nps,selPt:np.id,ptTab:"info",ptSrc:""});
 };
