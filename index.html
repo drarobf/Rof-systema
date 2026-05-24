@@ -5827,14 +5827,20 @@ function pagePts(){
       </div>
     </div>
     <div class="card" style="display:flex;align-items:center;gap:14px;margin-bottom:12px;padding:14px">
-      <div style="position:relative;flex-shrink:0">
-        <label title="Trocar foto de perfil" style="cursor:pointer;display:block;position:relative">
-          <input type="file" accept="image/*" style="display:none" onchange="setPtPhoto(${jsArg(p.id)},this)"/>
+      <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:6px">
+        <div style="position:relative">
           ${p.photo?`<img src="${p.photo}" style="width:74px;height:74px;border-radius:50%;object-fit:cover;border:3px solid #C6A46D;box-shadow:0 0 16px #C6A46D55"/>`
             :`<div style="width:74px;height:74px;border-radius:50%;background:linear-gradient(135deg,#8B6914,#E2C99A,#C6A46D);display:flex;align-items:center;justify-content:center;color:#000;font-weight:900;font-size:28px">${p.name[0]}</div>`}
-          <div style="position:absolute;bottom:1px;right:1px;background:linear-gradient(135deg,#8B6914,#E2C99A,#C6A46D);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;border:2px solid #1A1A1A">📷</div>
-        </label>
-        ${p.photo?`<button onclick="delPtPhoto(${jsArg(p.id)})" title="Remover foto" style="position:absolute;top:-3px;left:-3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,0.85);border:1px solid #ef444466;color:#ef4444;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1">✕</button>`:""}
+          ${p.photo?`<button onclick="delPtPhoto(${jsArg(p.id)})" title="Remover foto" style="position:absolute;top:-3px;left:-3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,0.85);border:1px solid #ef444466;color:#ef4444;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">✕</button>`:""}
+        </div>
+        <div style="display:flex;gap:5px">
+          <label title="Câmera" style="display:flex;align-items:center;gap:4px;padding:5px 10px;background:#141414;border:1px solid rgba(198,164,109,0.3);border-radius:20px;cursor:pointer;font-size:11px;color:#C6A46D;font-family:Inter,sans-serif;white-space:nowrap">
+            <input type="file" accept="image/*" capture="environment" style="display:none" onchange="setPtPhoto(${jsArg(p.id)},this)"/>📷
+          </label>
+          <label title="Galeria" style="display:flex;align-items:center;gap:4px;padding:5px 10px;background:#141414;border:1px solid rgba(198,164,109,0.15);border-radius:20px;cursor:pointer;font-size:11px;color:#888;font-family:Inter,sans-serif;white-space:nowrap">
+            <input type="file" accept="image/*" style="display:none" onchange="setPtPhoto(${jsArg(p.id)},this)"/>🖼️
+          </label>
+        </div>
       </div>
       <div style="flex:1">
         <input value="${p.name.replace(/"/g,"&quot;")}" oninput="updPt(${p.id},'name',this.value)"
