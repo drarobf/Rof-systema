@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/>
@@ -380,17 +380,6 @@ pre { white-space: pre-wrap; font-family: var(--font-body); }
 }
 .pt-tag:hover { opacity: 0.75; }
 
-/* ── CRM / LEADS ──────────────────────────────────────────────── */
-.lead-card {
-  display: flex; align-items: center; gap: 10px;
-  padding: 11px 14px; border-bottom: 1px solid var(--border);
-  transition: background 0.1s; cursor: pointer;
-}
-.lead-card:hover { background: var(--gold-subtle); }
-.lead-status-pill {
-  display: inline-block; padding: 3px 10px; border-radius: 50px;
-  font-size: 10px; font-weight: 700; flex-shrink: 0;
-}
 
 /* ── IMPRESSÃO (recibo / contrato) ─────────────────────────────── */
 @media print {
@@ -449,8 +438,6 @@ pre { white-space: pre-wrap; font-family: var(--font-body); }
 .card { overflow: visible; }
 .card.scroll-inner { overflow: hidden; }
 
-/* ── FUNIL CRM ────────────────────────────────────────────────── */
-.crm-funnel-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
 /* ── TABELAS RESPONSIVAS ──────────────────────────────────────── */
 .tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
@@ -1614,7 +1601,7 @@ const _sb = _sbEnabled
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : { from: () => ({ select: () => Promise.resolve({data:[],error:null}), upsert: () => Promise.resolve({error:null}) }) };
 
-const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_stk','rof_procs','rof_caixa','rof_leads','rof_whats_templates','rof_orientacoes']);
+const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_stk','rof_procs','rof_caixa','rof_whats_templates','rof_orientacoes']);
 const _syncQ = JSON.parse(localStorage.getItem("rof_sync_q")||"[]");
 const _flushQ = async () => {
   if(!_sbEnabled||!navigator.onLine||!_syncQ.length)return;
@@ -1655,7 +1642,6 @@ async function syncFromCloud(){
         else if(k==='rof_stk'&&Array.isArray(v))ST.stk=v;
         else if(k==='rof_procs'&&Array.isArray(v))PROCS=v;
         else if(k==='rof_caixa'&&Array.isArray(v))ST.caixa=v;
-        else if(k==='rof_leads'&&Array.isArray(v))ST.leads=v;
         // (rof_whats_templates e rof_orientacoes são lidos sob demanda do localStorage)
       }
     });
@@ -1988,7 +1974,7 @@ window.exportFinanceiroCSV=function(){
 // TAGS DE PACIENTES
 // ══════════════════════════════════════════════════════════════════
 // Lista centralizada — usar em todos os lugares onde tags aparecem
-const TAGS_PT=["Ativo","Inativo","Retorno","Avaliação","Tratamento","VIP","Convênio","Particular","Urgência","Lead"];
+const TAGS_PT=["Ativo","Inativo","Retorno","Avaliação","Tratamento","VIP","Convênio","Particular","Urgência"];
 const TAGS_COLORS={
   "Ativo":"#22c55e",
   "Inativo":"#6B6B6B",
@@ -1999,7 +1985,6 @@ const TAGS_COLORS={
   "Convênio":"#3b82f6",
   "Particular":"#a78bfa",
   "Urgência":"#ef4444",
-  "Lead":"#ec4899",
   "Todos":"#888"
 };
 
@@ -2116,18 +2101,6 @@ function buildNotifications(){
       items.push({ic:"🎂",title:`Aniversário em ${diff} dia(s): ${p.name}`,sub:p.birthday,action:`openPt(${jsArg(p.id)},'info')`,priority:4});
   });
 
-  // Leads sem follow-up há 3+ dias (exclui fechados, perdidos e retorno futuro)
-  const leads=load("rof_leads",[]);
-  const _ativos=new Set(["Novo Lead","Em Conversa","Avaliação Marcada","Orçamento Enviado","Aguardando Retorno"]);
-  leads.filter(l=>_ativos.has(l.status)).forEach(l=>{
-    const dias=_leadDiasSemContato(l);
-    if(dias>=3)items.push({ic:"🎯",title:`Lead sem contato: ${l.name}`,sub:`${dias} dia${dias>1?"s":""} sem resposta — ${l.status}`,action:`set({page:'crm'})`,priority:5});
-  });
-
-  // Próximos contatos agendados (proxContato = hoje ou passado)
-  leads.filter(l=>l.proxContato&&l.proxContato<=today&&_ativos.has(l.status)).forEach(l=>{
-    items.push({ic:"📅",title:`Contato agendado: ${l.name}`,sub:`Previsto para ${fmtDate(l.proxContato)}`,action:`set({page:'crm'})`,priority:2});
-  });
 
   return items.sort((a,b)=>a.priority-b.priority);
 }
@@ -2754,356 +2727,7 @@ window.printRecibo=function(ptId,pgIdx){
   w.document.close();
 };
 
-// ══════════════════════════════════════════════════════════════════
-// CRM / LEADS
-// ══════════════════════════════════════════════════════════════════
-const LEAD_STATUS=["Novo Lead","Em Conversa","Avaliação Marcada","Orçamento Enviado","Aguardando Retorno","Fechado","Perdido","Retorno Futuro"];
-const LEAD_STATUS_COLORS={"Novo Lead":"#60a5fa","Em Conversa":"#f59e0b","Avaliação Marcada":"#c084fc","Orçamento Enviado":"#fb923c","Aguardando Retorno":"#a78bfa","Fechado":"#22c55e","Perdido":"#ef4444","Retorno Futuro":"#94a3b8"};
-const LEAD_STATUS_ICONS={"Novo Lead":"🆕","Em Conversa":"💬","Avaliação Marcada":"📅","Orçamento Enviado":"💰","Aguardando Retorno":"⏳","Fechado":"✅","Perdido":"❌","Retorno Futuro":"🔄"};
 
-function _leadDiasSemContato(l){
-  const ref=l.dataUltContato||l.updatedAt||l.createdAt;
-  if(!ref)return 999;
-  const ms=new Date()-new Date(ref+"T12:00:00");
-  return Math.floor(ms/86400000);
-}
-
-function pageCRM(){
-  const leads=load("rof_leads",[]);
-  const filtroStatus=ST.crmStatus||"Todos";
-  const filtroOrigem=ST.crmOrigem||"Todos";
-  const filtroProc=ST.crmProc||"Todos";
-  const busca=(ST.crmBusca||"").toLowerCase();
-
-  let filtrados=leads.filter(l=>{
-    if(filtroStatus!=="Todos"&&l.status!==filtroStatus)return false;
-    if(filtroOrigem!=="Todos"&&l.origem!==filtroOrigem)return false;
-    if(filtroProc!=="Todos"&&l.interesse!==filtroProc)return false;
-    if(busca&&!l.name.toLowerCase().includes(busca)&&!(l.phone||"").includes(busca))return false;
-    return true;
-  });
-
-  // Ordenar: alertas (sem contato >3 dias em status ativo) primeiro
-  const ativos=new Set(["Novo Lead","Em Conversa","Avaliação Marcada","Orçamento Enviado","Aguardando Retorno"]);
-  filtrados.sort((a,b)=>{
-    const aAlerta=ativos.has(a.status)&&_leadDiasSemContato(a)>=3;
-    const bAlerta=ativos.has(b.status)&&_leadDiasSemContato(b)>=3;
-    if(aAlerta&&!bAlerta)return-1;if(!aAlerta&&bAlerta)return 1;
-    return new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt);
-  });
-
-  const total=leads.length;
-  const fechados=leads.filter(l=>l.status==="Fechado").length;
-  const emAndamento=leads.filter(l=>ativos.has(l.status)).length;
-  const alertas=leads.filter(l=>ativos.has(l.status)&&_leadDiasSemContato(l)>=3).length;
-  const origensAll=["Todos",...new Set(leads.map(l=>l.origem).filter(Boolean))];
-  const procsAll=["Todos",...new Set(leads.map(l=>l.interesse).filter(Boolean))];
-
-  // Funil visual
-  const funnelStages=["Novo Lead","Em Conversa","Avaliação Marcada","Orçamento Enviado","Aguardando Retorno","Fechado"];
-  const funnelHTML=`<div class="card" style="margin-bottom:14px;overflow-x:auto">
-    <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px">🎯 Funil de Pacientes</div>
-    <div style="display:flex;gap:4px;min-width:460px">
-      ${funnelStages.map(s=>{
-        const cnt=leads.filter(l=>l.status===s).length;
-        const c=LEAD_STATUS_COLORS[s];
-        const ic=LEAD_STATUS_ICONS[s];
-        const pct=total>0?Math.round(cnt/total*100):0;
-        return`<div onclick="set({crmStatus:'${s}'})" style="flex:1;cursor:pointer;text-align:center;padding:8px 4px;border-radius:8px;background:${filtroStatus===s?c+"22":"#0D0D0D"};border:1px solid ${filtroStatus===s?c+"55":"rgba(198,164,109,0.07)"};transition:all .2s">
-          <div style="font-size:14px">${ic}</div>
-          <div style="color:${c};font-size:18px;font-weight:900;line-height:1.1">${cnt}</div>
-          <div style="color:#555;font-size:8px;line-height:1.3;margin-top:2px">${s.replace(" ","\n")}</div>
-          <div style="margin-top:4px;height:2px;border-radius:2px;background:${c}${pct>0?"":"22"};opacity:${pct>0?0.7+pct/300:0.15}"></div>
-        </div>`;
-      }).join("")}
-    </div>
-  </div>`;
-
-  // Painel resumo
-  const resumoHTML=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
-    <div class="card" style="text-align:center;padding:12px 8px;border-top:2px solid #60a5fa">
-      <div style="color:#60a5fa;font-size:22px;font-weight:900">${total}</div>
-      <div style="color:#444;font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-top:2px">Total</div>
-    </div>
-    <div class="card" style="text-align:center;padding:12px 8px;border-top:2px solid #f59e0b">
-      <div style="color:#f59e0b;font-size:22px;font-weight:900">${emAndamento}</div>
-      <div style="color:#444;font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-top:2px">Em Andamento</div>
-    </div>
-    <div class="card" style="text-align:center;padding:12px 8px;border-top:2px solid #22c55e">
-      <div style="color:#22c55e;font-size:22px;font-weight:900">${fechados}</div>
-      <div style="color:#444;font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-top:2px">Fechados</div>
-    </div>
-    <div class="card" style="text-align:center;padding:12px 8px;border-top:2px solid ${alertas>0?"#ef4444":"#333"}">
-      <div style="color:${alertas>0?"#ef4444":"#555"};font-size:22px;font-weight:900">${alertas}</div>
-      <div style="color:#444;font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-top:2px">Sem Resposta</div>
-    </div>
-  </div>`;
-
-  // Alerta destaque
-  const alertaBanner=alertas>0?`<div style="background:#ef444410;border:1px solid #ef444433;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px;cursor:pointer" onclick="set({crmStatus:'Todos',crmAlerta:true})">
-    <span style="font-size:18px">🔔</span>
-    <div><div style="color:#ef4444;font-weight:700;font-size:12px">${alertas} lead${alertas>1?"s":""} sem resposta há mais de 3 dias</div>
-    <div style="color:#888;font-size:10px">Clique para ver e retomar contato</div></div>
-  </div>`:"";
-
-  return stitle("CRM / Leads")
-    +resumoHTML
-    +funnelHTML
-    +alertaBanner
-    +`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
-      <input value="${ST.crmBusca||""}" oninput="set({crmBusca:this.value})" class="inp" placeholder="🔍 Buscar por nome ou telefone..." style="flex:2;min-width:160px;font-size:12px"/>
-      <select onchange="set({crmOrigem:this.value})" class="inp" style="flex:1;min-width:110px;font-size:11px">
-        ${origensAll.map(o=>`<option value="${o}" ${filtroOrigem===o?"selected":""}>${o==="Todos"?"Todas as origens":o}</option>`).join("")}
-      </select>
-      <select onchange="set({crmProc:this.value})" class="inp" style="flex:1;min-width:110px;font-size:11px">
-        ${procsAll.map(p=>`<option value="${p}" ${filtroProc===p?"selected":""}>${p==="Todos"?"Todos procedimentos":p}</option>`).join("")}
-      </select>
-      <button onclick="addLead()" class="bp" style="font-size:12px;padding:7px 16px;white-space:nowrap;flex-shrink:0">+ Novo Lead</button>
-    </div>
-    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">
-      ${["Todos",...LEAD_STATUS].map(s=>{
-        const active=filtroStatus===s;
-        const c=LEAD_STATUS_COLORS[s]||"#C6A46D";
-        const cnt=s==="Todos"?leads.length:leads.filter(l=>l.status===s).length;
-        return`<button onclick="set({crmStatus:'${s}'})" class="bg" style="padding:4px 10px;font-size:10px;border-radius:50px;background:${active?c+"22":"transparent"};color:${active?c:"#555"};border-color:${active?c+"44":"rgba(198,164,109,0.1)"}">${LEAD_STATUS_ICONS[s]||""} ${s} <span style="opacity:.6">${cnt}</span></button>`;
-      }).join("")}
-    </div>
-    <div class="card" style="padding:0;overflow:hidden">
-      ${filtrados.length===0
-        ?emptyState("🎯","Nenhum lead encontrado","Clique em '+ Novo Lead' para começar o acompanhamento.")
-        :filtrados.map(l=>{
-          const c=LEAD_STATUS_COLORS[l.status]||"#888";
-          const dias=_leadDiasSemContato(l);
-          const isAlerta=ativos.has(l.status)&&dias>=3;
-          const proxContato=l.proxContato?`<span style="color:#f59e0b;font-size:9px">📅 Próx: ${fmtDate(l.proxContato)}</span>`:"";
-          const orcLabel=l.orcamento?`<span style="color:#fb923c;font-size:9px">💰 ${l.orcamento}</span>`:"";
-          return`<div class="lead-card" style="${isAlerta?"border-left:3px solid #ef4444;":""}" onclick="openLead(${l.id})">
-            ${ptAvatar(l.name,38)}
-            <div style="flex:1;min-width:0">
-              <div style="color:#E2C99A;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.name}</div>
-              <div style="color:#555;font-size:10px;margin-bottom:3px">${l.phone||"—"} · ${l.origem||"Sem origem"} · ${l.interesse||"—"}</div>
-              <div style="display:flex;gap:6px;flex-wrap:wrap">${proxContato}${orcLabel}${isAlerta?`<span style="color:#ef4444;font-size:9px">⚠️ ${dias}d sem contato</span>`:""}</div>
-            </div>
-            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
-              <span class="lead-status-pill" style="background:${c}22;color:${c};border:1px solid ${c}44">${l.status}</span>
-              <button onclick="event.stopPropagation();whatsLead(${l.id})" style="background:none;border:1px solid #22c55e44;border-radius:6px;color:#22c55e;cursor:pointer;font-size:10px;padding:3px 7px" title="WhatsApp">📱</button>
-            </div>
-          </div>`;
-        }).join("")}
-    </div>`;
-}
-
-window.addLead=function(){
-  const leads=load("rof_leads",[]);
-  const novo={id:Date.now(),name:"Novo Lead",phone:"",email:"",origem:"Instagram",interesse:"",status:"Novo Lead",obs:"",historico:[],orcamento:"",proxContato:"",dataUltContato:"",procedimento:"",createdAt:todayISO(),updatedAt:todayISO()};
-  leads.unshift(novo);
-  save("rof_leads",leads);
-  set({crmStatus:"Todos"});
-  setTimeout(()=>openLead(novo.id),100);
-};
-
-window.openLead=function(lid){
-  const leads=load("rof_leads",[]);
-  const l=leads.find(x=>x.id===lid);if(!l)return;
-  const historico=(l.historico||[]).slice().reverse();
-  const modal=document.createElement("div");
-  modal.className="mbg";
-  modal.id="lead-modal";
-  modal.innerHTML=`<div class="mbx" style="max-width:560px">
-    <div class="mhd">
-      <div class="mhd-title">🎯 Lead — ${l.name}</div>
-      <button onclick="document.getElementById('lead-modal').remove()" style="background:none;border:none;color:#555;font-size:22px;cursor:pointer;line-height:1">✕</button>
-    </div>
-    <div class="mbd">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-        <div style="grid-column:1/-1"><label class="lbl">Nome completo</label>
-          <div style="position:relative">
-            <input id="ld-name" value="${(l.name||"").replace(/"/g,"&quot;")}" class="inp"
-              oninput="showLeadDrop('ld-name','name',this.value)"
-              onfocus="showLeadDrop('ld-name','name',this.value)"
-              onblur="setTimeout(hideLeadDrop,250)"/>
-          </div></div>
-        <div><label class="lbl">Telefone / WhatsApp</label>
-          <div style="position:relative">
-            <input id="ld-phone" value="${(l.phone||"").replace(/"/g,"&quot;")}" class="inp"
-              oninput="showLeadDrop('ld-phone','phone',this.value)"
-              onfocus="showLeadDrop('ld-phone','phone',this.value)"
-              onblur="setTimeout(hideLeadDrop,250)"
-              placeholder="(47) 99999-9999"/>
-          </div></div>
-        <div><label class="lbl">E-mail</label>
-          <input id="ld-email" value="${(l.email||"").replace(/"/g,"&quot;")}" class="inp"/></div>
-        <div><label class="lbl">Origem do lead</label>
-          <select id="ld-origem" class="inp">
-            ${["Instagram","Facebook","Indicação","Google","WhatsApp","TikTok","Site","Outro"].map(o=>`<option value="${o}" ${l.origem===o?"selected":""}>${o}</option>`).join("")}
-          </select></div>
-        <div><label class="lbl">Procedimento de interesse</label>
-          <select id="ld-interesse" class="inp">
-            ${["Clareamento","Implante","Ortodontia","Lentes de Contato","Prótese","Restauração","Harmonização Facial","Botox","Preenchimento","Peeling","Outro"].map(o=>`<option value="${o}" ${l.interesse===o?"selected":""}>${o}</option>`).join("")}
-          </select></div>
-        <div><label class="lbl">Orçamento enviado</label>
-          <input id="ld-orcamento" value="${(l.orcamento||"").replace(/"/g,"&quot;")}" class="inp" placeholder="Ex: R$ 3.500,00 — implante"/></div>
-        <div><label class="lbl">Próximo contato</label>
-          <input id="ld-prox" type="date" value="${l.proxContato||""}" class="inp"/></div>
-      </div>
-      <div style="margin-bottom:10px"><label class="lbl">Status do atendimento</label>
-        <div style="display:flex;gap:4px;flex-wrap:wrap">
-          ${LEAD_STATUS.map(s=>{const sc=LEAD_STATUS_COLORS[s];const ic=LEAD_STATUS_ICONS[s];const sel=l.status===s;return`<button id="ld-st-${s.replace(/\s/g,"_")}" data-status="${s}" onclick="(function(btn){document.querySelectorAll('[id^=ld-st-]').forEach(b=>{b.style.background='transparent';b.removeAttribute('data-sel');});btn.style.background='${sc}22';btn.setAttribute('data-sel','1');})(this)" style="padding:5px 10px;font-size:10px;border-radius:50px;background:${sel?sc+"22":"transparent"};color:${sc};border:1px solid ${sc}44;cursor:pointer;font-family:var(--font-body)">${ic} ${s}</button>`;}).join("")}
-        </div></div>
-      <div style="margin-bottom:10px"><label class="lbl">Observações / Histórico de conversas</label>
-        <textarea id="ld-obs" rows="3" class="inp" style="resize:vertical" placeholder="Anote observações, o que o paciente disse, dúvidas...">${l.obs||""}</textarea></div>
-      <div style="margin-bottom:6px"><label class="lbl">Adicionar entrada no histórico</label>
-        <div style="display:flex;gap:6px">
-          <input id="ld-hist-txt" class="inp" style="flex:1;font-size:12px" placeholder="Registrar contato feito, resposta recebida..."/>
-          <button onclick="addHistLead(${lid})" class="bp" style="padding:8px 12px;font-size:12px;flex-shrink:0">+ Registrar</button>
-        </div></div>
-      ${historico.length>0?`<div style="background:#0a0a0a;border-radius:8px;padding:8px 10px;max-height:140px;overflow-y:auto;margin-bottom:10px">
-        ${historico.map(h=>`<div style="border-bottom:1px solid #1a1a1a;padding:5px 0;font-size:11px">
-          <span style="color:#555;font-size:10px">${fmtDate(h.date)} ${h.hora||""}</span>
-          <span style="color:#bbb;margin-left:6px">${h.texto}</span>
-        </div>`).join("")}
-      </div>`:""}
-      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
-        <button onclick="saveLead(${lid})" class="bp" style="flex:1;min-width:100px">💾 Salvar</button>
-        <button onclick="whatsLead(${lid},true)" class="bg" style="color:#22c55e;border-color:#22c55e44;font-size:12px">📱 WhatsApp</button>
-        ${l.status!=="Fechado"?`<button onclick="convertLead(${lid})" class="bg" style="color:#22c55e;border-color:#22c55e44;font-size:12px">✅ Converter em paciente</button>`:""}
-        <button onclick="delLead(${lid})" class="bg" style="color:#ef4444;border-color:#ef444444;font-size:12px">🗑</button>
-      </div>
-    </div>
-  </div>`;
-  document.getElementById("lead-modal")?.remove();
-  document.body.appendChild(modal);
-};
-
-window.showLeadDrop=function(inputId,field,val){
-  const anchor=document.getElementById(inputId);if(!anchor)return;
-  const q=(val||"").toLowerCase().trim();
-  if(q.length<1){hideLeadDrop();return;}
-  // Usa ST.leads em memória; fallback para localStorage
-  const leadsArr=(ST.leads||load("rof_leads",[]));
-  const pts=(ST.pts||[]).map(p=>({name:p.name||"",phone:p.phone||"",email:p.email||"",tag:"Paciente"}));
-  const leads=leadsArr.map(l=>({name:l.name||"",phone:l.phone||"",email:l.email||"",tag:"Lead"}));
-  const hits=[...pts,...leads].filter(c=>{
-    if(field==="name")return c.name.toLowerCase().includes(q);
-    return c.phone.replace(/\D/g,"").includes(q.replace(/\D/g,""));
-  }).slice(0,8);
-  // Dropdown fixo no body — nunca move o DOM durante oninput (evita travar a escrita)
-  let drop=document.getElementById("ld-drop");
-  if(!drop){
-    drop=document.createElement("div");
-    drop.id="ld-drop";
-    drop.style.cssText="position:fixed;z-index:99999;background:#1c1a17;border:1px solid rgba(198,164,109,0.35);border-radius:8px;max-height:210px;overflow-y:auto;box-shadow:0 6px 24px #0009;display:none;min-width:220px";
-    document.body.appendChild(drop);
-  }
-  if(hits.length===0){drop.style.display="none";return;}
-  const rect=anchor.getBoundingClientRect();
-  drop.style.top=(rect.bottom+2)+"px";
-  drop.style.left=rect.left+"px";
-  drop.style.width=rect.width+"px";
-  drop.innerHTML=hits.map(c=>{
-    const nm=JSON.stringify(c.name||"");
-    const ph=JSON.stringify(c.phone||"");
-    const em=JSON.stringify(c.email||"");
-    return`<div onmousedown="fillLeadFromPt(${nm},${ph},${em})" style="padding:9px 12px;cursor:pointer;border-bottom:1px solid rgba(198,164,109,0.08)" onmouseover="this.style.background='#2a2510'" onmouseout="this.style.background='transparent'"><div style="color:#E2C99A;font-size:12px;font-weight:600">${c.name||"(sem nome)"}</div><div style="color:#888;font-size:10px">${c.phone}${c.tag?" · "+c.tag:""}</div></div>`;
-  }).join("");
-  drop.style.display="block";
-};
-window.hideLeadDrop=function(){const d=document.getElementById("ld-drop");if(d)d.style.display="none";};
-window.fillLeadFromPt=function(name,phone,email){
-  const n=document.getElementById("ld-name"),p=document.getElementById("ld-phone"),e=document.getElementById("ld-email");
-  if(n)n.value=name;if(p)p.value=phone;if(e&&email)e.value=email;
-  hideLeadDrop();
-};
-window.addHistLead=function(lid){
-  const txt=document.getElementById("ld-hist-txt")?.value?.trim();
-  if(!txt)return;
-  const leads=load("rof_leads",[]);
-  const now=new Date();
-  const hora=now.getHours().toString().padStart(2,"0")+":"+now.getMinutes().toString().padStart(2,"0");
-  const updated=leads.map(l=>l.id!==lid?l:{...l,
-    historico:[...(l.historico||[]),{date:todayISO(),hora,texto:txt}],
-    dataUltContato:todayISO(),
-    updatedAt:todayISO()
-  });
-  save("rof_leads",updated);
-  const inp=document.getElementById("ld-hist-txt");if(inp)inp.value="";
-  toast("📝 Registrado!","success");
-  // Refresh modal
-  document.getElementById("lead-modal")?.remove();
-  setTimeout(()=>openLead(lid),50);
-};
-
-window.saveLead=function(lid){
-  const leads=load("rof_leads",[]);
-  const selBtn=document.querySelector('[id^="ld-st-"][data-sel="1"]');
-  const cur=leads.find(x=>x.id===lid)||{};
-  const status=selBtn?selBtn.getAttribute("data-status"):cur.status||"Novo Lead";
-  const updated=leads.map(l=>l.id!==lid?l:{...l,
-    name:document.getElementById("ld-name")?.value||l.name,
-    phone:document.getElementById("ld-phone")?.value||l.phone,
-    email:document.getElementById("ld-email")?.value||l.email,
-    origem:document.getElementById("ld-origem")?.value||l.origem,
-    interesse:document.getElementById("ld-interesse")?.value||l.interesse,
-    orcamento:document.getElementById("ld-orcamento")?.value||l.orcamento||"",
-    proxContato:document.getElementById("ld-prox")?.value||l.proxContato||"",
-    obs:document.getElementById("ld-obs")?.value||l.obs,
-    status,updatedAt:todayISO()
-  });
-  save("rof_leads",updated);
-  document.getElementById("lead-modal")?.remove();
-  set({});
-  toast("✅ Lead salvo!","success");
-};
-
-window.convertLead=function(lid){
-  // Captura valores do modal antes de fechar
-  const selBtn=document.querySelector('[id^="ld-st-"][data-sel="1"]');
-  const modalVals={
-    name:document.getElementById("ld-name")?.value,
-    phone:document.getElementById("ld-phone")?.value,
-    email:document.getElementById("ld-email")?.value,
-    origem:document.getElementById("ld-origem")?.value,
-    interesse:document.getElementById("ld-interesse")?.value,
-    orcamento:document.getElementById("ld-orcamento")?.value,
-    proxContato:document.getElementById("ld-prox")?.value,
-    obs:document.getElementById("ld-obs")?.value,
-    status:selBtn?selBtn.getAttribute("data-status"):undefined,
-  };
-  document.getElementById("lead-modal")?.remove();
-  hideLeadDrop();
-  const leads=load("rof_leads",[]);
-  const l=leads.find(x=>x.id===lid);if(!l)return;
-  const merged={...l,...Object.fromEntries(Object.entries(modalVals).filter(([,v])=>v!=null&&v!=="")),status:"Fechado",updatedAt:todayISO()};
-  const updLeads=leads.map(x=>x.id===lid?merged:x);
-  save("rof_leads",updLeads);
-  const newPt={id:Date.now(),name:l.name,phone:l.phone,email:l.email,status:"Ativo",tipo:"particular",tags:[],notes:`Convertido de lead em ${todayISO()}. Interesse: ${l.interesse||"—"}. Origem: ${l.origem||"—"}.${l.orcamento?" Orçamento: "+l.orcamento:""}${l.obs?"\n"+l.obs:""}`};
-  const pts=[...ST.pts,newPt];
-  set({pts,page:"patients",selPt:newPt.id});
-  save("rof_pts",pts);
-  toast(`✅ ${l.name} convertido em paciente!`,"success");
-};
-
-window.delLead=function(lid){
-  const leads=load("rof_leads",[]).filter(l=>l.id!==lid);
-  save("rof_leads",leads);
-  document.getElementById("lead-modal")?.remove();
-  set({});
-  toast("Lead removido","success");
-};
-
-window.whatsLead=function(lid,fromModal){
-  const leads=load("rof_leads",[]);
-  const l=leads.find(x=>x.id===lid);if(!l)return;
-  let phone=(l.phone||"").replace(/\D/g,"");
-  if(!phone){toast("Lead sem telefone cadastrado.","warning");return;}
-  if(phone.length===10||phone.length===11)phone="55"+phone;
-  // Registrar contato no histórico
-  const now=new Date();
-  const hora=now.getHours().toString().padStart(2,"0")+":"+now.getMinutes().toString().padStart(2,"0");
-  const updated=leads.map(x=>x.id!==lid?x:{...x,dataUltContato:todayISO(),updatedAt:todayISO(),historico:[...(x.historico||[]),{date:todayISO(),hora,texto:"Contato via WhatsApp iniciado."}]});
-  save("rof_leads",updated);
-  if(fromModal){document.getElementById("lead-modal")?.remove();}
-  openWhatsMsgTemplates(phone,l.name,l.interesse);
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -3472,8 +3096,6 @@ const save=(k,v)=>{
   // Fotos ficam em rof_pt_photos — nunca dentro de rof_pts (evita estouro do localStorage e do Supabase)
   const stripped=(k==='rof_pts'&&Array.isArray(v))?v.map(({photo,...r})=>r):v;
   try{localStorage.setItem(k,JSON.stringify(stripped));}catch(e){console.warn("localStorage cheio:",e);}
-  // Mantém ST.leads sincronizado em memória
-  if(k==='rof_leads'&&Array.isArray(stripped)&&typeof ST!=="undefined")ST.leads=stripped;
   // Feedback visual GLOBAL: pisca "✓ Salvo" no canto sempre que algo é salvo
   if(typeof _showSaveIndicator==="function")_showSaveIndicator();
   if(SYNC_KEYS.has(k)){
@@ -3787,7 +3409,6 @@ const ST={
   pts:load("rof_pts",DEFPTS),
   apts:load("rof_apts",DEFAPTS),
   stk:load("rof_stk",DEFSTK),
-  leads:load("rof_leads",[]),
   selPt:null,ptTab:"info",
   agDate:todayISO(),agCat:"Todos",
   ptSrc:"",odSel:"carie",odFace:"O",
@@ -3858,10 +3479,10 @@ function applySB(){
     });
   }
 }
-const NAV=[{id:"dashboard",e:"◈",l:"Dashboard"},{id:"agenda",e:"📅",l:"Agenda"},{id:"ai",e:"💬",l:"Secretária Júlia"},{id:"patients",e:"🦷",l:"Pacientes"},{id:"crm",e:"🎯",l:"CRM / Leads"},{id:"financeiro",e:"💵",l:"Financeiro"},{id:"stock",e:"📦",l:"Estoque"},{id:"procs",e:"🗂️",l:"Procedimentos"},{id:"orientacoes",e:"📋",l:"Orientações Pós"},{id:"relatorios",e:"📊",l:"Relatórios"},{id:"terms",e:"📜",l:"Termos ROF™"}];
+const NAV=[{id:"dashboard",e:"◈",l:"Dashboard"},{id:"agenda",e:"📅",l:"Agenda"},{id:"ai",e:"💬",l:"Secretária Júlia"},{id:"patients",e:"🦷",l:"Pacientes"},{id:"financeiro",e:"💵",l:"Financeiro"},{id:"stock",e:"📦",l:"Estoque"},{id:"procs",e:"🗂️",l:"Procedimentos"},{id:"orientacoes",e:"📋",l:"Orientações Pós"},{id:"relatorios",e:"📊",l:"Relatórios"},{id:"terms",e:"📜",l:"Termos ROF™"}];
 function buildNav(){
   const grps=[
-    {sec:"Principal",ids:["dashboard","agenda","ai","patients","crm"]},
+    {sec:"Principal",ids:["dashboard","agenda","ai","patients"]},
     {sec:"Gestão",ids:["financeiro","stock","procs","orientacoes","relatorios"]},
     {sec:"Documentos",ids:["terms"]},
   ];
@@ -10220,7 +9841,7 @@ function render(){
   else if(ST.page==="procs")c=pageProcs();
   else if(ST.page==="financeiro")c=pageFinanceiro();
   else if(ST.page==="relatorios")c=pageRelatorios();
-  else if(ST.page==="crm")c=pageCRM();
+
   else if(ST.page==="orientacoes")c=pageOrientacoes();
   else if(ST.page==="terms")c=pageTerms();
   else if(ST.page==="ai")c=pageSecretaria();
