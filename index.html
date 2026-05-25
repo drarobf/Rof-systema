@@ -1621,6 +1621,16 @@ const _sb=(()=>{
 
 const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_stk','rof_procs','rof_caixa','rof_whats_templates','rof_orientacoes']);
 const _syncQ = (()=>{try{return JSON.parse(localStorage.getItem("rof_sync_q")||"[]");}catch{return[];}})();
+const _pendingCloudWrites = new Set();
+const _lastLocalWriteAt = {};
+function _hasQueuedSync(k){return _syncQ.some(x=>x&&x.k===k);}
+function _clearPendingWrite(k){if(!_hasQueuedSync(k))_pendingCloudWrites.delete(k);}
+function _queueSync(k,v){
+  const idx=_syncQ.findIndex(x=>x&&x.k===k);
+  if(idx>=0)_syncQ[idx]={k,v};
+  else _syncQ.push({k,v});
+  localStorage.setItem("rof_sync_q",JSON.stringify(_syncQ));
+}
 const _flushQ = async () => {
   if(!_sbEnabled||!navigator.onLine||!_syncQ.length)return;
   while(_syncQ.length){
@@ -1629,6 +1639,7 @@ const _flushQ = async () => {
       const {error}=await _sb.from('rof_store').upsert({key:k,data:v},{onConflict:'key'});
       if(error)throw error;
       _syncQ.shift();
+      _clearPendingWrite(k);
     }catch{break;}
   }
   localStorage.setItem("rof_sync_q",JSON.stringify(_syncQ));
@@ -1643,12 +1654,15 @@ function _setSyncBadge(ok){
 }
 async function syncFromCloud(){
   if(!_sbEnabled||!navigator.onLine)return;
+  if(_syncQ.length)await _flushQ();
   const el=document.getElementById("sync-badge");
   if(el){el.textContent="↻ Sincronizando...";el.style.color="var(--gold)";el.classList.add("sync-spin");}
   try{
     const {data:rows,error}=await _sb.from('rof_store').select('key,data');
     if(error)throw error;
     (rows||[]).forEach(({key:k,data:v})=>{
+      const recentLocalWrite=Date.now()-(_lastLocalWriteAt[k]||0)<5000;
+      if(_pendingCloudWrites.has(k)||_hasQueuedSync(k)||recentLocalWrite)return;
       if(k==='rof_pts'&&Array.isArray(v)){
         // Fotos estão em rof_pt_photos — mescla de volta sem salvar no rof_pts
         localStorage.setItem(k,JSON.stringify(v));
@@ -3114,17 +3128,17 @@ const save=(k,v)=>{
   // Feedback visual GLOBAL: pisca "✓ Salvo" no canto sempre que algo é salvo
   if(typeof _showSaveIndicator==="function")_showSaveIndicator();
   if(SYNC_KEYS.has(k)){
+    _lastLocalWriteAt[k]=Date.now();
+    _pendingCloudWrites.add(k);
     if(navigator.onLine){
       _sb.from('rof_store').upsert({key:k,data:stripped},{onConflict:'key'})
-        .then(({error})=>{if(!error)_setSyncBadge(true);else throw error;})
+        .then(({error})=>{if(!error){_clearPendingWrite(k);_setSyncBadge(true);}else throw error;})
         .catch(()=>{
-          _syncQ.push({k,v:stripped});
-          localStorage.setItem("rof_sync_q",JSON.stringify(_syncQ));
+          _queueSync(k,stripped);
           _setSyncBadge(false);
         });
     }else{
-      _syncQ.push({k,v:stripped});
-      localStorage.setItem("rof_sync_q",JSON.stringify(_syncQ));
+      _queueSync(k,stripped);
       _setSyncBadge(false);
     }
   }
@@ -5964,6 +5978,7 @@ window.delHOF=function(ptId,recId){
 // PLANO DE TRATAMENTO E ORÇAMENTO
 // ═══════════════════════════════════════════════════════════════
 function renderPlano(p){
+  var planoId=String(p.id).replace(/[^A-Za-z0-9_-]/g,"_");
   var plano=p.plano||{itens:[],obs:"",desconto:0,parcelas:1,validade:""};
   var itens=plano.itens||[];
   var total=itens.reduce(function(s,i){return s+(i.qty*(i.price||0));},0);
@@ -6028,12 +6043,12 @@ function renderPlano(p){
     +"<div class='cg' style='margin-bottom:14px'>"
     +"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:10px'>"
     +"<span style='color:#888;font-size:13px'>Subtotal</span>"
-    +"<span style='color:#ddd;font-size:14px;font-weight:700'>R$ "+total.toLocaleString("pt-BR")+"</span></div>"
+    +"<span id='plano-subtotal-"+planoId+"' style='color:#ddd;font-size:14px;font-weight:700'>R$ "+total.toLocaleString("pt-BR")+"</span></div>"
     +"<div class='g2' style='margin-bottom:10px'>"
     +"<div><label class='lbl'>Desconto (R$)</label>"
     +"<input type='number' min='0' value='"+(plano.desconto||0)+"' oninput='planoDesc("+p.id+",this.value)' class='inp'/></div>"
     +"<div><label class='lbl'>Parcelamento</label>"
-    +"<select onchange='planoParcelas("+p.id+",this.value)' class='inp'>"
+    +"<select id='plano-parcelas-"+planoId+"' onchange='planoParcelas("+p.id+",this.value)' class='inp'>"
     +[1,2,3,4,5,6,10,12].map(function(n){return "<option value='"+n+"'"+(parcelas===n?" selected":"")+">"+( n===1?"À vista":"Em "+n+"x de R$ "+Math.round(totalDesc/n).toLocaleString("pt-BR"))+"</option>";}).join("")
     +"</select></div>"
     +"<div><label class='lbl'>Validade do orçamento</label>"
@@ -6041,8 +6056,8 @@ function renderPlano(p){
     +"</div>"
     +"<div style='background:linear-gradient(135deg,#8B6914,#E2C99A,#C6A46D);border-radius:10px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center'>"
     +"<span style='color:#000;font-size:13px;font-weight:700'>TOTAL DO TRATAMENTO</span>"
-    +"<span style='color:#000;font-size:20px;font-weight:900'>R$ "+totalDesc.toLocaleString("pt-BR")+"</span></div>"
-    +(parcelas>1?"<div style='text-align:center;color:#888;font-size:12px;margin-top:6px'>"+parcelas+"× de R$ "+Math.round(totalDesc/parcelas).toLocaleString("pt-BR")+"</div>":"")
+    +"<span id='plano-total-"+planoId+"' style='color:#000;font-size:20px;font-weight:900'>R$ "+totalDesc.toLocaleString("pt-BR")+"</span></div>"
+    +"<div id='plano-parcela-resumo-"+planoId+"' style='text-align:center;color:#888;font-size:12px;margin-top:6px;display:"+(parcelas>1?"block":"none")+"'>"+(parcelas>1?parcelas+"× de R$ "+Math.round(totalDesc/parcelas).toLocaleString("pt-BR"):"")+"</div>"
     +"</div>"
     // OBSERVAÇÕES
     +"<div style='margin-bottom:14px'><label class='lbl'>Observações / condições do orçamento</label>"
@@ -6056,8 +6071,56 @@ function renderPlano(p){
     +"</div>";
 }
 
-function updPlano(ptId,fn){
-  var nps=ST.pts.map(function(p){if(p.id!==ptId)return p;return Object.assign({},p,{plano:fn(p.plano||{itens:[],obs:"",desconto:0,parcelas:1,validade:""})});});
+function defaultPlano(){return{itens:[],obs:"",desconto:0,parcelas:1,validade:""};}
+function calcPlanoTotals(plano){
+  plano=Object.assign(defaultPlano(),plano||{});
+  var itens=plano.itens||[];
+  var total=itens.reduce(function(s,i){return s+((Number(i.qty)||0)*(Number(i.price)||0));},0);
+  var desc=Number(plano.desconto||0);
+  var totalDesc=Math.max(0,total-desc);
+  var parcelas=Math.max(1,Number(plano.parcelas||1));
+  return{total:total,totalDesc:totalDesc,parcelas:parcelas};
+}
+function refreshPlanoResumo(ptId){
+  var p=findPtById(ptId);if(!p)return;
+  var sid=String(ptId).replace(/[^A-Za-z0-9_-]/g,"_");
+  var t=calcPlanoTotals(p.plano);
+  var subtotal=document.getElementById("plano-subtotal-"+sid);
+  var total=document.getElementById("plano-total-"+sid);
+  var resumo=document.getElementById("plano-parcela-resumo-"+sid);
+  var parcelas=document.getElementById("plano-parcelas-"+sid);
+  if(subtotal)subtotal.textContent="R$ "+t.total.toLocaleString("pt-BR");
+  if(total)total.textContent="R$ "+t.totalDesc.toLocaleString("pt-BR");
+  if(parcelas){
+    Array.from(parcelas.options).forEach(function(opt){
+      var n=Number(opt.value||1);
+      opt.textContent=n===1?"À vista":"Em "+n+"x de R$ "+Math.round(t.totalDesc/n).toLocaleString("pt-BR");
+    });
+  }
+  if(resumo){
+    resumo.style.display=t.parcelas>1?"block":"none";
+    resumo.textContent=t.parcelas>1?t.parcelas+"× de R$ "+Math.round(t.totalDesc/t.parcelas).toLocaleString("pt-BR"):"";
+  }
+}
+function updPlano(ptId,fn,opts){
+  opts=Object.assign({render:true,refresh:true},opts||{});
+  var found=false;
+  var nps=ST.pts.map(function(p){
+    if(!sameId(p.id,ptId))return p;
+    found=true;
+    return Object.assign({},p,{plano:fn(Object.assign(defaultPlano(),p.plano||{}))});
+  });
+  if(!found)return;
+  ST.pts=nps;
+  if(opts.render===false){
+    _lastLocalWriteAt["rof_pts"]=Date.now();
+    _pendingCloudWrites.add("rof_pts");
+    if(typeof schedulePtSave==="function")schedulePtSave();
+    else save("rof_pts",nps);
+    if(typeof _showSaveIndicator==="function")_showSaveIndicator();
+    if(opts.refresh!==false)refreshPlanoResumo(ptId);
+    return;
+  }
   save("rof_pts",nps);set({pts:nps});
 }
 window.planoAdd=function(ptId){
@@ -6078,10 +6141,10 @@ window.planoQty=function(ptId,idx,v){
 window.planoRemove=function(ptId,idx){
   updPlano(ptId,function(pl){return Object.assign({},pl,{itens:pl.itens.filter(function(_,i){return i!==idx;})});});
 };
-window.planoDesc=function(ptId,v){updPlano(ptId,function(pl){return Object.assign({},pl,{desconto:Number(v)||0});});};
+window.planoDesc=function(ptId,v){updPlano(ptId,function(pl){return Object.assign({},pl,{desconto:Number(v)||0});},{render:false});};
 window.planoParcelas=function(ptId,v){updPlano(ptId,function(pl){return Object.assign({},pl,{parcelas:Number(v)||1});});};
 window.planoValidade=function(ptId,v){updPlano(ptId,function(pl){return Object.assign({},pl,{validade:v});});};
-window.planoObs=function(ptId,v){updPlano(ptId,function(pl){return Object.assign({},pl,{obs:v});});};
+window.planoObs=function(ptId,v){updPlano(ptId,function(pl){return Object.assign({},pl,{obs:v});},{render:false,refresh:false});};
 window.clearPlano=function(ptId){rConfirm("Limpar todo o orçamento?",function(){updPlano(ptId,function(){return{itens:[],obs:"",desconto:0,parcelas:1,validade:""};});toast("Orçamento limpo.","success");},"Limpar Orçamento");};
 
 window.printPlano=function(ptId){
@@ -7703,63 +7766,86 @@ window.saveNewProc=()=>{
 // EVOLUÇÃO CLÍNICA (PRONTUÁRIO)
 // ═══════════════════════════════════════════════════════════════
 function renderEvolucao(p){
-  var evs=(p.evolucao||[]).slice().sort(function(a,b){return b.date.localeCompare(a.date);});
+  var evSafe=function(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");};
+  var ptArg=jsArg(p.id);
+  var evs=(p.evolucao||[]).slice().sort(function(a,b){
+    return ((b.date||"")+" "+(b.hora||"")).localeCompare((a.date||"")+" "+(a.hora||""));
+  });
   return "<div>"
-    +"<button onclick='openEvolucao("+p.id+")' class='bp' style='width:100%;margin-bottom:14px;padding:11px;font-size:13px'>📒 + Nova Evolução / Consulta</button>"
+    +"<button onclick='openEvolucao("+ptArg+")' class='bp' style='width:100%;margin-bottom:14px;padding:11px;font-size:13px'>📒 + Nova Evolução / Consulta</button>"
     +(evs.length===0?emptyState("📒","Nenhuma evolução registrada","Registre o progresso clínico do paciente a cada consulta.")
     :evs.map(function(ev){
+      var evArg=jsArg(ev.id);
       return "<div class='card' style='margin-bottom:10px;border-left:3px solid #C6A46D'>"
         +"<div style='display:flex;justify-content:space-between;align-items:flex-start'>"
         +"<div><span style='color:#E2C99A;font-weight:800;font-size:13px'>"+fmtDate(ev.date)+"</span>"
-        +(ev.hora?" <span style='color:#555;font-size:11px'>"+ev.hora+"</span>":"")
-        +(ev.proc?"<div style='color:#C6A46D;font-size:11px;margin-top:2px'>"+ev.proc+"</div>":"")+"</div>"
-        +"<button onclick='delEvolucao("+p.id+","+ev.id+")' style='background:none;border:none;color:#333;cursor:pointer;font-size:14px'>🗑</button>"
+        +(ev.hora?" <span style='color:#555;font-size:11px'>"+evSafe(ev.hora)+"</span>":"")
+        +(ev.proc?"<div style='color:#C6A46D;font-size:11px;margin-top:2px'>"+evSafe(ev.proc)+"</div>":"")+"</div>"
+        +"<div style='display:flex;gap:4px;align-items:center'>"
+        +"<button onclick='openEvolucao("+ptArg+","+evArg+")' title='Editar evolução' style='background:rgba(198,164,109,0.08);border:1px solid rgba(198,164,109,0.18);border-radius:7px;color:#C6A46D;cursor:pointer;font-size:12px;padding:5px 8px'>✏️</button>"
+        +"<button onclick='delEvolucao("+ptArg+","+evArg+")' title='Excluir evolução' style='background:none;border:none;color:#333;cursor:pointer;font-size:14px;padding:5px 8px'>🗑</button>"
         +"</div>"
-        +"<div style='margin-top:8px;color:#bbb;font-size:12px;line-height:1.7;white-space:pre-wrap;background:#0a0a0a;border-radius:6px;padding:8px'>"+ev.texto+"</div>"
+        +"</div>"
+        +"<div style='margin-top:8px;color:#bbb;font-size:12px;line-height:1.7;white-space:pre-wrap;background:#0a0a0a;border-radius:6px;padding:8px'>"+evSafe(ev.texto)+"</div>"
         +(ev.prox?"<div style='margin-top:6px;color:#22c55e;font-size:11px'>🔔 Próxima consulta: "+fmtDate(ev.prox)+"</div>":"")
         +"</div>";
     }).join(""))
     +"</div>";
 }
-window.openEvolucao=function(ptId){
-  var p=ST.pts.find(function(x){return x.id===ptId;});
-  var prList=PROCS.map(function(pr){return "<option value='"+pr.n+"'>"+pr.n+"</option>";}).join("");
+window.openEvolucao=function(ptId,evId){
+  var evSafe=function(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");};
+  var p=findPtById(ptId);if(!p)return;
+  var ev=(evId!=null&&String(evId)!=="")?(p.evolucao||[]).find(function(e){return sameId(e.id,evId);}):null;
+  if(evId!=null&&String(evId)!==""&&!ev){toast("Evolução não encontrada.","warning");return;}
+  var isEdit=!!ev;
+  var prList=PROCS.map(function(pr){return "<option value='"+evSafe(pr.n)+"'>"+evSafe(pr.n)+"</option>";}).join("");
+  var ptArg=jsArg(p.id);
+  var evArg=isEdit?jsArg(ev.id):"null";
   var m=document.createElement("div");m.className="mbg";m.id="ev-modal";
   m.innerHTML="<div class='mbx'><div class='mhd'>"
-    +"<div style='color:#E2C99A;font-weight:800;font-size:14px'>📒 Nova Evolução — "+p.name+"</div>"
+    +"<div style='color:#E2C99A;font-weight:800;font-size:14px'>"+(isEdit?"✏️ Editar Evolução":"📒 Nova Evolução")+" — "+evSafe(p.name)+"</div>"
     +"<button onclick=\"document.getElementById('ev-modal').remove()\" style='background:none;border:none;color:#555;cursor:pointer;font-size:22px'>✕</button>"
     +"</div><div class='mbd'>"
     +"<div class='g2' style='margin-bottom:10px'>"
-    +"<div><label class='lbl'>Data da consulta</label><input id='ev-date' type='date' value='"+todayISO()+"' class='inp'/></div>"
-    +"<div><label class='lbl'>Horário</label><input id='ev-hora' type='time' class='inp'/></div>"
+    +"<div><label class='lbl'>Data da consulta</label><input id='ev-date' type='date' value='"+evSafe(isEdit?ev.date:todayISO())+"' class='inp'/></div>"
+    +"<div><label class='lbl'>Horário</label><input id='ev-hora' type='time' value='"+evSafe(isEdit?ev.hora:"")+"' class='inp'/></div>"
     +"</div>"
     +"<div style='margin-bottom:10px'><label class='lbl'>Procedimento realizado</label>"
-    +"<input id='ev-proc' class='inp' list='ev-procs' placeholder='Ex: Restauração resina, Botox...'/>"
+    +"<input id='ev-proc' class='inp' list='ev-procs' value='"+evSafe(isEdit?ev.proc:"")+"' placeholder='Ex: Restauração resina, Botox...'/>"
     +"<datalist id='ev-procs'>"+prList+"</datalist></div>"
     +"<div style='margin-bottom:10px'><label class='lbl'>Evolução / Anotações clínicas</label>"
-    +"<textarea id='ev-txt' rows='5' class='inp' style='resize:vertical' placeholder='Descreva o atendimento, observações, intercorrências, próximos passos...'></textarea></div>"
+    +"<textarea id='ev-txt' rows='5' class='inp' style='resize:vertical' placeholder='Descreva o atendimento, observações, intercorrências, próximos passos...'>"+evSafe(isEdit?ev.texto:"")+"</textarea></div>"
     +"<div style='margin-bottom:12px'><label class='lbl'>Agendar retorno (opcional)</label>"
-    +"<input id='ev-prox' type='date' class='inp'/></div>"
+    +"<input id='ev-prox' type='date' value='"+evSafe(isEdit?ev.prox:"")+"' class='inp'/></div>"
     +"<div style='display:flex;gap:8px'>"
-    +"<button onclick='saveEvolucao("+ptId+")' class='bp' style='flex:1'>💾 Salvar Evolução</button>"
+    +"<button onclick='saveEvolucao("+ptArg+","+evArg+")' class='bp' style='flex:1'>💾 "+(isEdit?"Salvar Alterações":"Salvar Evolução")+"</button>"
     +"<button onclick=\"document.getElementById('ev-modal').remove()\" class='bg' style='color:#555'>Cancelar</button>"
     +"</div></div></div>";
   document.getElementById("ev-modal")?.remove();document.body.appendChild(m);
 };
-window.saveEvolucao=function(ptId){
+window.saveEvolucao=function(ptId,evId){
   var date=document.getElementById("ev-date")?.value;
   var hora=document.getElementById("ev-hora")?.value||"";
   var proc=document.getElementById("ev-proc")?.value.trim()||"";
   var texto=document.getElementById("ev-txt")?.value.trim();
   var prox=document.getElementById("ev-prox")?.value||"";
   if(!date||!texto){toast("Preencha data e evolução.","warning");return;}
-  var ev={id:Date.now(),date,hora,proc,texto,prox};
-  var nps=ST.pts.map(function(p){if(p.id!==ptId)return p;return Object.assign({},p,{evolucao:(p.evolucao||[]).concat([ev])});});
+  var editing=evId!=null&&String(evId)!=="";
+  var ev={id:editing?evId:Date.now(),date,hora,proc,texto,prox};
+  var nps=ST.pts.map(function(p){
+    if(!sameId(p.id,ptId))return p;
+    var evolucao=p.evolucao||[];
+    return Object.assign({},p,{evolucao:editing
+      ?evolucao.map(function(e){return sameId(e.id,evId)?Object.assign({},e,ev):e;})
+      :evolucao.concat([ev])
+    });
+  });
   save("rof_pts",nps);document.getElementById("ev-modal")?.remove();set({pts:nps});
+  toast(editing?"Evolução atualizada ✓":"Evolução salva ✓","success");
 };
 window.delEvolucao=function(ptId,evId){
   rConfirm("Excluir esta evolução?",function(){
-    var nps=ST.pts.map(function(p){if(p.id!==ptId)return p;return Object.assign({},p,{evolucao:(p.evolucao||[]).filter(function(e){return e.id!==evId;})});});
+    var nps=ST.pts.map(function(p){if(!sameId(p.id,ptId))return p;return Object.assign({},p,{evolucao:(p.evolucao||[]).filter(function(e){return !sameId(e.id,evId);})});});
     save("rof_pts",nps);set({pts:nps});toast("Evolução excluída.","success");
   },"Excluir Evolução");
 };
