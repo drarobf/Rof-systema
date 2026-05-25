@@ -1540,6 +1540,20 @@ select.inp option {
 </div>
 
 <script>
+// ── LOGIN DE EMERGÊNCIA — definido ANTES de qualquer outro código ──────────
+// Se qualquer linha posterior travar, este ainda funciona.
+window.doLogin=function(){
+  try{
+    var p=(document.getElementById("ls-pwd")||{value:""}).value.trim().toLowerCase();
+    if(p==="rof2024"){
+      try{localStorage.setItem("rof_auth","ok");}catch(e){}
+      location.reload();
+    }else{
+      var inp=document.getElementById("ls-pwd");
+      if(inp){inp.style.borderBottomColor="#c0392b";inp.value="";inp.placeholder="Senha incorreta";setTimeout(function(){inp.style.borderBottomColor="";inp.placeholder="senha de acesso";},2000);}
+    }
+  }catch(e){alert("Erro ao entrar: "+e.message);}
+};
 // ── CONSTANTS ──────────────────────────────────────────────────
 const G="#C6A46D",GL="#E2C99A",GD="#8B6914";
 const BG2="#131313",BG3="#181818",BD="rgba(198,164,109,.1)";
@@ -1606,7 +1620,7 @@ const _sb=(()=>{
 })();
 
 const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_stk','rof_procs','rof_caixa','rof_whats_templates','rof_orientacoes']);
-const _syncQ = JSON.parse(localStorage.getItem("rof_sync_q")||"[]");
+const _syncQ = (()=>{try{return JSON.parse(localStorage.getItem("rof_sync_q")||"[]");}catch{return[];}})();
 const _flushQ = async () => {
   if(!_sbEnabled||!navigator.onLine||!_syncQ.length)return;
   while(_syncQ.length){
