@@ -198,7 +198,16 @@ textarea{resize:vertical;min-height:60px}
           <div><label>Profissão</label><input type="text" data-k="profissao" placeholder="Ex: Advogada"/></div>
           <div><label>Instagram</label><input type="text" data-k="instagram" placeholder="@usuario"/></div>
         </div>
-        <div class="fld"><label>Endereço completo</label><textarea data-k="endereco" rows="2" placeholder="Rua, número, bairro, cidade — UF"></textarea></div>
+        <div style="display:grid;grid-template-columns:1fr 120px;gap:10px;margin-bottom:14px">
+          <div><label>Rua / Avenida</label><input type="text" data-k="rua" placeholder="Ex: Rua 220"/></div>
+          <div><label>Número</label><input type="text" data-k="numero" placeholder="200"/></div>
+        </div>
+        <div class="fld"><label>Complemento</label><input type="text" data-k="complemento" placeholder="Apto, sala, bloco... (opcional)"/></div>
+        <div class="fld"><label>Bairro</label><input type="text" data-k="bairro" placeholder="Ex: Meia Praia"/></div>
+        <div style="display:grid;grid-template-columns:1fr 100px;gap:10px;margin-bottom:14px">
+          <div><label>Cidade</label><input type="text" data-k="cidade" placeholder="Ex: Itapema"/></div>
+          <div><label>Estado</label><input type="text" data-k="estado" placeholder="SC" maxlength="2" style="text-transform:uppercase"/></div>
+        </div>
 
         <!-- Como nos conheceu (marketing) -->
         <div class="fld">
@@ -409,7 +418,9 @@ const data = { dados: {}, anamBucal: {}, anamFacial: {} };
 const FIELD_MAP = {
   // Etapa 1 - dados
   nome:["d","name"], cpf:["d","cpf"], rg:["d","rg"], birthday:["d","birthday"],
-  phone:["d","phone"], email:["d","email"], endereco:["d","endereco"],
+  phone:["d","phone"], email:["d","email"],
+  rua:["d","rua"], numero:["d","numero"], complemento:["d","complemento"],
+  bairro:["d","bairro"], cidade:["d","cidade"], estado:["d","estado"],
   // Etapa 2 - saúde geral (compartilhada bucal+facial)
   diabetes:["ab","diabetes","f_diabetes"],
   hipertensao:["ab","hipertensao","f_hipertensao"],
@@ -574,6 +585,11 @@ function saveStep(step){
     else if(map[0] === "f") data.anamFacial[map[1]] = v;
     else if(map[0] === "ab"){ data.anamBucal[map[1]] = v; data.anamFacial[map[2]] = v; }
   });
+  if(step === 1){
+    const d = data.dados;
+    const parts = [d.rua, d.numero ? `nº ${d.numero}` : "", d.complemento, d.bairro, d.cidade, d.estado].filter(Boolean);
+    if(parts.length) d.endereco = parts.join(", ");
+  }
 }
 
 window.goNext = async function(){
