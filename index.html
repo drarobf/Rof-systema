@@ -1619,7 +1619,7 @@ const _sb=(()=>{
   catch(e){console.warn("Supabase init falhou:",e);return _sbStub;}
 })();
 
-const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_stk','rof_procs','rof_caixa','rof_whats_templates','rof_orientacoes']);
+const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_stk','rof_procs','rof_caixa','rof_whats_templates','rof_orientacoes','rof_pt_photos']);
 const _syncQ = (()=>{try{return JSON.parse(localStorage.getItem("rof_sync_q")||"[]");}catch{return[];}})();
 const _pendingCloudWrites = new Set();
 const _lastLocalWriteAt = {};
@@ -1667,6 +1667,9 @@ async function syncFromCloud(){
         // Fotos estão em rof_pt_photos — mescla de volta sem salvar no rof_pts
         localStorage.setItem(k,JSON.stringify(v));
         ST.pts=mergePtPhotos(v.map(normalizePt));
+      }else if(k==='rof_pt_photos'&&v&&typeof v==='object'&&!Array.isArray(v)){
+        localStorage.setItem(k,JSON.stringify(v));
+        ST.pts=mergePtPhotos((ST.pts||[]).map(normalizePt));
       }else{
         localStorage.setItem(k,JSON.stringify(v));
         // ── Atualiza o estado em memória conforme o tipo ──
@@ -2319,6 +2322,12 @@ window.importarPlanoTtoParaOrcamento=function(ptId){
 // ══════════════════════════════════════════════════════════════════
 // CONTRATO DE PRESTAÇÃO DE SERVIÇOS
 // ══════════════════════════════════════════════════════════════════
+function calcContratoValores(p,etapas){
+  var subtotal=(etapas||[]).reduce(function(s,e){return s+(Number(e.valor)||0);},0);
+  var desconto=Math.max(0,Number(p&&p.contratoDesconto||0));
+  desconto=Math.min(desconto,subtotal);
+  return{subtotal:subtotal,desconto:desconto,total:Math.max(0,subtotal-desconto)};
+}
 window.renderContrato=function(p){
   var etapas=p.planoTto||[];
   // ── AUTO-IMPORT do Orçamento se contrato estiver vazio ──
@@ -2335,15 +2344,21 @@ window.renderContrato=function(p){
       var nomeFinal=qtd>1?nome+" (×"+qtd+")":nome;
       return {proc:nomeFinal,valor:valorUnit*qtd,status:"pendente"};
     });
+    var subtotalImportado=etapas.reduce(function(s,e){return s+(Number(e.valor)||0);},0);
+    var descontoImportado=Math.min(subtotalImportado,Math.max(0,Number(planoOrc.desconto||0)));
     // Salva no paciente
     var nps=ST.pts.map(function(x){
       if(x.id!==p.id)return x;
-      return Object.assign({},x,{planoTto:etapas});
+      return Object.assign({},x,{planoTto:etapas,contratoDesconto:descontoImportado});
     });
+    p=Object.assign({},p,{planoTto:etapas,contratoDesconto:descontoImportado});
     ST.pts=nps;save("rof_pts",nps);
     setTimeout(function(){toast("Procedimentos importados do orçamento ✓","success");},100);
   }
-  var total=etapas.reduce(function(s,e){return s+(e.valor||0);},0);
+  var valoresContrato=calcContratoValores(p,etapas);
+  var subtotal=valoresContrato.subtotal;
+  var desconto=valoresContrato.desconto;
+  var total=valoresContrato.total;
   var forma=p.contratoForma||"À vista";
   var parcelas=p.contratoParcelas||1;
   var prazo=p.contratoPrazo||"";
@@ -2454,7 +2469,11 @@ window.renderContrato=function(p){
           </div>
           <button onclick="delContratoProc(${p.id},${i})" style="background:none;border:none;color:#ef444466;cursor:pointer;font-size:16px;padding:0 4px">✕</button>
         </div>`).join("")}
-      ${etapas.length>0?`<div style="text-align:right;margin-top:10px;margin-bottom:8px"><span style="color:#C6A46D;font-weight:900;font-size:14px">Total: R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})}</span></div>`:""}
+      ${etapas.length>0?`<div style="text-align:right;margin-top:10px;margin-bottom:8px">
+        ${desconto>0?`<div style="color:#666;font-size:11px">Subtotal: R$ ${subtotal.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
+        <div style="color:#ef4444;font-size:11px">Desconto do orçamento: − R$ ${desconto.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>`:""}
+        <span style="color:#C6A46D;font-weight:900;font-size:14px">Total: R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})}</span>
+      </div>`:""}
       <div style="display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;margin-top:8px;padding-top:8px;border-top:1px dashed rgba(198,164,109,0.2)">
         <input id="ct-proc-nome-${p.id}" class="inp" style="font-size:12px;padding:6px 8px" placeholder="Descrição do procedimento..."/>
         <div style="display:flex;align-items:center;gap:4px">
@@ -2477,7 +2496,11 @@ window.renderContrato=function(p){
 
     <div class="card" style="margin-bottom:10px">
       <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px">Cláusula 3ª — Preço e Condições de Pagamento</div>
-      <div style="color:#888;font-size:12px;margin-bottom:10px">Valor total dos serviços: <b style="color:#E2C99A;font-size:15px">R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})}</b></div>
+      <div style="color:#888;font-size:12px;margin-bottom:10px">
+        ${desconto>0?`Valor bruto: <span style="color:#bbb">R$ ${subtotal.toLocaleString("pt-BR",{minimumFractionDigits:2})}</span><br/>
+        Desconto aplicado do orçamento: <span style="color:#ef4444">− R$ ${desconto.toLocaleString("pt-BR",{minimumFractionDigits:2})}</span><br/>`:""}
+        Valor total dos serviços: <b style="color:#E2C99A;font-size:15px">R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})}</b>
+      </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
         ${["À vista","Parcelado","Convênio","Permuta"].map(f=>`<button onclick="updPt(${p.id},'contratoForma','${f}',true)" class="bg" style="font-size:11px;padding:5px 14px;border-radius:50px;background:${forma===f?"#C6A46D22":"transparent"};color:${forma===f?"#C6A46D":"#555"};border-color:${forma===f?"rgba(198,164,109,0.4)":"rgba(198,164,109,0.1)"}">${f}</button>`).join("")}
       </div>
@@ -2595,16 +2618,21 @@ window.importarOrcamentoContrato=function(ptId){
     const nomeFinal=qtd>1?nome+" (×"+qtd+")":nome;
     return {id:Date.now()+Math.random(),proc:nomeFinal,valor:valorUnit*qtd,status:"Pendente",dataPrev:"",obs:""};
   });
-  const pts=ST.pts.map(x=>x.id===ptId?{...x,planoTto:novasEtapas,contratoSkipAutoImport:false}:x);
+  const subtotal=novasEtapas.reduce((s,e)=>s+(Number(e.valor)||0),0);
+  const desconto=Math.min(subtotal,Math.max(0,Number((p.plano||{}).desconto||0)));
+  const pts=ST.pts.map(x=>x.id===ptId?{...x,planoTto:novasEtapas,contratoDesconto:desconto,contratoSkipAutoImport:false}:x);
   ST.pts=pts;save("rof_pts",pts);set({pts});
-  toast(itensOrc.length+" procedimento(s) importado(s) do orçamento ✓","success");
+  toast(itensOrc.length+" procedimento(s) importado(s) do orçamento"+(desconto>0?" com desconto ✓":" ✓"),"success");
 };
 
 // ── WhatsApp do contrato ───────────────────────────────────────
 window.whatsContrato=function(ptId){
   const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
   const etapas=p.planoTto||[];
-  const total=etapas.reduce((s,e)=>s+(e.valor||0),0);
+  const valores=calcContratoValores(p,etapas);
+  const subtotal=valores.subtotal;
+  const desconto=valores.desconto;
+  const total=valores.total;
   const forma=p.contratoForma||"À vista";
   const parcelas=p.contratoParcelas||1;
   const phone=(p.phone||"").replace(/\D/g,"");
@@ -2619,6 +2647,7 @@ window.whatsContrato=function(ptId){
     +`👤 *Paciente:* ${p.name}\n`
     +`📅 *Data:* ${todayFmt()}\n\n`
     +`🦷 *Procedimentos:*\n${procs||"—"}\n\n`
+    +(desconto>0?`💰 Subtotal: R$ ${subtotal.toLocaleString("pt-BR")}\n🎁 Desconto: − R$ ${desconto.toLocaleString("pt-BR")}\n`:"")
     +`💰 *Total: R$ ${total.toLocaleString("pt-BR")}*\n`
     +`💳 *Pagamento:* ${pgto}\n\n`
     +`${assinado}\n\n`
@@ -2631,7 +2660,10 @@ window.whatsContrato=function(ptId){
 window.printContrato=function(ptId){
   const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
   const etapas=p.planoTto||[];
-  const total=etapas.reduce((s,e)=>s+(e.valor||0),0);
+  const valores=calcContratoValores(p,etapas);
+  const subtotal=valores.subtotal;
+  const desconto=valores.desconto;
+  const total=valores.total;
   const forma=p.contratoForma||"À vista";
   const parcelas=p.contratoParcelas||1;
   const prazo=p.contratoPrazo||"___";
@@ -2643,6 +2675,8 @@ window.printContrato=function(ptId){
     :`${forma} — R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})}`;
   const procsHtml=etapas.length>0
     ?etapas.map((e,i)=>`<tr><td>${i+1}. ${e.proc||"Procedimento"}</td><td style="text-align:right;font-weight:700;white-space:nowrap">R$ ${(e.valor||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</td></tr>`).join("")
+      +(desconto>0?`<tr><td style="text-align:right;color:#666">Subtotal</td><td style="text-align:right;font-weight:700;white-space:nowrap">R$ ${subtotal.toLocaleString("pt-BR",{minimumFractionDigits:2})}</td></tr>
+      <tr><td style="text-align:right;color:#b91c1c">Desconto do orçamento</td><td style="text-align:right;font-weight:700;color:#b91c1c;white-space:nowrap">− R$ ${desconto.toLocaleString("pt-BR",{minimumFractionDigits:2})}</td></tr>`:"")
       +`<tr style="border-top:2px solid #C6A46D"><td style="font-weight:700;padding-top:6px">TOTAL</td><td style="text-align:right;font-weight:900;color:#8B6914;font-size:14px;padding-top:6px">R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})}</td></tr>`
     :`<tr><td colspan="2" style="color:#999;font-style:italic">Procedimentos a definir.</td></tr>`;
 
@@ -2699,7 +2733,7 @@ window.printContrato=function(ptId){
   <p>Os serviços odontológicos serão realizados em <b>${prazo} meses</b>, podendo sofrer prorrogação ou alteração de acordo com a eventual complexidade que o caso apresentar no decorrer do tratamento, bem como pela resposta biológica do(a) CONTRATANTE à técnica empregada, assiduidade às consultas e seguimento das orientações fornecidas pelo(a) CONTRATADO(A).</p>
 
   <h2>Cláusula Terceira — Preço e Condições de Pagamento</h2>
-  <p>O valor dos serviços odontológicos contratados é de <b>R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})}</b> e seu pagamento será efetuado da seguinte forma: <b>${pgtoTexto}</b>.</p>
+  <p>O valor dos serviços odontológicos contratados é de <b>R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})}</b>${desconto>0?` após desconto comercial de R$ ${desconto.toLocaleString("pt-BR",{minimumFractionDigits:2})}`:""} e seu pagamento será efetuado da seguinte forma: <b>${pgtoTexto}</b>.</p>
   ${p.contratoObs?`<p>${p.contratoObs}</p>`:""}
 
   <h2>Cláusula Quarta — Das Observações sobre Preço e Pagamento</h2>
@@ -3103,7 +3137,14 @@ const load=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;
 // ── FOTOS DE PERFIL — chave separada (não vai ao Supabase, não entra no rof_pts) ──
 const PT_PHOTOS_KEY="rof_pt_photos";
 const _loadPtPhotos=()=>{try{return JSON.parse(localStorage.getItem(PT_PHOTOS_KEY)||"{}");}catch{return{};}};
-const _savePtPhoto=(ptId,url)=>{const ph=_loadPtPhotos();if(url)ph[String(ptId)]=url;else delete ph[String(ptId)];try{localStorage.setItem(PT_PHOTOS_KEY,JSON.stringify(ph));return true;}catch(e){console.warn("Foto não salva — armazenamento cheio:",e);return false;}};
+const _savePtPhoto=(ptId,url)=>{
+  const ph=_loadPtPhotos();
+  if(url)ph[String(ptId)]=url;else delete ph[String(ptId)];
+  try{localStorage.setItem(PT_PHOTOS_KEY,JSON.stringify(ph));}
+  catch(e){console.warn("Foto não salva — armazenamento cheio:",e);return false;}
+  if(typeof save==="function")save(PT_PHOTOS_KEY,ph);
+  return true;
+};
 const mergePtPhotos=(pts)=>{const ph=_loadPtPhotos();return pts.map(p=>ph[String(p.id)]?{...p,photo:ph[String(p.id)]}:p);};
 // Indicador visual "✓ Salvo automaticamente" — disponível globalmente
 function _showSaveIndicator(){
@@ -5646,11 +5687,11 @@ function pagePts(){
           ${p.photo?`<button onclick="delPtPhoto(${jsArg(p.id)})" title="Remover foto" style="position:absolute;top:-3px;left:-3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,0.85);border:1px solid #ef444466;color:#ef4444;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">✕</button>`:""}
         </div>
         <div style="display:flex;gap:5px">
-          <label title="Câmera" style="display:flex;align-items:center;gap:4px;padding:5px 10px;background:#141414;border:1px solid rgba(198,164,109,0.3);border-radius:20px;cursor:pointer;font-size:11px;color:#C6A46D;font-family:Inter,sans-serif;white-space:nowrap">
-            <input type="file" accept="image/*" capture="environment" style="display:none" onchange="setPtPhoto(${jsArg(p.id)},this)"/>📷
+          <label title="Câmera" style="position:relative;display:flex;align-items:center;gap:4px;padding:5px 10px;background:#141414;border:1px solid rgba(198,164,109,0.3);border-radius:20px;cursor:pointer;font-size:11px;color:#C6A46D;font-family:Inter,sans-serif;white-space:nowrap">
+            <input type="file" accept="image/*" capture="environment" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none" onchange="setPtPhoto(${jsArg(p.id)},this)"/>📷
           </label>
-          <label title="Galeria" style="display:flex;align-items:center;gap:4px;padding:5px 10px;background:#141414;border:1px solid rgba(198,164,109,0.15);border-radius:20px;cursor:pointer;font-size:11px;color:#888;font-family:Inter,sans-serif;white-space:nowrap">
-            <input type="file" accept="image/*" style="display:none" onchange="setPtPhoto(${jsArg(p.id)},this)"/>🖼️
+          <label title="Galeria" style="position:relative;display:flex;align-items:center;gap:4px;padding:5px 10px;background:#141414;border:1px solid rgba(198,164,109,0.15);border-radius:20px;cursor:pointer;font-size:11px;color:#888;font-family:Inter,sans-serif;white-space:nowrap">
+            <input type="file" accept="image/*" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none" onchange="setPtPhoto(${jsArg(p.id)},this)"/>🖼️
           </label>
         </div>
       </div>
@@ -7073,27 +7114,26 @@ window.updPt=(id,key,val,immediate)=>{
 window.setPtPhoto=(id,inp)=>{
   const f=inp.files[0];if(!f)return;
   try{inp.value="";}catch(e){}
-  const doSave=(dataUrl)=>{
-    if(!dataUrl){toast("Não foi possível processar a foto.","error");return;}
-    const saved=_savePtPhoto(id,dataUrl);
-    if(!saved&&dataUrl.length>200000){
-      // muito grande — tenta 200px/0.5
-      compressImg(f,200,0.5,function(small){
-        if(!small){toast("Armazenamento cheio — foto não pôde ser salva","error");return;}
-        const saved2=_savePtPhoto(id,small);
-        const nps=ST.pts.map(x=>sameId(x.id,id)?{...x,photo:small}:x);
-        ST.pts=nps;set({pts:nps});
-        if(saved2)toast("Foto salva (tamanho reduzido).","success");
-        else toast("Armazenamento cheio — libere espaço e tente novamente.","error");
-      });
-      return;
-    }
-    const nps=ST.pts.map(x=>sameId(x.id,id)?{...x,photo:dataUrl}:x);
-    ST.pts=nps;set({pts:nps});
-    if(saved)toast("Foto de perfil salva!","success");
-    else toast("Armazenamento cheio — libere espaço e tente novamente.","error");
+  const tries=[
+    {px:420,q:0.72,label:""},
+    {px:320,q:0.66,label:" (reduzida)"},
+    {px:240,q:0.58,label:" (reduzida)"},
+    {px:160,q:0.52,label:" (bem reduzida)"}
+  ];
+  let i=0;
+  const attempt=()=>{
+    const cfg=tries[i++];
+    if(!cfg){toast("Armazenamento cheio — não consegui salvar a foto. Tente remover fotos antigas ou escolher uma imagem menor.","error",4500);return;}
+    compressImg(f,cfg.px,cfg.q,function(dataUrl){
+      if(!dataUrl){toast("Não foi possível processar a foto.","error");return;}
+      const saved=_savePtPhoto(id,dataUrl);
+      if(!saved){attempt();return;}
+      const nps=ST.pts.map(x=>sameId(x.id,id)?{...x,photo:dataUrl}:x);
+      ST.pts=nps;set({pts:nps});
+      toast("Foto de perfil salva"+cfg.label+"!","success");
+    });
   };
-  compressImg(f,400,0.7,doSave);
+  attempt();
 };
 // Versão que aceita File diretamente (usada pelo openPhotoMenu)
 window.setPtPhotoF=function(id,file){window.setPtPhoto(id,{files:[file],value:""});}
