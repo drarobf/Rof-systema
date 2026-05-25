@@ -3015,8 +3015,7 @@ function enterApp(localOnly){
   if(ls){ls.classList.add("out");setTimeout(()=>ls.remove(),500);}
   if(app)setTimeout(()=>app.classList.add("show"),200);
   sbOpen=!isMob();applySB();
-  const _hasData=ST.pts.length>0||ST.apts.length>0||ST.apts.length>0;
-  if(_hasData){render();}else{buildNav();showSkeleton();}
+  if(typeof render==='function')render();
   if(localOnly)toast("Acesso liberado em modo local.","success");
 }
 window.doLogin=async function(){
@@ -3065,6 +3064,7 @@ window.doLogout=function(){
     const ls=document.getElementById("ls"),app=document.getElementById("layout");
     if(ls)ls.remove();
     if(app)setTimeout(()=>app.classList.add("show"),100);
+    setTimeout(()=>{sbOpen=!isMob();applySB();if(typeof render==='function')render();},300);
     setTimeout(()=>{_flushQ();syncFromCloud();},800);
   }
 })();
