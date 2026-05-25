@@ -1596,10 +1596,14 @@ async function loginWithApi(password){
 }
 
 // Cria cliente Supabase somente se as credenciais forem válidas
-const _sbEnabled = SUPABASE_URL.startsWith('https://') && SUPABASE_ANON_KEY.length > 20;
-const _sb = _sbEnabled
-  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-  : { from: () => ({ select: () => Promise.resolve({data:[],error:null}), upsert: () => Promise.resolve({error:null}) }) };
+// try/catch protege contra falha de carregamento do CDN (ex.: Android offline)
+const _sbStub={from:()=>({select:()=>Promise.resolve({data:[],error:null}),upsert:()=>Promise.resolve({error:null})})};
+const _sbEnabled = SUPABASE_URL.startsWith('https://') && SUPABASE_ANON_KEY.length > 20 && typeof window?.supabase?.createClient==='function';
+const _sb=(()=>{
+  if(!_sbEnabled)return _sbStub;
+  try{return window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);}
+  catch(e){console.warn("Supabase init falhou:",e);return _sbStub;}
+})();
 
 const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_stk','rof_procs','rof_caixa','rof_whats_templates','rof_orientacoes']);
 const _syncQ = JSON.parse(localStorage.getItem("rof_sync_q")||"[]");
@@ -3074,7 +3078,7 @@ const load=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;
 // ── FOTOS DE PERFIL — chave separada (não vai ao Supabase, não entra no rof_pts) ──
 const PT_PHOTOS_KEY="rof_pt_photos";
 const _loadPtPhotos=()=>{try{return JSON.parse(localStorage.getItem(PT_PHOTOS_KEY)||"{}");}catch{return{};}};
-const _savePtPhoto=(ptId,url)=>{const ph=_loadPtPhotos();if(url)ph[String(ptId)]=url;else delete ph[String(ptId)];try{localStorage.setItem(PT_PHOTOS_KEY,JSON.stringify(ph));}catch(e){console.warn("Foto não salva — armazenamento cheio:",e);}};
+const _savePtPhoto=(ptId,url)=>{const ph=_loadPtPhotos();if(url)ph[String(ptId)]=url;else delete ph[String(ptId)];try{localStorage.setItem(PT_PHOTOS_KEY,JSON.stringify(ph));return true;}catch(e){console.warn("Foto não salva — armazenamento cheio:",e);return false;}};
 const mergePtPhotos=(pts)=>{const ph=_loadPtPhotos();return pts.map(p=>ph[String(p.id)]?{...p,photo:ph[String(p.id)]}:p);};
 // Indicador visual "✓ Salvo automaticamente" — disponível globalmente
 function _showSaveIndicator(){
@@ -6989,9 +6993,9 @@ window.updPt=(id,key,val,immediate)=>{
   // Feedback visual: pisca "✓ Salvo" quando o usuário edita a ficha
   if(ST.page==="patients"&&sameId(ST.selPt,id)&&typeof _showSaveIndicator==="function")_showSaveIndicator();
 };
-window.setPtPhoto=(id,inp)=>{const f=inp.files[0];if(!f)return;compressImg(f,800,0.82,function(dataUrl){_savePtPhoto(id,dataUrl);const nps=ST.pts.map(x=>sameId(x.id,id)?{...x,photo:dataUrl}:x);ST.pts=nps;set({pts:nps});toast("Foto de perfil salva!","success");});};
+window.setPtPhoto=(id,inp)=>{const f=inp.files[0];if(!f)return;compressImg(f,400,0.7,function(dataUrl){const saved=_savePtPhoto(id,dataUrl);const nps=ST.pts.map(x=>sameId(x.id,id)?{...x,photo:dataUrl}:x);ST.pts=nps;set({pts:nps});if(saved)toast("Foto de perfil salva!","success");else toast("Armazenamento cheio — foto não pôde ser salva","error");});};
 // Versão que aceita File diretamente (usada pelo openPhotoMenu)
-window.setPtPhotoF=function(id,file){compressImg(file,800,0.82,function(dataUrl){_savePtPhoto(id,dataUrl);const nps=ST.pts.map(x=>sameId(x.id,id)?{...x,photo:dataUrl}:x);ST.pts=nps;set({pts:nps});toast("Foto de perfil salva!","success");});};
+window.setPtPhotoF=function(id,file){compressImg(file,400,0.7,function(dataUrl){const saved=_savePtPhoto(id,dataUrl);const nps=ST.pts.map(x=>sameId(x.id,id)?{...x,photo:dataUrl}:x);ST.pts=nps;set({pts:nps});if(saved)toast("Foto de perfil salva!","success");else toast("Armazenamento cheio — foto não pôde ser salva","error");});};
 window.addXray=(id,inp)=>{Array.from(inp.files).forEach(file=>{const r=new FileReader();r.onload=ev=>{const p=findPtById(id);if(!p)return;updPt(id,"xrays",[...(p.xrays||[]),{name:file.name,data:ev.target.result}],true);};r.readAsDataURL(file);});};
 window.delXray=(id,i)=>{
   const p=findPtById(id);if(!p)return;
