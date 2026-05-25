@@ -7058,7 +7058,8 @@ window.showIntakeDetail=function(intakeId){
   </div><div class="mbd">
     <div style="background:#181818;border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="color:#C6A46D;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;font-weight:700">Dados pessoais</div>
-      ${txtRow("Nome",dd.name)}${txtRow("CPF",dd.cpf)}${txtRow("RG",dd.rg)}${txtRow("Nasc.",dd.birthday?fmtDate(dd.birthday):"")}${txtRow("Telefone",dd.phone)}${txtRow("E-mail",dd.email)}${txtRow("Endereço",dd.endereco)}
+      ${txtRow("Nome",dd.name)}${txtRow("CPF",dd.cpf)}${txtRow("RG",dd.rg)}${txtRow("Nasc.",dd.birthday?fmtDate(dd.birthday):"")}${txtRow("Telefone",dd.phone)}${txtRow("E-mail",dd.email)}${txtRow("Endereço",dd.endereco||[dd.rua,dd.numero?`nº ${dd.numero}`:"",dd.complemento,dd.bairro,dd.cidade,dd.estado].filter(Boolean).join(", "))}
+      ${(()=>{const lbl={"indicacao":"👥 Indicação","instagram":"📷 Instagram","google":"🔍 Google","facebook":"📘 Facebook","tiktok":"🎵 TikTok","site":"🌐 Site","convenio":"🏥 Convênio","placa":"📍 Passei em frente","outro":"✨ Outro"};const v=lbl[dd.origem]||dd.origem||"";const det=dd.origemDetalhe?` — ${dd.origemDetalhe}`:"";return txtRow("Como nos conheceu",v?(v+det):"");})()}
     </div>
     <div style="background:#181818;border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="color:#C6A46D;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;font-weight:700">🦷 Anamnese Bucal</div>
@@ -7084,7 +7085,8 @@ window.aprovarIntake=async function(intakeId){
   const i=(ST.intakes||[]).find(x=>x.id===intakeId);if(!i)return;
   const d=i.data||{},dd=d.dados||{};
   const np={id:Date.now(),name:dd.nome||dd.name||"Paciente sem nome",phone:dd.phone||"",email:dd.email||"",
-    cpf:dd.cpf||"",rg:dd.rg||"",birthday:dd.birthday||"",endereco:dd.endereco||"",
+    cpf:dd.cpf||"",rg:dd.rg||"",birthday:dd.birthday||"",
+    endereco:dd.endereco||[dd.rua,dd.numero?`nº ${dd.numero}`:"",dd.complemento,dd.bairro,dd.cidade,dd.estado].filter(Boolean).join(", ")||"",
     profissao:dd.profissao||"",instagram:dd.instagram||"",
     origem:dd.origem||"",origemDetalhe:dd.origemDetalhe||"",
     lastVisit:"—",treatment:"",tipo:"particular",convenio:"",status:"Pendente",tags:[],
