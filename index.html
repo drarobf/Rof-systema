@@ -2324,7 +2324,10 @@ window.importarPlanoTtoParaOrcamento=function(ptId){
 // ══════════════════════════════════════════════════════════════════
 function calcContratoValores(p,etapas){
   var subtotal=(etapas||[]).reduce(function(s,e){return s+(Number(e.valor)||0);},0);
-  var desconto=Math.max(0,Number(p&&p.contratoDesconto||0));
+  var plano=p&&p.plano?p.plano:null;
+  var descontoOrcamento=plano&&Array.isArray(plano.itens)&&plano.itens.length?Number(plano.desconto||0):0;
+  var desconto=descontoOrcamento>0?descontoOrcamento:Number(p&&p.contratoDesconto||0);
+  desconto=Math.max(0,desconto);
   desconto=Math.min(desconto,subtotal);
   return{subtotal:subtotal,desconto:desconto,total:Math.max(0,subtotal-desconto)};
 }
@@ -3141,7 +3144,11 @@ const _savePtPhoto=(ptId,url)=>{
   const ph=_loadPtPhotos();
   if(url)ph[String(ptId)]=url;else delete ph[String(ptId)];
   try{localStorage.setItem(PT_PHOTOS_KEY,JSON.stringify(ph));}
-  catch(e){console.warn("Foto não salva — armazenamento cheio:",e);return false;}
+  catch(e){
+    console.warn("Foto de perfil não coube no armazenamento local; tentando salvar na nuvem:",e);
+    try{localStorage.setItem(PT_PHOTOS_KEY,JSON.stringify(url?{[String(ptId)]:url}:{}));}
+    catch(e2){console.warn("Fallback local da foto também falhou:",e2);}
+  }
   if(typeof save==="function")save(PT_PHOTOS_KEY,ph);
   return true;
 };
@@ -5687,11 +5694,11 @@ function pagePts(){
           ${p.photo?`<button onclick="delPtPhoto(${jsArg(p.id)})" title="Remover foto" style="position:absolute;top:-3px;left:-3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,0.85);border:1px solid #ef444466;color:#ef4444;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">✕</button>`:""}
         </div>
         <div style="display:flex;gap:5px">
-          <label title="Câmera" style="position:relative;display:flex;align-items:center;gap:4px;padding:5px 10px;background:#141414;border:1px solid rgba(198,164,109,0.3);border-radius:20px;cursor:pointer;font-size:11px;color:#C6A46D;font-family:Inter,sans-serif;white-space:nowrap">
-            <input type="file" accept="image/*" capture="environment" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none" onchange="setPtPhoto(${jsArg(p.id)},this)"/>📷
+          <label title="Câmera" style="position:relative;display:flex;align-items:center;gap:4px;padding:5px 10px;background:#141414;border:1px solid rgba(198,164,109,0.3);border-radius:20px;cursor:pointer;font-size:11px;color:#C6A46D;font-family:Inter,sans-serif;white-space:nowrap;overflow:hidden">
+            <input id="${safeAttr("ph-"+p.id)}" type="file" accept="image/*" capture="environment" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2" onchange="setPtPhoto(${jsArg(p.id)},this)"/><span style="pointer-events:none">📷</span>
           </label>
-          <label title="Galeria" style="position:relative;display:flex;align-items:center;gap:4px;padding:5px 10px;background:#141414;border:1px solid rgba(198,164,109,0.15);border-radius:20px;cursor:pointer;font-size:11px;color:#888;font-family:Inter,sans-serif;white-space:nowrap">
-            <input type="file" accept="image/*" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none" onchange="setPtPhoto(${jsArg(p.id)},this)"/>🖼️
+          <label title="Galeria" style="position:relative;display:flex;align-items:center;gap:4px;padding:5px 10px;background:#141414;border:1px solid rgba(198,164,109,0.15);border-radius:20px;cursor:pointer;font-size:11px;color:#888;font-family:Inter,sans-serif;white-space:nowrap;overflow:hidden">
+            <input id="${safeAttr("ph-gal-"+p.id)}" type="file" accept="image/*" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2" onchange="setPtPhoto(${jsArg(p.id)},this)"/><span style="pointer-events:none">🖼️</span>
           </label>
         </div>
       </div>
