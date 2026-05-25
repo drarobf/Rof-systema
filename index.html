@@ -576,6 +576,15 @@ pre { white-space: pre-wrap; font-family: var(--font-body); }
   transition: var(--transition);
 }
 .sb-out-btn:hover { color: var(--red); background: rgba(239,68,68,0.06); }
+.sync-cloud-btn {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  width: 100%; margin-top: 6px; padding: 8px 10px;
+  border: 1px solid rgba(198,164,109,0.18); border-radius: var(--radius-sm);
+  background: rgba(198,164,109,0.06); color: var(--gold);
+  font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+  cursor: pointer; transition: var(--transition);
+}
+.sync-cloud-btn:hover { background: rgba(198,164,109,0.12); color: var(--gold-light); }
 .sb-quote {
   font-family: var(--font-display); font-style: italic;
   font-size: 9px; color: var(--gold-dark); line-height: 1.9;
@@ -1512,7 +1521,8 @@ select.inp option {
       <button class="sb-out-btn" onclick="doLogout()">
         <span>⏻</span><span id="sb-out-lbl">Sair do sistema</span>
       </button>
-      <div id="sync-badge" onclick="syncFromCloud()" title="Clique para forçar sincronização entre dispositivos" style="font-size:9px;letter-spacing:1px;text-align:center;padding:5px 0 2px;color:#6B6B6B;transition:color 0.4s;cursor:pointer">○ Offline</div>
+      <button class="sync-cloud-btn" onclick="forceCloudSync()" title="Puxar do Supabase o que foi salvo em outro aparelho">↻ Atualizar da nuvem</button>
+      <div id="sync-badge" onclick="forceCloudSync()" title="Puxar do Supabase o que foi salvo em outro aparelho" style="font-size:9px;letter-spacing:1px;text-align:center;padding:5px 0 2px;color:#6B6B6B;transition:color 0.4s;cursor:pointer">○ Offline</div>
       <div class="sb-quote" id="sb-q">
         "Função gera equilíbrio.<br/>Equilíbrio gera estética."
       </div>
@@ -1532,6 +1542,7 @@ select.inp option {
         <span id="notif-bell-dot" style="display:none"></span>
       </div>
       <button onclick="openSearch()" class="bg" style="border:1px solid rgba(198,164,109,0.18);border-radius:8px;padding:6px 11px;font-size:14px;color:#555;flex-shrink:0;line-height:1" title="Busca global (Ctrl+K)">🔍</button>
+      <button onclick="forceCloudSync()" class="bg" style="border:1px solid rgba(198,164,109,0.18);border-radius:8px;padding:6px 11px;font-size:14px;color:#555;flex-shrink:0;line-height:1" title="Atualizar dados da nuvem">↻</button>
       <img class="hdr-logo" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMTAgMTEwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjRTJDOTlBIi8+PHN0b3Agb2Zmc2V0PSI1MCUiIHN0b3AtY29sb3I9IiNDNkE0NkQiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiM4QjY5MTQiLz48L2xpbmVhckdyYWRpZW50PjxsaW5lYXJHcmFkaWVudCBpZD0iYiIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiMxYTFhMWEiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMwODA4MDgiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMTEwIiBoZWlnaHQ9IjExMCIgcng9IjE2IiBmaWxsPSJ1cmwoI2IpIi8+PHJlY3QgeD0iMiIgeT0iMiIgd2lkdGg9IjEwNiIgaGVpZ2h0PSIxMDYiIHJ4PSIxNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ1cmwoI2cpIiBzdHJva2Utd2lkdGg9IjEuNSIgb3BhY2l0eT0iMC43Ii8+PHRleHQgeD0iNTUiIHk9IjYwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iR2VvcmdpYSwgc2VyaWYiIGZvbnQtc2l6ZT0iMzIiIGZvbnQtd2VpZ2h0PSI3MDAiIGxldHRlci1zcGFjaW5nPSIyLjUiIGZpbGw9InVybCgjZykiPlJPRjwvdGV4dD48bGluZSB4MT0iMzIiIHkxPSI3MCIgeDI9Ijc4IiB5Mj0iNzAiIHN0cm9rZT0idXJsKCNnKSIgc3Ryb2tlLXdpZHRoPSIxIiBvcGFjaXR5PSIwLjciLz48dGV4dCB4PSI1NSIgeT0iODMiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjcuNSIgZm9udC13ZWlnaHQ9IjYwMCIgbGV0dGVyLXNwYWNpbmc9IjMuNSIgZmlsbD0iI0M2QTQ2RCIgb3BhY2l0eT0iMC45Ij5Nw4lUT0RPPC90ZXh0Pjwvc3ZnPg==" alt="ROF™"/>
     </div>
     <div id="content" class="fade"></div>
@@ -1623,16 +1634,44 @@ const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_stk','rof_procs','rof_caixa
 const _syncQ = (()=>{try{return JSON.parse(localStorage.getItem("rof_sync_q")||"[]");}catch{return[];}})();
 const _pendingCloudWrites = new Set();
 const _lastLocalWriteAt = {};
-function _hasQueuedSync(k){return _syncQ.some(x=>x&&x.k===k);}
+const SYNC_QUEUE_MAX_AGE_MS = 24*60*60*1000;
+function _persistSyncQueue(){
+  localStorage.setItem("rof_sync_q",JSON.stringify(_syncQ));
+}
+function _dropStaleQueuedSync(){
+  const now=Date.now();
+  let changed=false;
+  for(let i=_syncQ.length-1;i>=0;i--){
+    const item=_syncQ[i];
+    const age=Number(item&&item.t?now-item.t:Infinity);
+    if(!item||!item.k||!Object.prototype.hasOwnProperty.call(item,"v")||!Number.isFinite(age)||age>SYNC_QUEUE_MAX_AGE_MS){
+      _syncQ.splice(i,1);
+      changed=true;
+    }
+  }
+  if(changed)_persistSyncQueue();
+}
+function _hasQueuedSync(k){
+  _dropStaleQueuedSync();
+  return _syncQ.some(x=>x&&x.k===k);
+}
 function _clearPendingWrite(k){if(!_hasQueuedSync(k))_pendingCloudWrites.delete(k);}
 function _queueSync(k,v){
   const idx=_syncQ.findIndex(x=>x&&x.k===k);
-  if(idx>=0)_syncQ[idx]={k,v};
-  else _syncQ.push({k,v});
-  localStorage.setItem("rof_sync_q",JSON.stringify(_syncQ));
+  const item={k,v,t:Date.now()};
+  if(idx>=0)_syncQ[idx]=item;
+  else _syncQ.push(item);
+  _persistSyncQueue();
+}
+function _clearAllPendingSync(){
+  _syncQ.length=0;
+  _persistSyncQueue();
+  _pendingCloudWrites.clear();
+  Object.keys(_lastLocalWriteAt).forEach(k=>delete _lastLocalWriteAt[k]);
 }
 const _flushQ = async () => {
   if(!_sbEnabled||!navigator.onLine||!_syncQ.length)return;
+  _dropStaleQueuedSync();
   while(_syncQ.length){
     const {k,v}=_syncQ[0];
     try{
@@ -1642,7 +1681,7 @@ const _flushQ = async () => {
       _clearPendingWrite(k);
     }catch{break;}
   }
-  localStorage.setItem("rof_sync_q",JSON.stringify(_syncQ));
+  _persistSyncQueue();
 };
 function _setSyncBadge(ok){
   const el=document.getElementById("sync-badge");
@@ -1652,44 +1691,61 @@ function _setSyncBadge(ok){
   el.textContent=ok?"● Nuvem":"○ Offline";
   el.style.color=ok?"#22c55e":"#6B6B6B";
 }
-async function syncFromCloud(){
+function _applyCloudData(k,v){
+  if(k==='rof_pts'&&Array.isArray(v)){
+    // Fotos estão em rof_pt_photos — mescla de volta sem salvar no rof_pts
+    localStorage.setItem(k,JSON.stringify(v));
+    ST.pts=mergePtPhotos(v.map(normalizePt));
+  }else if(k==='rof_pt_photos'&&v&&typeof v==='object'&&!Array.isArray(v)){
+    localStorage.setItem(k,JSON.stringify(v));
+    ST.pts=mergePtPhotos((ST.pts||[]).map(normalizePt));
+  }else{
+    localStorage.setItem(k,JSON.stringify(v));
+    // ── Atualiza o estado em memória conforme o tipo ──
+    if(k==='rof_apts'&&Array.isArray(v))ST.apts=v;
+    else if(k==='rof_stk'&&Array.isArray(v))ST.stk=v;
+    else if(k==='rof_procs'&&Array.isArray(v))PROCS=v;
+    else if(k==='rof_caixa'&&Array.isArray(v))ST.caixa=v;
+    // (rof_whats_templates e rof_orientacoes são lidos sob demanda do localStorage)
+  }
+}
+async function syncFromCloud(opts){
+  opts=opts||{};
   if(!_sbEnabled||!navigator.onLine)return;
-  if(_syncQ.length)await _flushQ();
+  if(opts.force)_clearAllPendingSync();
+  else if(_syncQ.length)await _flushQ();
   const el=document.getElementById("sync-badge");
   if(el){el.textContent="↻ Sincronizando...";el.style.color="var(--gold)";el.classList.add("sync-spin");}
   try{
-    const {data:rows,error}=await _sb.from('rof_store').select('key,data');
+    const {data:rows,error}=await _sb.from('rof_store').select('key,data,updated_at');
     if(error)throw error;
     (rows||[]).forEach(({key:k,data:v})=>{
       const recentLocalWrite=Date.now()-(_lastLocalWriteAt[k]||0)<5000;
-      if(_pendingCloudWrites.has(k)||_hasQueuedSync(k)||recentLocalWrite)return;
-      if(k==='rof_pts'&&Array.isArray(v)){
-        // Fotos estão em rof_pt_photos — mescla de volta sem salvar no rof_pts
-        localStorage.setItem(k,JSON.stringify(v));
-        ST.pts=mergePtPhotos(v.map(normalizePt));
-      }else if(k==='rof_pt_photos'&&v&&typeof v==='object'&&!Array.isArray(v)){
-        localStorage.setItem(k,JSON.stringify(v));
-        ST.pts=mergePtPhotos((ST.pts||[]).map(normalizePt));
-      }else{
-        localStorage.setItem(k,JSON.stringify(v));
-        // ── Atualiza o estado em memória conforme o tipo ──
-        if(k==='rof_apts'&&Array.isArray(v))ST.apts=v;
-        else if(k==='rof_stk'&&Array.isArray(v))ST.stk=v;
-        else if(k==='rof_procs'&&Array.isArray(v))PROCS=v;
-        else if(k==='rof_caixa'&&Array.isArray(v))ST.caixa=v;
-        // (rof_whats_templates e rof_orientacoes são lidos sob demanda do localStorage)
-      }
+      if(!opts.force&&(_pendingCloudWrites.has(k)||_hasQueuedSync(k)||recentLocalWrite))return;
+      _applyCloudData(k,v);
+      _pendingCloudWrites.delete(k);
     });
     _setSyncBadge(true);
     if(typeof render==="function")render();
     if(typeof checkBirthdays==="function")checkBirthdays();
+    return true;
   }catch(e){
     console.warn("syncFromCloud falhou:",e);
     _setSyncBadge(false);
+    return false;
   }
 }
-window.addEventListener("online",()=>{if(_sbEnabled){_flushQ();syncFromCloud();}});
+window.syncFromCloud=syncFromCloud;
+async function forceCloudSync(){
+  const ok=await syncFromCloud({force:true});
+  if(ok&&typeof toast==="function")toast("Dados atualizados da nuvem.","success");
+  else if(typeof toast==="function")toast("Não consegui atualizar agora. Verifique a internet.","warning");
+}
+window.forceCloudSync=forceCloudSync;
+window.addEventListener("online",()=>{if(_sbEnabled)syncFromCloud();});
 window.addEventListener("offline",()=>_setSyncBadge(false));
+window.addEventListener("focus",()=>{if(_sbEnabled&&navigator.onLine)syncFromCloud();});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&_sbEnabled&&navigator.onLine)syncFromCloud();});
 
 // ══════════════════════════════════════════════════════════════════
 // TOAST SYSTEM — substitui alert()
@@ -3127,7 +3183,7 @@ window.doLogout=function(){
     if(ls)ls.remove();
     if(app)setTimeout(()=>app.classList.add("show"),100);
     setTimeout(()=>{sbOpen=!isMob();applySB();if(typeof render==='function')render();},300);
-    setTimeout(()=>{_flushQ();syncFromCloud();},800);
+    setTimeout(()=>{syncFromCloud();},800);
   }
 })();
 

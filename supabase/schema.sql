@@ -23,7 +23,10 @@ INSERT INTO rof_store (key, data) VALUES
   ('rof_stk',   '[]'::jsonb),
   ('rof_procs', '[]'::jsonb),
   ('rof_caixa', '[]'::jsonb),
-  ('rof_leads', '[]'::jsonb)
+  ('rof_leads', '[]'::jsonb),
+  ('rof_pt_photos', '{}'::jsonb),
+  ('rof_whats_templates', '[]'::jsonb),
+  ('rof_orientacoes', '[]'::jsonb)
 ON CONFLICT (key) DO NOTHING;
 
 -- ──────────────────────────────────────────────────────────────
@@ -48,15 +51,32 @@ CREATE TABLE IF NOT EXISTS rof_files (
 CREATE INDEX IF NOT EXISTS idx_rof_files_patient ON rof_files (patient_id);
 CREATE INDEX IF NOT EXISTS idx_rof_files_type    ON rof_files (file_type);
 
+-- Cadastro online preenchido pelo paciente.
+CREATE TABLE IF NOT EXISTS rof_intake (
+  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  dr_label     TEXT,
+  data         JSONB NOT NULL DEFAULT '{}'::jsonb,
+  status       TEXT NOT NULL DEFAULT 'pending'
+               CHECK (status IN ('pending', 'submitted', 'approved', 'rejected')),
+  submitted_at TIMESTAMPTZ,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_rof_intake_status ON rof_intake (status);
+CREATE INDEX IF NOT EXISTS idx_rof_intake_created ON rof_intake (created_at DESC);
+
 -- ──────────────────────────────────────────────────────────────
--- Row Level Security — acesso via chave anon (frontend direto)
--- A chave anon é segura pois o banco é privado e a senha de
--- acesso ao sistema fica no próprio HTML (APP_PASSWORD).
+-- Row Level Security para o app estatico no GitHub Pages.
+-- ATENCAO: GitHub Pages nao roda backend, entao as policies abaixo liberam
+-- a chave anon usada pelo frontend. Para dados clinicos sensiveis, migrar
+-- para Supabase Auth/Edge Functions ou outro backend antes de producao ampla.
 -- ──────────────────────────────────────────────────────────────
 ALTER TABLE rof_store ENABLE ROW LEVEL SECURITY;
 ALTER TABLE rof_files ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rof_intake ENABLE ROW LEVEL SECURITY;
 
--- Permitir tudo para anon (acesso controlado pela senha no frontend)
+-- Permitir tudo para anon no modelo estatico atual.
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -68,6 +88,11 @@ BEGIN
     SELECT 1 FROM pg_policies WHERE tablename = 'rof_files' AND policyname = 'allow_anon'
   ) THEN
     CREATE POLICY allow_anon ON rof_files FOR ALL TO anon USING (true) WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'rof_intake' AND policyname = 'allow_anon'
+  ) THEN
+    CREATE POLICY allow_anon ON rof_intake FOR ALL TO anon USING (true) WITH CHECK (true);
   END IF;
 END $$;
 
@@ -94,4 +119,9 @@ $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS trg_rof_store_updated ON rof_store;
 CREATE TRIGGER trg_rof_store_updated
   BEFORE UPDATE ON rof_store
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+DROP TRIGGER IF EXISTS trg_rof_intake_updated ON rof_intake;
+CREATE TRIGGER trg_rof_intake_updated
+  BEFORE UPDATE ON rof_intake
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
