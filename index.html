@@ -3379,14 +3379,39 @@ const DEF_PROCS=[
   {id:208,n:"ROF Osseum™",p:3500,c:"Protocolos ROF"},
   {id:209,n:"ROF Prime™",p:18000,c:"Protocolos ROF"},
 ];
+function normBusca(s){
+  return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
+}
+function escOpt(s){
+  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function sortProcsAlpha(list){
+  return [...(list||[])].sort(function(a,b){
+    return String(a.n||"").localeCompare(String(b.n||""),"pt-BR",{sensitivity:"base"});
+  });
+}
+function filterProcsAlpha(list,q){
+  const term=normBusca(q);
+  const sorted=sortProcsAlpha(list);
+  if(!term)return sorted;
+  const starts=sorted.filter(pr=>normBusca(pr.n).startsWith(term));
+  if(term.length===1)return starts;
+  const contains=sorted.filter(pr=>!normBusca(pr.n).startsWith(term)&&normBusca(pr.n).includes(term));
+  return starts.concat(contains);
+}
+function procOptionsHTML(list){
+  return sortProcsAlpha(list).map(function(pr){
+    return `<option value="${pr.id}">${escOpt(pr.n)} — R$ ${Number(pr.p||0).toLocaleString("pt-BR")}</option>`;
+  }).join("");
+}
 // Load editable procs from storage — com auto-merge de novos procedimentos do padrão
-let PROCS=load("rof_procs",DEF_PROCS);
+let PROCS=sortProcsAlpha(load("rof_procs",DEF_PROCS));
 // Auto-merge: se DEF_PROCS tem ids que não estão em PROCS, adiciona (preserva valores editados pelo usuário)
 (function autoMergeProcs(){
   const idsExistentes=new Set(PROCS.map(p=>p.id));
   const novos=DEF_PROCS.filter(d=>!idsExistentes.has(d.id));
   if(novos.length>0){
-    PROCS=[...PROCS,...novos];
+    PROCS=sortProcsAlpha([...PROCS,...novos]);
     save("rof_procs",PROCS);
     console.log("[ROF] "+novos.length+" novo(s) procedimento(s) padrão adicionado(s):",novos.map(n=>n.n).join(", "));
   }
@@ -4860,12 +4885,13 @@ const SUGEST_PROC_POR_COND={
 // Lista os procedimentos sugeridos para uma condição
 function getProcsSugeridos(cond){
   const ids=SUGEST_PROC_POR_COND[cond]||[];
-  if(ids.length===0)return PROCS;
-  return ids.map(id=>PROCS.find(pr=>pr.id===id)).filter(Boolean);
+  if(ids.length===0)return sortProcsAlpha(PROCS);
+  return sortProcsAlpha(ids.map(id=>PROCS.find(pr=>pr.id===id)).filter(Boolean));
 }
 
 // Salva no estado o dente/condição/face selecionados pro modal
 let _planoCtx={tooth:null,cond:null,faces:[]};
+let _modalProcSug=true;
 
 window.abrirPlanoClinicoModal=function(tooth,cond,faces){
   _planoCtx={tooth,cond,faces};
@@ -4873,8 +4899,7 @@ window.abrirPlanoClinicoModal=function(tooth,cond,faces){
   const condInfo=COND[cond]||{l:cond,c:"#888"};
   const facesLbl=faces.length===5?"todas as faces":faces.map(f=>FACES_LIST.find(x=>x.k===f)?.l||f).join(", ");
   const sugeridos=getProcsSugeridos(cond);
-  const procOpts=sugeridos.map(pr=>`<option value="${pr.id}">${pr.n} — R$ ${pr.p.toLocaleString("pt-BR")}</option>`).join("");
-  const todosOpts=PROCS.map(pr=>`<option value="${pr.id}">${pr.n} — R$ ${pr.p.toLocaleString("pt-BR")}</option>`).join("");
+  const procOpts=procOptionsHTML(sugeridos);
   // Itens já planejados para esse dente
   const planClin=p.planoClinico||[];
   const jaPlanejados=planClin.filter(it=>it.tooth===tooth);
@@ -4919,13 +4944,14 @@ window.abrirPlanoClinicoModal=function(tooth,cond,faces){
       </div>
 
       <label class="lbl">Procedimento</label>
-      <select id="modal-proc" class="inp" style="margin-bottom:8px">
+      <input id="modal-proc-search" class="inp" inputmode="search" autocomplete="off"
+        oninput="filtrarProcsOdonto(this.value)"
+        placeholder="Digite a letra inicial. Ex: R para restauração..."
+        style="margin-bottom:6px"/>
+      <div id="modal-proc-count" style="color:#666;font-size:10px;margin:-1px 0 6px;text-align:right">${sugeridos.length} procedimento(s)</div>
+      <select id="modal-proc" class="inp" size="7" onchange="syncOdontoProcPrice()" style="margin-bottom:8px;height:168px;overflow-y:auto">
         <option value="">Selecionar procedimento...</option>
         ${procOpts}
-      </select>
-      <select id="modal-proc-all" class="inp" style="display:none;margin-bottom:8px">
-        <option value="">Selecionar procedimento...</option>
-        ${todosOpts}
       </select>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
@@ -4953,20 +4979,42 @@ window.abrirPlanoClinicoModal=function(tooth,cond,faces){
     </div>
   </div>`;
   document.body.appendChild(modal);
+  _modalProcSug=true;
   // Esc fecha
   modal.addEventListener("click",e=>{if(e.target===modal)modal.remove();});
 };
 
 window.alternarProcsSugeridos=function(sug){
-  document.getElementById("modal-proc").style.display=sug?"":"none";
-  document.getElementById("modal-proc-all").style.display=sug?"none":"";
+  _modalProcSug=!!sug;
   document.getElementById("bt-sug").className=sug?"bp":"bg";
   document.getElementById("bt-todos").className=sug?"bg":"bp";
+  const inp=document.getElementById("modal-proc-search");
+  filtrarProcsOdonto(inp?inp.value:"");
+};
+
+window.filtrarProcsOdonto=function(q){
+  const base=_modalProcSug?getProcsSugeridos(_planoCtx.cond):PROCS;
+  const lista=filterProcsAlpha(base,q);
+  const sel=document.getElementById("modal-proc");
+  if(!sel)return;
+  sel.innerHTML='<option value="">Selecionar procedimento...</option>'+procOptionsHTML(lista);
+  const count=document.getElementById("modal-proc-count");
+  if(count){
+    const letra=String(q||"").trim();
+    count.textContent=lista.length+" procedimento(s)"+(letra?" para \""+letra+"\"":"");
+    count.style.color=lista.length?"#666":"#ef4444";
+  }
+};
+
+window.syncOdontoProcPrice=function(){
+  const sel=document.getElementById("modal-proc");
+  const pr=PROCS.find(p=>p.id===Number(sel?.value||0));
+  const price=document.getElementById("modal-price");
+  if(price&&pr&&!price.value)price.placeholder="Padrão: R$ "+Number(pr.p||0).toLocaleString("pt-BR");
 };
 
 window.adicionarProcAoPlano=function(){
-  const sugMode=document.getElementById("modal-proc").style.display!=="none";
-  const selId=sugMode?document.getElementById("modal-proc").value:document.getElementById("modal-proc-all").value;
+  const selId=document.getElementById("modal-proc").value;
   if(!selId){toast("Selecione um procedimento.","warning");return;}
   const procId=Number(selId);
   const pr=PROCS.find(p=>p.id===procId);
@@ -7715,15 +7763,15 @@ decl:"Pelo presente termo, declaro estar informado(a) e autorizo a Dra. Rossana 
 // PROCEDIMENTOS — GERENCIAR LISTA E VALORES
 // ═══════════════════════════════════════════════════════════════
 function pageProcs(){
-  const cats=["Todos",...new Set(PROCS.map(p=>p.c))];
+  const cats=["Todos",...[...new Set(PROCS.map(p=>p.c))].sort((a,b)=>String(a).localeCompare(String(b),"pt-BR",{sensitivity:"base"}))];
   const fcat=ST.procsFilter||"Todos";
-  const search=(ST.procsSearch||"").toLowerCase();
-  const filtered=PROCS.filter(p=>{
+  const search=normBusca(ST.procsSearch||"");
+  const filtered=sortProcsAlpha(PROCS.filter(p=>{
     const matchCat=fcat==="Todos"||p.c===fcat;
-    const matchSrc=!search||p.n.toLowerCase().includes(search)||p.c.toLowerCase().includes(search);
+    const matchSrc=!search||normBusca(p.n).includes(search)||normBusca(p.c).includes(search);
     return matchCat&&matchSrc;
-  });
-  const allCats=[...new Set(DEF_PROCS.map(p=>p.c))];
+  }));
+  const allCats=[...new Set(DEF_PROCS.map(p=>p.c))].sort((a,b)=>String(a).localeCompare(String(b),"pt-BR",{sensitivity:"base"}));
 
   return`${stitle("Procedimentos e Valores")}
   <!-- BUSCA E FILTROS -->
@@ -7769,20 +7817,20 @@ function pageProcs(){
 }
 
 window.updProcPrice=(id,val)=>{
-  PROCS=PROCS.map(p=>p.id===id?{...p,p:val}:p);
+  PROCS=sortProcsAlpha(PROCS.map(p=>p.id===id?{...p,p:val}:p));
   save("rof_procs",PROCS);
 };
 
 window.delProc=id=>{
   rConfirm("Excluir este procedimento?",()=>{
-    PROCS=PROCS.filter(p=>p.id!==id);
+    PROCS=sortProcsAlpha(PROCS.filter(p=>p.id!==id));
     save("rof_procs",PROCS);render();toast("Procedimento excluído.","success");
   },"Excluir Procedimento");
 };
 
 window.resetProcs=()=>{
   rConfirm("Restaurar todos os procedimentos e valores padrão?\n\nSuas alterações serão perdidas.",()=>{
-    PROCS=[...DEF_PROCS];
+    PROCS=sortProcsAlpha(DEF_PROCS);
     save("rof_procs",PROCS);render();toast("Procedimentos restaurados ao padrão.","success");
   },"Restaurar Padrão");
 };
@@ -7819,7 +7867,7 @@ window.saveEditProc=id=>{
   const cat=document.getElementById("ep-cat")?.value.trim();
   const val=Number(document.getElementById("ep-val")?.value||0);
   if(!nome||!cat){toast("Preencha nome e categoria.","warning");return;}
-  PROCS=PROCS.map(p=>p.id===id?{...p,n:nome,c:cat,p:val}:p);
+  PROCS=sortProcsAlpha(PROCS.map(p=>p.id===id?{...p,n:nome,c:cat,p:val}:p));
   save("rof_procs",PROCS);
   document.getElementById("proc-modal")?.remove();
   render();
@@ -7857,7 +7905,7 @@ window.saveNewProc=()=>{
   const val=Number(document.getElementById("np-val")?.value||0);
   if(!nome||!cat){toast("Preencha nome e categoria.","warning");return;}
   const newId=Math.max(...PROCS.map(p=>p.id),0)+1;
-  PROCS=[...PROCS,{id:newId,n:nome,c:cat,p:val}];
+  PROCS=sortProcsAlpha([...PROCS,{id:newId,n:nome,c:cat,p:val}]);
   save("rof_procs",PROCS);
   document.getElementById("proc-modal")?.remove();
   render();
