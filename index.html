@@ -1644,15 +1644,26 @@ async function syncFromCloud(){
     const {data:rows,error}=await _sb.from('rof_store').select('key,data');
     if(error)throw error;
     (rows||[]).forEach(({key:k,data:v})=>{
-      localStorage.setItem(k,JSON.stringify(v));
-      // ── Atualiza o estado em memória conforme o tipo ──
-      if(k==='rof_pts'&&Array.isArray(v))ST.pts=v.map(normalizePt);
-      else if(k==='rof_apts'&&Array.isArray(v))ST.apts=v;
-      else if(k==='rof_stk'&&Array.isArray(v))ST.stk=v;
-      else if(k==='rof_procs'&&Array.isArray(v))PROCS=v;
-      else if(k==='rof_caixa'&&Array.isArray(v))ST.caixa=v;
-      else if(k==='rof_leads'&&Array.isArray(v))ST.leads=v;
-      // (rof_whats_templates e rof_orientacoes são lidos sob demanda do localStorage)
+      if(k==='rof_pts'&&Array.isArray(v)){
+        // Fotos não são enviadas ao Supabase — preserva as do localStorage ao mesclar
+        const localPhotos={};
+        try{
+          const lp=JSON.parse(localStorage.getItem('rof_pts')||'[]');
+          lp.forEach(p=>{if(p.photo)localPhotos[String(p.id)]=p.photo;});
+        }catch{}
+        const merged=v.map(pt=>{const ph=localPhotos[String(pt.id)];return ph?{...pt,photo:ph}:pt;});
+        localStorage.setItem(k,JSON.stringify(merged));
+        ST.pts=merged.map(normalizePt);
+      }else{
+        localStorage.setItem(k,JSON.stringify(v));
+        // ── Atualiza o estado em memória conforme o tipo ──
+        if(k==='rof_apts'&&Array.isArray(v))ST.apts=v;
+        else if(k==='rof_stk'&&Array.isArray(v))ST.stk=v;
+        else if(k==='rof_procs'&&Array.isArray(v))PROCS=v;
+        else if(k==='rof_caixa'&&Array.isArray(v))ST.caixa=v;
+        else if(k==='rof_leads'&&Array.isArray(v))ST.leads=v;
+        // (rof_whats_templates e rof_orientacoes são lidos sob demanda do localStorage)
+      }
     });
     _setSyncBadge(true);
     if(typeof render==="function")render();
@@ -2172,7 +2183,10 @@ window.renderPlanoTto=function(p){
   return`<div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
       <div style="color:#E2C99A;font-weight:800;font-size:13px">🗂️ Plano de Tratamento</div>
-      <button onclick="addEtapaPlano(${p.id})" class="bp" style="font-size:11px;padding:6px 14px">+ Etapa</button>
+      <div style="display:flex;gap:6px;align-items:center">
+        ${etapas.length>0?`<button onclick="importarPlanoTtoParaOrcamento(${p.id})" class="bp" style="font-size:11px;padding:6px 12px;background:#C6A46D22;color:#C6A46D;border-color:rgba(198,164,109,0.4)">📥 Enviar p/ Orçamento</button>`:""}
+        <button onclick="addEtapaPlano(${p.id})" class="bp" style="font-size:11px;padding:6px 14px">+ Etapa</button>
+      </div>
     </div>
     ${etapas.length===0
       ?`<div style="text-align:center;color:#333;padding:28px 0;font-size:13px">Nenhuma etapa cadastrada.<br/><span style="font-size:11px;color:#222">Clique em "+ Etapa" para começar.</span></div>`
@@ -2182,19 +2196,24 @@ window.renderPlanoTto=function(p){
           return`<div class="card" style="padding:12px 14px;border-left:4px solid ${c}">
             <div style="display:flex;align-items:flex-start;gap:8px">
               <div style="flex:1">
-                <input value="${(et.proc||"").replace(/"/g,"&quot;")}" oninput="updEtapa(${p.id},${i},'proc',this.value)"
-                  class="inp" style="margin-bottom:6px;font-size:13px;font-weight:700;color:#E2C99A" placeholder="Procedimento..."/>
-                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <input value="${(et.proc||"").replace(/"/g,"&quot;")}"
+                  list="pl-dl-${p.id}-${i}"
+                  oninput="onEtapaProc(${p.id},${i},this.value)"
+                  class="inp" style="margin-bottom:4px;font-size:13px;font-weight:700;color:#E2C99A" placeholder="Digite ou selecione..."/>
+                <datalist id="pl-dl-${p.id}-${i}">
+                  ${PROCS.map(pr=>`<option value="${pr.n.replace(/"/g,"&quot;")}">R$ ${pr.p.toLocaleString("pt-BR")}</option>`).join("")}
+                </datalist>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px">
                   ${["Pendente","Em_andamento","Concluído","Cancelado"].map(s=>{
                     const sc=STATUS_COLORS[s]||"#888";
                     return`<button onclick="updEtapa(${p.id},${i},'status','${s}',true)" class="bg" style="font-size:10px;padding:3px 10px;border-radius:50px;background:${et.status===s?sc+"22":"transparent"};color:${et.status===s?sc:"#555"};border-color:${et.status===s?sc+"55":"rgba(198,164,109,0.1)"}">${s.replace("_"," ")}</button>`;
                   }).join("")}
                 </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:2px">
                   <div><label class="lbl" style="font-size:9px">Data prevista</label>
                     <input type="date" value="${et.dataPrev||""}" onchange="updEtapa(${p.id},${i},'dataPrev',this.value)" class="inp" style="font-size:11px;padding:5px 8px"/></div>
-                  <div><label class="lbl" style="font-size:9px">Valor</label>
-                    <input type="number" value="${et.valor||""}" oninput="updEtapa(${p.id},${i},'valor',parseFloat(this.value)||0)" class="inp" style="font-size:11px;padding:5px 8px" placeholder="R$ 0,00"/></div>
+                  <div><label class="lbl" style="font-size:9px">Valor unit. (R$)</label>
+                    <input type="number" value="${et.valor||""}" oninput="updEtapa(${p.id},${i},'valor',parseFloat(this.value)||0)" class="inp" style="font-size:11px;padding:5px 8px" placeholder="${(()=>{const pr=PROCS.find(x=>x.n===et.proc);return pr?"padrão: "+pr.p:"0,00";})()}"/></div>
                 </div>
                 <textarea oninput="updEtapa(${p.id},${i},'obs',this.value)" rows="1" class="inp" style="margin-top:6px;font-size:11px;resize:vertical" placeholder="Observações...">${et.obs||""}</textarea>
               </div>
@@ -2203,9 +2222,12 @@ window.renderPlanoTto=function(p){
           </div>`;
         }).join("")}
       </div>`}
-    ${etapas.length>0?`<div style="margin-top:12px;padding:10px 14px;background:#0a0a0a;border-radius:10px;display:flex;justify-content:space-between">
+    ${etapas.length>0?`<div style="margin-top:12px;padding:10px 14px;background:#0a0a0a;border-radius:10px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
       <span style="color:#555;font-size:11px">${etapas.filter(e=>e.status==="Concluído").length}/${etapas.length} concluídas</span>
-      <span style="color:#C6A46D;font-size:11px;font-weight:700">Total: R$ ${(etapas.reduce((s,e)=>s+(e.valor||0),0)).toLocaleString("pt-BR")}</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="color:#C6A46D;font-size:11px;font-weight:700">Total: R$ ${(etapas.reduce((s,e)=>s+(e.valor||0),0)).toLocaleString("pt-BR")}</span>
+        <button onclick="salvarPlanoTto(${p.id})" class="bp" style="font-size:10px;padding:4px 12px">💾 Salvar</button>
+      </div>
     </div>`:""}
   </div>`;
 };
@@ -2233,6 +2255,47 @@ window.delEtapa=function(ptId,idx){
     return{...p,planoTto};
   });
   set({pts});save("rof_pts",pts);
+};
+window.salvarPlanoTto=function(ptId){
+  save("rof_pts",ST.pts);
+  toast("Plano de tratamento salvo ✓","success");
+};
+window.onEtapaProc=function(ptId,idx,val){
+  const pr=PROCS.find(x=>x.n===val);
+  if(pr){
+    // Seleção exata da lista: atualiza nome + preenche valor padrão, re-renderiza
+    const pts=ST.pts.map(p=>{
+      if(p.id!==ptId)return p;
+      const planoTto=(p.planoTto||[]).map((e,i)=>i===idx?{...e,proc:val,valor:pr.p}:e);
+      return{...p,planoTto};
+    });
+    ST.pts=pts;save("rof_pts",pts);set({pts});
+  }else{
+    // Digitação livre: só atualiza o nome sem re-renderizar
+    updEtapa(ptId,idx,"proc",val);
+  }
+};
+window.importarPlanoTtoParaOrcamento=function(ptId){
+  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  const etapas=(p.planoTto||[]).filter(e=>e.proc&&e.status!=="Cancelado");
+  if(etapas.length===0){toast("Nenhuma etapa válida no plano para importar.","warning");return;}
+  const planoAtual=p.plano||{itens:[],obs:"",desconto:0,parcelas:1,validade:""};
+  const itensAtuais=planoAtual.itens||[];
+  if(itensAtuais.length>0){
+    if(!confirm("Orçamento já tem "+itensAtuais.length+" item(ns). Deseja ADICIONAR os "+etapas.length+" procedimento(s) do plano?\n\n(Para substituir, limpe o orçamento antes.)"))return;
+  }
+  const novosItens=etapas.map(et=>({
+    procId:Date.now()+"_"+Math.random().toString(36).slice(2,6),
+    name:et.proc,
+    qty:1,
+    price:et.valor||0,
+  }));
+  const nps=ST.pts.map(x=>{
+    if(x.id!==ptId)return x;
+    return{...x,plano:{...planoAtual,itens:[...itensAtuais,...novosItens]}};
+  });
+  save("rof_pts",nps);set({pts:nps,ptTab:"plano"});
+  toast(etapas.length+" procedimento(s) enviado(s) para o Orçamento ✓","success");
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -3323,20 +3386,22 @@ function _showSaveIndicator(){
 window._showSaveIndicator=_showSaveIndicator;
 
 const save=(k,v)=>{
-  try{localStorage.setItem(k,JSON.stringify(v));}catch{}
+  try{localStorage.setItem(k,JSON.stringify(v));}catch(e){console.warn("localStorage cheio:",e);}
   // Feedback visual GLOBAL: pisca "✓ Salvo" no canto sempre que algo é salvo
   if(typeof _showSaveIndicator==="function")_showSaveIndicator();
   if(SYNC_KEYS.has(k)){
+    // Fotos ficam só no localStorage — strip antes de enviar ao Supabase para evitar limite de payload
+    const sv=(k==='rof_pts'&&Array.isArray(v))?v.map(({photo,...r})=>r):v;
     if(navigator.onLine){
-      _sb.from('rof_store').upsert({key:k,data:v},{onConflict:'key'})
+      _sb.from('rof_store').upsert({key:k,data:sv},{onConflict:'key'})
         .then(({error})=>{if(!error)_setSyncBadge(true);else throw error;})
         .catch(()=>{
-          _syncQ.push({k,v});
+          _syncQ.push({k,v:sv});
           localStorage.setItem("rof_sync_q",JSON.stringify(_syncQ));
           _setSyncBadge(false);
         });
     }else{
-      _syncQ.push({k,v});
+      _syncQ.push({k,v:sv});
       localStorage.setItem("rof_sync_q",JSON.stringify(_syncQ));
       _setSyncBadge(false);
     }
