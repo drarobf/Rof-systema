@@ -2921,14 +2921,14 @@ window.openLead=function(lid){
             <input id="ld-name" value="${(l.name||"").replace(/"/g,"&quot;")}" class="inp"
               oninput="showLeadDrop('ld-name','name',this.value)"
               onfocus="showLeadDrop('ld-name','name',this.value)"
-              onblur="setTimeout(hideLeadDrop,180)"/>
+              onblur="setTimeout(hideLeadDrop,250)"/>
           </div></div>
         <div><label class="lbl">Telefone / WhatsApp</label>
           <div style="position:relative">
             <input id="ld-phone" value="${(l.phone||"").replace(/"/g,"&quot;")}" class="inp"
               oninput="showLeadDrop('ld-phone','phone',this.value)"
               onfocus="showLeadDrop('ld-phone','phone',this.value)"
-              onblur="setTimeout(hideLeadDrop,180)"
+              onblur="setTimeout(hideLeadDrop,250)"
               placeholder="(47) 99999-9999"/>
           </div></div>
         <div><label class="lbl">E-mail</label>
@@ -2978,22 +2978,33 @@ window.openLead=function(lid){
 window.showLeadDrop=function(inputId,field,val){
   const anchor=document.getElementById(inputId);if(!anchor)return;
   const q=(val||"").toLowerCase().trim();
+  if(q.length<1){hideLeadDrop();return;}
+  // Usa ST.leads em memória; fallback para localStorage
+  const leadsArr=(ST.leads||load("rof_leads",[]));
   const pts=(ST.pts||[]).map(p=>({name:p.name||"",phone:p.phone||"",email:p.email||"",tag:"Paciente"}));
-  const leads=(load("rof_leads",[])).map(l=>({name:l.name||"",phone:l.phone||"",email:l.email||"",tag:"Lead"}));
-  const all=[...pts,...leads];
-  const hits=q.length===0?[]:all.filter(c=>{
+  const leads=leadsArr.map(l=>({name:l.name||"",phone:l.phone||"",email:l.email||"",tag:"Lead"}));
+  const hits=[...pts,...leads].filter(c=>{
     if(field==="name")return c.name.toLowerCase().includes(q);
     return c.phone.replace(/\D/g,"").includes(q.replace(/\D/g,""));
   }).slice(0,8);
+  // Dropdown fixo no body — nunca move o DOM durante oninput (evita travar a escrita)
   let drop=document.getElementById("ld-drop");
-  if(!drop){drop=document.createElement("div");drop.id="ld-drop";drop.style.cssText="position:absolute;left:0;right:0;top:100%;z-index:9999;background:#1c1a17;border:1px solid rgba(198,164,109,0.35);border-radius:8px;max-height:210px;overflow-y:auto;box-shadow:0 6px 24px #0009;margin-top:2px";}
-  const par=anchor.parentNode;if(!par.contains(drop)){par.style.position="relative";par.appendChild(drop);}
+  if(!drop){
+    drop=document.createElement("div");
+    drop.id="ld-drop";
+    drop.style.cssText="position:fixed;z-index:99999;background:#1c1a17;border:1px solid rgba(198,164,109,0.35);border-radius:8px;max-height:210px;overflow-y:auto;box-shadow:0 6px 24px #0009;display:none;min-width:220px";
+    document.body.appendChild(drop);
+  }
   if(hits.length===0){drop.style.display="none";return;}
+  const rect=anchor.getBoundingClientRect();
+  drop.style.top=(rect.bottom+2)+"px";
+  drop.style.left=rect.left+"px";
+  drop.style.width=rect.width+"px";
   drop.innerHTML=hits.map(c=>{
-    const nm=(c.name||"").replace(/\\/g,"\\\\").replace(/'/g,"\\'");
-    const ph=(c.phone||"").replace(/\\/g,"\\\\").replace(/'/g,"\\'");
-    const em=(c.email||"").replace(/\\/g,"\\\\").replace(/'/g,"\\'");
-    return`<div onmousedown="fillLeadFromPt('${nm}','${ph}','${em}')" style="padding:9px 12px;cursor:pointer;border-bottom:1px solid rgba(198,164,109,0.08)" onmouseover="this.style.background='#2a2510'" onmouseout="this.style.background='transparent'"><div style="color:#E2C99A;font-size:12px;font-weight:600">${c.name||"(sem nome)"}</div><div style="color:#888;font-size:10px">${c.phone}${c.tag?" · "+c.tag:""}</div></div>`;
+    const nm=JSON.stringify(c.name||"");
+    const ph=JSON.stringify(c.phone||"");
+    const em=JSON.stringify(c.email||"");
+    return`<div onmousedown="fillLeadFromPt(${nm},${ph},${em})" style="padding:9px 12px;cursor:pointer;border-bottom:1px solid rgba(198,164,109,0.08)" onmouseover="this.style.background='#2a2510'" onmouseout="this.style.background='transparent'"><div style="color:#E2C99A;font-size:12px;font-weight:600">${c.name||"(sem nome)"}</div><div style="color:#888;font-size:10px">${c.phone}${c.tag?" · "+c.tag:""}</div></div>`;
   }).join("");
   drop.style.display="block";
 };
@@ -3045,10 +3056,25 @@ window.saveLead=function(lid){
 };
 
 window.convertLead=function(lid){
+  // Captura valores do modal antes de fechar
+  const selBtn=document.querySelector('[id^="ld-st-"][data-sel="1"]');
+  const modalVals={
+    name:document.getElementById("ld-name")?.value,
+    phone:document.getElementById("ld-phone")?.value,
+    email:document.getElementById("ld-email")?.value,
+    origem:document.getElementById("ld-origem")?.value,
+    interesse:document.getElementById("ld-interesse")?.value,
+    orcamento:document.getElementById("ld-orcamento")?.value,
+    proxContato:document.getElementById("ld-prox")?.value,
+    obs:document.getElementById("ld-obs")?.value,
+    status:selBtn?selBtn.getAttribute("data-status"):undefined,
+  };
+  document.getElementById("lead-modal")?.remove();
+  hideLeadDrop();
   const leads=load("rof_leads",[]);
   const l=leads.find(x=>x.id===lid);if(!l)return;
-  document.getElementById("lead-modal")?.remove();
-  const updLeads=leads.map(x=>x.id===lid?{...x,status:"Fechado",updatedAt:todayISO()}:x);
+  const merged={...l,...Object.fromEntries(Object.entries(modalVals).filter(([,v])=>v!=null&&v!=="")),status:"Fechado",updatedAt:todayISO()};
+  const updLeads=leads.map(x=>x.id===lid?merged:x);
   save("rof_leads",updLeads);
   const newPt={id:Date.now(),name:l.name,phone:l.phone,email:l.email,status:"Ativo",tipo:"particular",tags:[],notes:`Convertido de lead em ${todayISO()}. Interesse: ${l.interesse||"—"}. Origem: ${l.origem||"—"}.${l.orcamento?" Orçamento: "+l.orcamento:""}${l.obs?"\n"+l.obs:""}`};
   const pts=[...ST.pts,newPt];
@@ -3446,6 +3472,8 @@ const save=(k,v)=>{
   // Fotos ficam em rof_pt_photos — nunca dentro de rof_pts (evita estouro do localStorage e do Supabase)
   const stripped=(k==='rof_pts'&&Array.isArray(v))?v.map(({photo,...r})=>r):v;
   try{localStorage.setItem(k,JSON.stringify(stripped));}catch(e){console.warn("localStorage cheio:",e);}
+  // Mantém ST.leads sincronizado em memória
+  if(k==='rof_leads'&&Array.isArray(stripped)&&typeof ST!=="undefined")ST.leads=stripped;
   // Feedback visual GLOBAL: pisca "✓ Salvo" no canto sempre que algo é salvo
   if(typeof _showSaveIndicator==="function")_showSaveIndicator();
   if(SYNC_KEYS.has(k)){
@@ -3759,6 +3787,7 @@ const ST={
   pts:load("rof_pts",DEFPTS),
   apts:load("rof_apts",DEFAPTS),
   stk:load("rof_stk",DEFSTK),
+  leads:load("rof_leads",[]),
   selPt:null,ptTab:"info",
   agDate:todayISO(),agCat:"Todos",
   ptSrc:"",odSel:"carie",odFace:"O",
