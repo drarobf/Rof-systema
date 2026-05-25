@@ -3138,26 +3138,27 @@ function compressImg(file,maxPx,quality,cb){
   maxPx=maxPx||1200;quality=quality||0.82;
   var r=new FileReader();
   r.onload=function(e){
+    var origUrl=e.target.result;
     var img=new Image();
     img.onload=function(){
-      var w=img.width,h=img.height;
-      if(w>maxPx||h>maxPx){
-        if(w>=h){h=Math.round(h*maxPx/w);w=maxPx;}
-        else{w=Math.round(w*maxPx/h);h=maxPx;}
-      }
-      var cv=document.createElement("canvas");
-      cv.width=w;cv.height=h;
-      cv.getContext("2d").drawImage(img,0,0,w,h);
-      cb(cv.toDataURL("image/jpeg",quality));
+      try{
+        var w=img.width,h=img.height;
+        if(w>maxPx||h>maxPx){
+          if(w>=h){h=Math.round(h*maxPx/w);w=maxPx;}
+          else{w=Math.round(w*maxPx/h);h=maxPx;}
+        }
+        var cv=document.createElement("canvas");
+        cv.width=w;cv.height=h;
+        var ctx=cv.getContext("2d");
+        if(!ctx)throw new Error("no-ctx");
+        ctx.drawImage(img,0,0,w,h);
+        cb(cv.toDataURL("image/jpeg",quality));
+      }catch(ex){cb(origUrl);}
     };
-    img.onerror=function(){
-      // fallback sem compressão
-      var rb=new FileReader();
-      rb.onload=function(ev){cb(ev.target.result);};
-      rb.readAsDataURL(file);
-    };
-    img.src=e.target.result;
+    img.onerror=function(){cb(origUrl);};
+    img.src=origUrl;
   };
+  r.onerror=function(){cb(null);};
   r.readAsDataURL(file);
 }
 const DIAS=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
@@ -7004,9 +7005,33 @@ window.updPt=(id,key,val,immediate)=>{
   // Feedback visual: pisca "✓ Salvo" quando o usuário edita a ficha
   if(ST.page==="patients"&&sameId(ST.selPt,id)&&typeof _showSaveIndicator==="function")_showSaveIndicator();
 };
-window.setPtPhoto=(id,inp)=>{const f=inp.files[0];if(!f)return;compressImg(f,400,0.7,function(dataUrl){const saved=_savePtPhoto(id,dataUrl);const nps=ST.pts.map(x=>sameId(x.id,id)?{...x,photo:dataUrl}:x);ST.pts=nps;set({pts:nps});if(saved)toast("Foto de perfil salva!","success");else toast("Armazenamento cheio — foto não pôde ser salva","error");});};
+window.setPtPhoto=(id,inp)=>{
+  const f=inp.files[0];if(!f)return;
+  try{inp.value="";}catch(e){}
+  const doSave=(dataUrl)=>{
+    if(!dataUrl){toast("Não foi possível processar a foto.","error");return;}
+    const saved=_savePtPhoto(id,dataUrl);
+    if(!saved&&dataUrl.length>200000){
+      // muito grande — tenta 200px/0.5
+      compressImg(f,200,0.5,function(small){
+        if(!small){toast("Armazenamento cheio — foto não pôde ser salva","error");return;}
+        const saved2=_savePtPhoto(id,small);
+        const nps=ST.pts.map(x=>sameId(x.id,id)?{...x,photo:small}:x);
+        ST.pts=nps;set({pts:nps});
+        if(saved2)toast("Foto salva (tamanho reduzido).","success");
+        else toast("Armazenamento cheio — libere espaço e tente novamente.","error");
+      });
+      return;
+    }
+    const nps=ST.pts.map(x=>sameId(x.id,id)?{...x,photo:dataUrl}:x);
+    ST.pts=nps;set({pts:nps});
+    if(saved)toast("Foto de perfil salva!","success");
+    else toast("Armazenamento cheio — libere espaço e tente novamente.","error");
+  };
+  compressImg(f,400,0.7,doSave);
+};
 // Versão que aceita File diretamente (usada pelo openPhotoMenu)
-window.setPtPhotoF=function(id,file){compressImg(file,400,0.7,function(dataUrl){const saved=_savePtPhoto(id,dataUrl);const nps=ST.pts.map(x=>sameId(x.id,id)?{...x,photo:dataUrl}:x);ST.pts=nps;set({pts:nps});if(saved)toast("Foto de perfil salva!","success");else toast("Armazenamento cheio — foto não pôde ser salva","error");});};
+window.setPtPhotoF=function(id,file){window.setPtPhoto(id,{files:[file],value:""});}
 window.addXray=(id,inp)=>{Array.from(inp.files).forEach(file=>{const r=new FileReader();r.onload=ev=>{const p=findPtById(id);if(!p)return;updPt(id,"xrays",[...(p.xrays||[]),{name:file.name,data:ev.target.result}],true);};r.readAsDataURL(file);});};
 window.delXray=(id,i)=>{
   const p=findPtById(id);if(!p)return;
