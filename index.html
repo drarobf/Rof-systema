@@ -1645,15 +1645,9 @@ async function syncFromCloud(){
     if(error)throw error;
     (rows||[]).forEach(({key:k,data:v})=>{
       if(k==='rof_pts'&&Array.isArray(v)){
-        // Fotos não são enviadas ao Supabase — preserva as do localStorage ao mesclar
-        const localPhotos={};
-        try{
-          const lp=JSON.parse(localStorage.getItem('rof_pts')||'[]');
-          lp.forEach(p=>{if(p.photo)localPhotos[String(p.id)]=p.photo;});
-        }catch{}
-        const merged=v.map(pt=>{const ph=localPhotos[String(pt.id)];return ph?{...pt,photo:ph}:pt;});
-        localStorage.setItem(k,JSON.stringify(merged));
-        ST.pts=merged.map(normalizePt);
+        // Fotos estão em rof_pt_photos — mescla de volta sem salvar no rof_pts
+        localStorage.setItem(k,JSON.stringify(v));
+        ST.pts=mergePtPhotos(v.map(normalizePt));
       }else{
         localStorage.setItem(k,JSON.stringify(v));
         // ── Atualiza o estado em memória conforme o tipo ──
@@ -2196,13 +2190,14 @@ window.renderPlanoTto=function(p){
           return`<div class="card" style="padding:12px 14px;border-left:4px solid ${c}">
             <div style="display:flex;align-items:flex-start;gap:8px">
               <div style="flex:1">
-                <input value="${(et.proc||"").replace(/"/g,"&quot;")}"
-                  list="pl-dl-${p.id}-${i}"
-                  oninput="onEtapaProc(${p.id},${i},this.value)"
-                  class="inp" style="margin-bottom:4px;font-size:13px;font-weight:700;color:#E2C99A" placeholder="Digite ou selecione..."/>
-                <datalist id="pl-dl-${p.id}-${i}">
-                  ${PROCS.map(pr=>`<option value="${pr.n.replace(/"/g,"&quot;")}">R$ ${pr.p.toLocaleString("pt-BR")}</option>`).join("")}
-                </datalist>
+                <div style="position:relative;margin-bottom:4px">
+                  <input value="${(et.proc||"").replace(/"/g,"&quot;")}"
+                    id="pl-inp-${p.id}-${i}"
+                    oninput="showProcDrop(${p.id},${i},this.value)"
+                    onfocus="showProcDrop(${p.id},${i},this.value)"
+                    onblur="setTimeout(()=>hideProcDrop(${p.id},${i}),180)"
+                    class="inp" style="font-size:13px;font-weight:700;color:#E2C99A;width:100%;box-sizing:border-box" placeholder="Digite ou selecione..."/>
+                </div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px">
                   ${["Pendente","Em_andamento","Concluído","Cancelado"].map(s=>{
                     const sc=STATUS_COLORS[s]||"#888";
@@ -2213,7 +2208,7 @@ window.renderPlanoTto=function(p){
                   <div><label class="lbl" style="font-size:9px">Data prevista</label>
                     <input type="date" value="${et.dataPrev||""}" onchange="updEtapa(${p.id},${i},'dataPrev',this.value)" class="inp" style="font-size:11px;padding:5px 8px"/></div>
                   <div><label class="lbl" style="font-size:9px">Valor unit. (R$)</label>
-                    <input type="number" value="${et.valor||""}" oninput="updEtapa(${p.id},${i},'valor',parseFloat(this.value)||0)" class="inp" style="font-size:11px;padding:5px 8px" placeholder="${(()=>{const pr=PROCS.find(x=>x.n===et.proc);return pr?"padrão: "+pr.p:"0,00";})()}"/></div>
+                    <input type="number" value="${et.valor||""}" oninput="updEtapa(${p.id},${i},'valor',parseFloat(this.value)||0)" class="inp" style="font-size:11px;padding:5px 8px" placeholder="0,00"/></div>
                 </div>
                 <textarea oninput="updEtapa(${p.id},${i},'obs',this.value)" rows="1" class="inp" style="margin-top:6px;font-size:11px;resize:vertical" placeholder="Observações...">${et.obs||""}</textarea>
               </div>
@@ -2260,20 +2255,38 @@ window.salvarPlanoTto=function(ptId){
   save("rof_pts",ST.pts);
   toast("Plano de tratamento salvo ✓","success");
 };
-window.onEtapaProc=function(ptId,idx,val){
-  const pr=PROCS.find(x=>x.n===val);
-  if(pr){
-    // Seleção exata da lista: atualiza nome + preenche valor padrão, re-renderiza
-    const pts=ST.pts.map(p=>{
-      if(p.id!==ptId)return p;
-      const planoTto=(p.planoTto||[]).map((e,i)=>i===idx?{...e,proc:val,valor:pr.p}:e);
-      return{...p,planoTto};
-    });
-    ST.pts=pts;save("rof_pts",pts);set({pts});
-  }else{
-    // Digitação livre: só atualiza o nome sem re-renderizar
-    updEtapa(ptId,idx,"proc",val);
+window.showProcDrop=function(ptId,idx,val){
+  const wrapId="pl-inp-"+ptId+"-"+idx;
+  const dropId="pl-drop-"+ptId+"-"+idx;
+  const inputEl=document.getElementById(wrapId);
+  if(!inputEl)return;
+  let drop=document.getElementById(dropId);
+  if(!drop){
+    drop=document.createElement("div");
+    drop.id=dropId;
+    drop.style.cssText="position:absolute;left:0;right:0;top:100%;z-index:9999;background:#1c1a17;border:1px solid rgba(198,164,109,0.35);border-radius:8px;max-height:210px;overflow-y:auto;box-shadow:0 6px 24px #0009;margin-top:2px";
+    const wrap=inputEl.parentNode;
+    wrap.style.position="relative";
+    wrap.appendChild(drop);
   }
+  const q=(val||"").toLowerCase().trim();
+  const hits=q.length===0?PROCS.slice(0,12):PROCS.filter(pr=>pr.n.toLowerCase().includes(q)).slice(0,12);
+  if(hits.length===0){drop.innerHTML="<div style='padding:10px 12px;color:#555;font-size:12px'>Nenhum resultado</div>";}
+  else{drop.innerHTML=hits.map(pr=>`<div onmousedown="selectProcDrop(${ptId},${idx},${pr.id})" style="padding:9px 12px;cursor:pointer;border-bottom:1px solid rgba(198,164,109,0.08)" onmouseover="this.style.background='#2a2510'" onmouseout="this.style.background='transparent'"><div style="color:#E2C99A;font-size:12px;font-weight:600">${pr.n}</div><div style="color:#C6A46D;font-size:10px;margin-top:1px">${pr.c} · R$ ${pr.p.toLocaleString("pt-BR")}</div></div>`).join("");}
+  drop.style.display="block";
+};
+window.hideProcDrop=function(ptId,idx){
+  const drop=document.getElementById("pl-drop-"+ptId+"-"+idx);
+  if(drop)drop.style.display="none";
+};
+window.selectProcDrop=function(ptId,idx,procId){
+  const pr=PROCS.find(x=>x.id===procId);if(!pr)return;
+  const pts=ST.pts.map(p=>{
+    if(p.id!==ptId)return p;
+    const planoTto=(p.planoTto||[]).map((e,i)=>i===idx?{...e,proc:pr.n,valor:pr.p}:e);
+    return{...p,planoTto};
+  });
+  ST.pts=pts;save("rof_pts",pts);set({pts});
 };
 window.importarPlanoTtoParaOrcamento=function(ptId){
   const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
@@ -2904,9 +2917,20 @@ window.openLead=function(lid){
     <div class="mbd">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
         <div style="grid-column:1/-1"><label class="lbl">Nome completo</label>
-          <input id="ld-name" value="${(l.name||"").replace(/"/g,"&quot;")}" class="inp"/></div>
+          <div style="position:relative">
+            <input id="ld-name" value="${(l.name||"").replace(/"/g,"&quot;")}" class="inp"
+              oninput="showLeadDrop('ld-name','name',this.value)"
+              onfocus="showLeadDrop('ld-name','name',this.value)"
+              onblur="setTimeout(hideLeadDrop,180)"/>
+          </div></div>
         <div><label class="lbl">Telefone / WhatsApp</label>
-          <input id="ld-phone" value="${(l.phone||"").replace(/"/g,"&quot;")}" class="inp" placeholder="(47) 99999-9999"/></div>
+          <div style="position:relative">
+            <input id="ld-phone" value="${(l.phone||"").replace(/"/g,"&quot;")}" class="inp"
+              oninput="showLeadDrop('ld-phone','phone',this.value)"
+              onfocus="showLeadDrop('ld-phone','phone',this.value)"
+              onblur="setTimeout(hideLeadDrop,180)"
+              placeholder="(47) 99999-9999"/>
+          </div></div>
         <div><label class="lbl">E-mail</label>
           <input id="ld-email" value="${(l.email||"").replace(/"/g,"&quot;")}" class="inp"/></div>
         <div><label class="lbl">Origem do lead</label>
@@ -2951,6 +2975,34 @@ window.openLead=function(lid){
   document.body.appendChild(modal);
 };
 
+window.showLeadDrop=function(inputId,field,val){
+  const anchor=document.getElementById(inputId);if(!anchor)return;
+  const q=(val||"").toLowerCase().trim();
+  const pts=(ST.pts||[]).map(p=>({name:p.name||"",phone:p.phone||"",email:p.email||"",tag:"Paciente"}));
+  const leads=(load("rof_leads",[])).map(l=>({name:l.name||"",phone:l.phone||"",email:l.email||"",tag:"Lead"}));
+  const all=[...pts,...leads];
+  const hits=q.length===0?[]:all.filter(c=>{
+    if(field==="name")return c.name.toLowerCase().includes(q);
+    return c.phone.replace(/\D/g,"").includes(q.replace(/\D/g,""));
+  }).slice(0,8);
+  let drop=document.getElementById("ld-drop");
+  if(!drop){drop=document.createElement("div");drop.id="ld-drop";drop.style.cssText="position:absolute;left:0;right:0;top:100%;z-index:9999;background:#1c1a17;border:1px solid rgba(198,164,109,0.35);border-radius:8px;max-height:210px;overflow-y:auto;box-shadow:0 6px 24px #0009;margin-top:2px";}
+  const par=anchor.parentNode;if(!par.contains(drop)){par.style.position="relative";par.appendChild(drop);}
+  if(hits.length===0){drop.style.display="none";return;}
+  drop.innerHTML=hits.map(c=>{
+    const nm=(c.name||"").replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+    const ph=(c.phone||"").replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+    const em=(c.email||"").replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+    return`<div onmousedown="fillLeadFromPt('${nm}','${ph}','${em}')" style="padding:9px 12px;cursor:pointer;border-bottom:1px solid rgba(198,164,109,0.08)" onmouseover="this.style.background='#2a2510'" onmouseout="this.style.background='transparent'"><div style="color:#E2C99A;font-size:12px;font-weight:600">${c.name||"(sem nome)"}</div><div style="color:#888;font-size:10px">${c.phone}${c.tag?" · "+c.tag:""}</div></div>`;
+  }).join("");
+  drop.style.display="block";
+};
+window.hideLeadDrop=function(){const d=document.getElementById("ld-drop");if(d)d.style.display="none";};
+window.fillLeadFromPt=function(name,phone,email){
+  const n=document.getElementById("ld-name"),p=document.getElementById("ld-phone"),e=document.getElementById("ld-email");
+  if(n)n.value=name;if(p)p.value=phone;if(e&&email)e.value=email;
+  hideLeadDrop();
+};
 window.addHistLead=function(lid){
   const txt=document.getElementById("ld-hist-txt")?.value?.trim();
   if(!txt)return;
@@ -3369,6 +3421,11 @@ const todayISO=()=>new Date().toISOString().slice(0,10);
 const todayFmt=()=>new Date().toLocaleDateString("pt-BR");
 const fmtDate=s=>{if(!s||s==="—")return"—";if(s.includes("/"))return s;const[y,m,d]=s.split("-");return`${d}/${m}/${y}`;};
 const load=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}};
+// ── FOTOS DE PERFIL — chave separada (não vai ao Supabase, não entra no rof_pts) ──
+const PT_PHOTOS_KEY="rof_pt_photos";
+const _loadPtPhotos=()=>{try{return JSON.parse(localStorage.getItem(PT_PHOTOS_KEY)||"{}");}catch{return{};}};
+const _savePtPhoto=(ptId,url)=>{const ph=_loadPtPhotos();if(url)ph[String(ptId)]=url;else delete ph[String(ptId)];try{localStorage.setItem(PT_PHOTOS_KEY,JSON.stringify(ph));}catch(e){console.warn("Foto não salva — armazenamento cheio:",e);}};
+const mergePtPhotos=(pts)=>{const ph=_loadPtPhotos();return pts.map(p=>ph[String(p.id)]?{...p,photo:ph[String(p.id)]}:p);};
 // Indicador visual "✓ Salvo automaticamente" — disponível globalmente
 function _showSaveIndicator(){
   let el=document.getElementById("rof-save-indicator");
@@ -3386,22 +3443,22 @@ function _showSaveIndicator(){
 window._showSaveIndicator=_showSaveIndicator;
 
 const save=(k,v)=>{
-  try{localStorage.setItem(k,JSON.stringify(v));}catch(e){console.warn("localStorage cheio:",e);}
+  // Fotos ficam em rof_pt_photos — nunca dentro de rof_pts (evita estouro do localStorage e do Supabase)
+  const stripped=(k==='rof_pts'&&Array.isArray(v))?v.map(({photo,...r})=>r):v;
+  try{localStorage.setItem(k,JSON.stringify(stripped));}catch(e){console.warn("localStorage cheio:",e);}
   // Feedback visual GLOBAL: pisca "✓ Salvo" no canto sempre que algo é salvo
   if(typeof _showSaveIndicator==="function")_showSaveIndicator();
   if(SYNC_KEYS.has(k)){
-    // Fotos ficam só no localStorage — strip antes de enviar ao Supabase para evitar limite de payload
-    const sv=(k==='rof_pts'&&Array.isArray(v))?v.map(({photo,...r})=>r):v;
     if(navigator.onLine){
-      _sb.from('rof_store').upsert({key:k,data:sv},{onConflict:'key'})
+      _sb.from('rof_store').upsert({key:k,data:stripped},{onConflict:'key'})
         .then(({error})=>{if(!error)_setSyncBadge(true);else throw error;})
         .catch(()=>{
-          _syncQ.push({k,v:sv});
+          _syncQ.push({k,v:stripped});
           localStorage.setItem("rof_sync_q",JSON.stringify(_syncQ));
           _setSyncBadge(false);
         });
     }else{
-      _syncQ.push({k,v:sv});
+      _syncQ.push({k,v:stripped});
       localStorage.setItem("rof_sync_q",JSON.stringify(_syncQ));
       _setSyncBadge(false);
     }
@@ -3716,6 +3773,16 @@ function normalizePt(p,i){
   return {...p,id:p.id??("pt_"+i),name:p.name||p.nome||"Paciente sem nome"};
 }
 ST.pts=(Array.isArray(ST.pts)?ST.pts:[]).map(normalizePt);
+// Migração única: move fotos que ainda estão em rof_pts para rof_pt_photos
+(function(){
+  const hasPhoto=ST.pts.some(p=>p.photo);
+  if(hasPhoto){
+    ST.pts.forEach(p=>{if(p.photo)_savePtPhoto(p.id,p.photo);});
+    ST.pts=ST.pts.map(({photo,...r})=>r);
+    try{localStorage.setItem("rof_pts",JSON.stringify(ST.pts));}catch{}
+  }
+})();
+ST.pts=mergePtPhotos(ST.pts);
 function findPtById(id){
   if(id&&typeof id==="object"&&Object.prototype.hasOwnProperty.call(id,"id"))id=id.id;
   const sid=String(id??"");
@@ -6874,6 +6941,7 @@ window.delPtPhoto=function(ptId){
   var p=findPtById(ptId);
   if(!p||!p.photo)return;
   rConfirm("Excluir a foto de perfil de "+p.name+"?",function(){
+    _savePtPhoto(ptId,null);
     updPt(ptId,"photo",null,true);
     toast("Foto de perfil excluída.","success");
   },"Excluir Foto");
@@ -7271,9 +7339,9 @@ window.updPt=(id,key,val,immediate)=>{
   // Feedback visual: pisca "✓ Salvo" quando o usuário edita a ficha
   if(ST.page==="patients"&&sameId(ST.selPt,id)&&typeof _showSaveIndicator==="function")_showSaveIndicator();
 };
-window.setPtPhoto=(id,inp)=>{const f=inp.files[0];if(!f)return;compressImg(f,800,0.82,function(dataUrl){updPt(id,"photo",dataUrl,true);toast("Foto de perfil salva!","success");});};
+window.setPtPhoto=(id,inp)=>{const f=inp.files[0];if(!f)return;compressImg(f,800,0.82,function(dataUrl){_savePtPhoto(id,dataUrl);const nps=ST.pts.map(x=>sameId(x.id,id)?{...x,photo:dataUrl}:x);ST.pts=nps;set({pts:nps});toast("Foto de perfil salva!","success");});};
 // Versão que aceita File diretamente (usada pelo openPhotoMenu)
-window.setPtPhotoF=function(id,file){compressImg(file,800,0.82,function(dataUrl){updPt(id,"photo",dataUrl,true);toast("Foto de perfil salva!","success");});};
+window.setPtPhotoF=function(id,file){compressImg(file,800,0.82,function(dataUrl){_savePtPhoto(id,dataUrl);const nps=ST.pts.map(x=>sameId(x.id,id)?{...x,photo:dataUrl}:x);ST.pts=nps;set({pts:nps});toast("Foto de perfil salva!","success");});};
 window.addXray=(id,inp)=>{Array.from(inp.files).forEach(file=>{const r=new FileReader();r.onload=ev=>{const p=findPtById(id);if(!p)return;updPt(id,"xrays",[...(p.xrays||[]),{name:file.name,data:ev.target.result}],true);};r.readAsDataURL(file);});};
 window.delXray=(id,i)=>{
   const p=findPtById(id);if(!p)return;
