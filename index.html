@@ -3019,39 +3019,39 @@ function enterApp(localOnly){
   if(localOnly)toast("Acesso liberado em modo local.","success");
 }
 window.doLogin=async function(){
-  const p=(document.getElementById("ls-pwd")?.value||"").trim().toLowerCase();
+  const rawVal=document.getElementById("ls-pwd")?.value||"";
+  const p=rawVal.trim().toLowerCase();
   const btn=document.querySelector(".ls-btn");
-  if(btn){btn.disabled=true;btn.querySelector("span").textContent="Verificando...";}
-  let ok=false,localOnly=false;
-  if(p===APP_PASSWORD){
-    ok=true;
-    localOnly=true;
-    localStorage.setItem("rof_auth","ok");
-  }else if(SUPABASE_URL){
-    try{
-      await loginWithApi(p);
-      ok=true;
-    }catch(err){
-      const canUseOffline=(!navigator.onLine&&localStorage.getItem("rof_auth")==="ok");
-      const apiUnavailable=!navigator.onLine||!err.status||err.status>=500||err.status===404;
-      if(apiUnavailable&&canUseOffline){
+  const resetBtn=()=>{if(btn){btn.disabled=false;const sp=btn.querySelector("span");if(sp)sp.textContent="Entrar no Sistema";}};
+  if(btn){btn.disabled=true;const sp=btn.querySelector("span");if(sp)sp.textContent="Verificando...";}
+  try{
+    let ok=false,localOnly=false;
+    if(p===APP_PASSWORD){
+      ok=true;localOnly=true;
+      try{localStorage.setItem("rof_auth","ok");}catch(e){}
+    }else if(SUPABASE_URL){
+      try{
+        await loginWithApi(p);
         ok=true;
-        localOnly=true;
+      }catch(err){
+        const canUseOffline=(!navigator.onLine&&localStorage.getItem("rof_auth")==="ok");
+        const apiUnavailable=!navigator.onLine||!err.status||err.status>=500||err.status===404;
+        if(apiUnavailable&&canUseOffline){ok=true;localOnly=true;}
       }
     }
-  }
-  if(ok){
-    enterApp(localOnly);
-    if(_sbEnabled)await syncFromCloud();
-  }else{
-    const inp=document.getElementById("ls-pwd");
-    if(inp){
-      inp.style.borderBottomColor="var(--red)";
-      inp.value="";inp.placeholder="Senha incorreta";
-      setTimeout(()=>{inp.style.borderBottomColor="";inp.placeholder="senha de acesso";},2000);
+    resetBtn();
+    if(ok){
+      try{enterApp(localOnly);}catch(e){console.error("enterApp error:",e);}
+      if(_sbEnabled)try{await syncFromCloud();}catch(e){}
+    }else{
+      const inp=document.getElementById("ls-pwd");
+      if(inp){inp.style.borderBottomColor="var(--red)";inp.value="";inp.placeholder="Senha incorreta";setTimeout(()=>{inp.style.borderBottomColor="";inp.placeholder="senha de acesso";},2000);}
     }
+  }catch(e){
+    resetBtn();
+    console.error("doLogin error:",e);
+    if(typeof toast==="function")toast("Erro: "+e.message,"error");
   }
-  if(btn){btn.disabled=false;btn.querySelector("span").textContent="Entrar no Sistema";}
 };
 window.doLogout=function(){
   localStorage.removeItem("rof_auth");
