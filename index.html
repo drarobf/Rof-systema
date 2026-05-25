@@ -6900,8 +6900,8 @@ window.aprovarIntake=async function(intakeId){
     try{
       const {data:rows}=await _sb.from('rof_store').select('key,data').eq('key','rof_pts').maybeSingle();
       if(rows&&Array.isArray(rows.data)){
-        ST.pts=rows.data.map(normalizePt);
-        localStorage.setItem("rof_pts",JSON.stringify(ST.pts));
+        ST.pts=mergePtPhotos(rows.data.map(normalizePt));
+        localStorage.setItem("rof_pts",JSON.stringify(rows.data));
       }
     }catch(e){console.warn("Sync pré-aprovação falhou:",e);}
   }
@@ -8736,8 +8736,11 @@ window.sendAI=async()=>{
   set({aiMsgs:nm,aiLoad:true,aiInp:""});
 
   const token=getAuthToken();
+  const staticGithubHost=/\.github\.io$/i.test(location.hostname);
   if(!token){
-    finish("Estou em modo local e preciso de uma sessão online para acessar a Júlia IA. Entre novamente quando houver conexão; os demais módulos continuam funcionando normalmente.");
+    finish(staticGithubHost
+      ?"A Júlia IA precisa de uma função segura no servidor para proteger a chave da API. Como esta versão está no GitHub Pages, os demais módulos continuam funcionando normalmente e a IA fica indisponível até essa função ser publicada."
+      :"Estou em modo local e preciso de uma sessão online para acessar a Júlia IA. Entre novamente quando houver conexão; os demais módulos continuam funcionando normalmente.");
     return;
   }
 
@@ -9692,7 +9695,7 @@ function svVars(){
     data:fmtDate(date),
     hora:time||"a confirmar",
     procedimento:proc||"consulta",
-    consultorio:CONSULTORIO.end
+    consultorio:`${CONSULTORIO.end}\n📞 ${CONSULTORIO.fone}`
   };
 }
 
