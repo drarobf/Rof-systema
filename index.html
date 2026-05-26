@@ -1699,7 +1699,10 @@ function _applyCloudData(k,v){
     localStorage.setItem(k,JSON.stringify(v));
     ST.pts=mergePtPhotos(v.map(normalizePt));
   }else if(k==='rof_pt_photos'&&v&&typeof v==='object'&&!Array.isArray(v)){
-    localStorage.setItem(k,JSON.stringify(v));
+    // Mescla: fotos locais têm prioridade sobre nuvem (evita sync apagar foto recém-tirada)
+    const localPh=_loadPtPhotos();
+    const merged=Object.assign({},v,localPh);
+    localStorage.setItem(k,JSON.stringify(merged));
     ST.pts=mergePtPhotos((ST.pts||[]).map(normalizePt));
   }else{
     localStorage.setItem(k,JSON.stringify(v));
@@ -3251,14 +3254,24 @@ const _loadPtPhotos=()=>{try{return JSON.parse(localStorage.getItem(PT_PHOTOS_KE
 const _savePtPhoto=(ptId,url)=>{
   const ph=_loadPtPhotos();
   if(url)ph[String(ptId)]=url;else delete ph[String(ptId)];
-  try{localStorage.setItem(PT_PHOTOS_KEY,JSON.stringify(ph));}
-  catch(e){
-    console.warn("Foto de perfil não coube no armazenamento local; tentando salvar na nuvem:",e);
-    try{localStorage.setItem(PT_PHOTOS_KEY,JSON.stringify(url?{[String(ptId)]:url}:{}));}
-    catch(e2){console.warn("Fallback local da foto também falhou:",e2);}
+  // Tenta salvar todos os pacientes
+  try{
+    localStorage.setItem(PT_PHOTOS_KEY,JSON.stringify(ph));
+    if(typeof save==="function")save(PT_PHOTOS_KEY,ph);
+    return true;
+  }catch(e){
+    // Armazenamento cheio — tenta salvar só esta foto (apaga as outras do localStorage)
+    console.warn("rof_pt_photos cheio, tentando só esta foto:",e);
+    try{
+      const single=url?{[String(ptId)]:url}:{};
+      localStorage.setItem(PT_PHOTOS_KEY,JSON.stringify(single));
+      if(typeof save==="function")save(PT_PHOTOS_KEY,single);
+      return true;
+    }catch(e2){
+      console.warn("Foto não coube mesmo reduzida:",e2);
+      return false;
+    }
   }
-  if(typeof save==="function")save(PT_PHOTOS_KEY,ph);
-  return true;
 };
 const mergePtPhotos=(pts)=>{const ph=_loadPtPhotos();return pts.map(p=>ph[String(p.id)]?{...p,photo:ph[String(p.id)]}:p);};
 // Indicador visual "✓ Salvo automaticamente" — disponível globalmente
@@ -7327,7 +7340,8 @@ window.setPtPhoto=(id,inp)=>{
     {px:420,q:0.72,label:""},
     {px:320,q:0.66,label:" (reduzida)"},
     {px:240,q:0.58,label:" (reduzida)"},
-    {px:160,q:0.52,label:" (bem reduzida)"}
+    {px:160,q:0.52,label:" (bem reduzida)"},
+    {px:100,q:0.45,label:" (mínima)"}
   ];
   let i=0;
   const attempt=()=>{
