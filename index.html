@@ -1522,6 +1522,8 @@ select.inp option {
         <span>⏻</span><span id="sb-out-lbl">Sair do sistema</span>
       </button>
       <button class="sync-cloud-btn" onclick="forceCloudSync()" title="Puxar do Supabase o que foi salvo em outro aparelho">↻ Atualizar da nuvem</button>
+      <button class="sync-cloud-btn" onclick="exportarBackup()" title="Baixar todos os dados como arquivo JSON" style="background:rgba(198,164,109,0.12);border-color:rgba(198,164,109,0.3);color:#C6A46D;margin-top:4px">📥 Exportar Backup</button>
+      <button class="sync-cloud-btn" onclick="importarBackup()" title="Restaurar dados de um arquivo JSON de backup" style="background:rgba(96,165,250,0.08);border-color:rgba(96,165,250,0.2);color:#60a5fa;margin-top:2px">📤 Restaurar Backup</button>
       <div id="sync-badge" onclick="forceCloudSync()" title="Puxar do Supabase o que foi salvo em outro aparelho" style="font-size:9px;letter-spacing:1px;text-align:center;padding:5px 0 2px;color:#6B6B6B;transition:color 0.4s;cursor:pointer">○ Offline</div>
       <div class="sb-quote" id="sb-q">
         "Função gera equilíbrio.<br/>Equilíbrio gera estética."
@@ -1742,6 +1744,56 @@ async function forceCloudSync(){
   else if(typeof toast==="function")toast("Não consegui atualizar agora. Verifique a internet.","warning");
 }
 window.forceCloudSync=forceCloudSync;
+
+// ── BACKUP EXPORT / IMPORT ────────────────────────────────────────
+window.exportarBackup=function(){
+  const keys=["rof_pts","rof_apts","rof_stk","rof_procs","rof_caixa","rof_whats_templates","rof_orientacoes","rof_pt_photos"];
+  const backup={_v:1,_ts:new Date().toISOString(),_app:"Sistema ROF"};
+  keys.forEach(k=>{try{backup[k]=JSON.parse(localStorage.getItem(k)||"null");}catch{backup[k]=null;}});
+  const blob=new Blob([JSON.stringify(backup,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  const dt=new Date().toLocaleDateString("pt-BR").replace(/\//g,"-");
+  a.href=url;a.download=`backup-rof-${dt}.json`;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
+  toast("Backup baixado com sucesso! Guarde o arquivo em local seguro.","success");
+};
+window.importarBackup=function(){
+  if(!confirm("⚠️ ATENÇÃO: Restaurar um backup irá SUBSTITUIR todos os dados atuais.\n\nTem certeza que deseja continuar?"))return;
+  const inp=document.createElement("input");
+  inp.type="file";inp.accept=".json";
+  inp.onchange=function(e){
+    const file=e.target.files[0];
+    if(!file)return;
+    const reader=new FileReader();
+    reader.onload=function(ev){
+      try{
+        const data=JSON.parse(ev.target.result);
+        if(!data||!data._app||data._app!=="Sistema ROF")throw new Error("Arquivo inválido — não é um backup do Sistema ROF.");
+        const keys=["rof_pts","rof_apts","rof_stk","rof_procs","rof_caixa","rof_whats_templates","rof_orientacoes","rof_pt_photos"];
+        keys.forEach(k=>{
+          if(data[k]!==null&&data[k]!==undefined){
+            localStorage.setItem(k,JSON.stringify(data[k]));
+            // Sync para nuvem
+            if(SYNC_KEYS.has(k))save(k,data[k]);
+          }
+        });
+        // Recarrega o estado
+        ST.pts=(Array.isArray(data["rof_pts"])?data["rof_pts"]:[]).map(normalizePt);
+        ST.pts=mergePtPhotos(ST.pts);
+        ST.apts=Array.isArray(data["rof_apts"])?data["rof_apts"]:[];
+        ST.stk=Array.isArray(data["rof_stk"])?data["rof_stk"]:[];
+        ST.caixa=Array.isArray(data["rof_caixa"])?data["rof_caixa"]:[];
+        if(Array.isArray(data["rof_procs"])&&data["rof_procs"].length)PROCS=data["rof_procs"];
+        set({});
+        toast(`Backup restaurado! ${ST.pts.length} paciente(s) recuperado(s).`,"success");
+      }catch(err){toast("Erro ao restaurar: "+err.message,"error");}
+    };
+    reader.readAsText(file);
+  };
+  document.body.appendChild(inp);inp.click();setTimeout(()=>inp.remove(),3000);
+};
 window.addEventListener("online",()=>{if(_sbEnabled)syncFromCloud();});
 window.addEventListener("offline",()=>_setSyncBadge(false));
 window.addEventListener("focus",()=>{if(_sbEnabled&&navigator.onLine)syncFromCloud();});
