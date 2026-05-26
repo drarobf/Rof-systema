@@ -4011,9 +4011,14 @@ function pageAgenda(){
       <input id="ap-conv" value="${aptConv}" oninput="set({aptConv:this.value})" placeholder="Ou digite outro convênio..." class="inp" style="font-size:12px"/>`:""}
     </div>
     <div style="margin-bottom:8px">
-      <label class="lbl">Categoria do procedimento</label>
+      <label class="lbl">Procedimento</label>
       <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">${catBtns}</div>
-      <select id="ap-proc" class="inp"><option value="">Selecionar procedimento...</option>${fP.map(p=>`<option value="${p.id}">${p.n} — ${fmt(p.p)}</option>`).join("")}</select>
+      <div style="position:relative">
+        <input id="ap-proc-inp" class="inp" placeholder="🔍 Buscar procedimento..."
+          oninput="procSearch(this.value)" autocomplete="off"/>
+        <input type="hidden" id="ap-proc" value=""/>
+        <div id="ap-proc-drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:#11100E;border:1px solid rgba(198,164,109,0.3);border-radius:0 0 10px 10px;z-index:999;max-height:210px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.8)"></div>
+      </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:12px">
       <button onclick="saveApt()" class="bp" style="flex:1">✅ Salvar Consulta</button>
@@ -4648,39 +4653,35 @@ const FACES_LIST=[
   {k:"L",l:"Lingual / Palatino"},
 ];
 
-function toothSVG(num,od,isDec,swapMD=false,isUpper=true){
+// Status do plano clínico (3 estágios — igual ao TotalClinic)
+const PLANO_STATUS={
+  planejado:{l:"A Realizar",c:"#0ea5e9",next:"iniciado",btn:"▶ Iniciar"},
+  iniciado: {l:"Iniciado",  c:"#f59e0b",next:"feito",   btn:"✓ Concluir"},
+  feito:    {l:"Concluído", c:"#22c55e",next:"planejado",btn:"↺ Reabrir"},
+};
+
+function toothSVG(num,od,isDec,swapMD=false,isUpper=true,statusDot=""){
   const td=od[num]||{};
-  // swapMD=true para dentes do lado direito (18-11, 48-41, 55-51, 85-81)
-  // onde Mesial fica à DIREITA e Distal à ESQUERDA na tela
   const M=swapMD?"D":"M", D=swapMD?"M":"D";
-  // CONVENÇÃO ANATÔMICA — Dra. olhando o paciente sentado de frente:
-  // Arcada SUPERIOR (vendo de baixo pra cima): topo = Vestibular (lábio) | base = Palatino (interno)
-  // Arcada INFERIOR (vendo de cima pra baixo): topo = Lingual (interno) | base = Vestibular (lábio)
-  const TOP=isUpper?"V":"L";   // face no topo do dente desenhado
-  const BOT=isUpper?"L":"V";   // face na base do dente desenhado
+  const TOP=isUpper?"V":"L";
+  const BOT=isUpper?"L":"V";
   const fc=f=>COND[td[f]||"higido"]?.c||"#2a2a2a";
-  // Detecta status especiais em qualquer face do dente
   const faces=["V","O","M","D","L"];
   const isAusente=faces.some(f=>td[f]==="ausente"||td[f]==="extraido");
   const isExtrair=!isAusente&&faces.some(f=>td[f]==="extrair");
   const w=isDec?26:32,h=isDec?36:44;
   const mx=w/2,my=h/2,pad=5;
-  // Tooltip com info clínica
   const ttFaces=faces.filter(f=>td[f]&&td[f]!=="higido").map(f=>f+":"+(COND[td[f]]?.l||td[f])).join(" ");
+  const dot=statusDot?`<circle cx="${w-4}" cy="4" r="3.5" fill="${statusDot}" stroke="#111" stroke-width="1" pointer-events="none"/>`:"";
   return`<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"
     onclick="clickTooth(${num})" style="cursor:pointer;flex-shrink:0"
     title="Dente ${num}${ttFaces?" — "+ttFaces:""}">
     <polygon points="${pad},0 ${w-pad},0 ${w},${pad} ${w},${h-pad} ${w-pad},${h} ${pad},${h} 0,${h-pad} 0,${pad}"
       fill="#111" stroke="rgba(198,164,109,.12)" stroke-width="1"/>
-    <!-- topo: ${isUpper?"Vestibular":"Lingual"} -->
     <polygon points="${pad},0 ${w-pad},0 ${w-pad-2},${pad+2} ${pad+2},${pad+2}" fill="${fc(TOP)}"/>
-    <!-- base: ${isUpper?"Palatino":"Vestibular"} -->
     <polygon points="${pad+2},${h-pad-2} ${w-pad-2},${h-pad-2} ${w-pad},${h} ${pad},${h}" fill="${fc(BOT)}"/>
-    <!-- M esq (ou D se swapMD) -->
     <polygon points="0,${pad} ${pad+2},${pad+2} ${pad+2},${h-pad-2} 0,${h-pad}" fill="${fc(M)}"/>
-    <!-- D dir (ou M se swapMD) -->
     <polygon points="${w-pad-2},${pad+2} ${w},${pad} ${w},${h-pad} ${w-pad-2},${h-pad-2}" fill="${fc(D)}"/>
-    <!-- O centro -->
     <rect x="${pad+2}" y="${pad+2}" width="${w-pad*2-4}" height="${h-pad*2-4}" fill="${fc("O")}"/>
     <text x="${mx}" y="${my+3}" text-anchor="middle"
       font-size="${isDec?6:8}" fill="rgba(255,255,255,.65)"
@@ -4688,11 +4689,24 @@ function toothSVG(num,od,isDec,swapMD=false,isUpper=true){
     ${isAusente?`<line x1="2" y1="2" x2="${w-2}" y2="${h-2}" stroke="#ef4444" stroke-width="2.8" stroke-linecap="round"/>
     <line x1="${w-2}" y1="2" x2="2" y2="${h-2}" stroke="#ef4444" stroke-width="2.8" stroke-linecap="round"/>`:""}
     ${isExtrair?`<line x1="3" y1="${h-3}" x2="${w-3}" y2="3" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="3,2"/>`:""}
+    ${dot}
   </svg>`;
 }
 
 function renderOdontogram(od,ptId){
+  const p=ST.pts.find(x=>x.id===ptId)||{};
+  const plan=p.planoClinico||[];
   const sel=ST.odSel||"carie";const face=ST.odFace||"O";
+
+  // Indicador por dente: pior status vence (planejado < iniciado < feito)
+  const statusOrd=["planejado","iniciado","feito"];
+  const toothDot={};
+  plan.forEach(it=>{
+    const cur=toothDot[it.tooth];
+    if(!cur||statusOrd.indexOf(it.status)>statusOrd.indexOf(cur))toothDot[it.tooth]=it.status;
+  });
+  const dot=t=>PLANO_STATUS[toothDot[t]]?.c||"";
+
   const condBtns=Object.entries(COND).map(([k,v])=>`
     <button onclick="set({odSel:'${k}'})" style="display:flex;align-items:center;gap:4px;padding:4px 8px;
       border-radius:6px;border:1px solid ${sel===k?v.b:BD};
@@ -4708,6 +4722,16 @@ function renderOdontogram(od,ptId){
       cursor:pointer;font-family:Georgia,serif;font-size:10px;
       color:${face===f.k?GL:"#555"}">${f.l}</button>`).join("");
   return`<div>
+    <!-- Legenda de status do plano clínico -->
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;padding:7px 10px;background:#0a0a0a;border-radius:6px;border:1px solid rgba(198,164,109,0.08);align-items:center">
+      <span style="color:#444;font-size:10px">Legenda:</span>
+      ${Object.entries(PLANO_STATUS).map(([k,v])=>`
+        <span style="display:flex;align-items:center;gap:4px">
+          <span style="width:10px;height:10px;border-radius:50%;background:${v.c};flex-shrink:0"></span>
+          <span style="color:${v.c};font-size:10px">${v.l}</span>
+        </span>`).join("")}
+      <span style="color:#333;font-size:10px;margin-left:auto">${plan.filter(it=>it.status==="feito").length}/${plan.length} concluídos</span>
+    </div>
     <div style="margin-bottom:10px">
       <div class="lbl">Condição a marcar:</div>
       <div style="display:flex;gap:4px;flex-wrap:wrap">${condBtns}</div>
@@ -4723,18 +4747,18 @@ function renderOdontogram(od,ptId){
     </div>
     <div style="text-align:center;margin-bottom:4px">
       <div style="color:#666;font-size:8px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Permanentes — Superior</div>
-      <div style="display:flex;justify-content:center;gap:2px;flex-wrap:wrap">${PERM_U.map((t,i)=>toothSVG(t,od,false,i<8,true)).join("")}</div>
+      <div style="display:flex;justify-content:center;gap:2px;flex-wrap:wrap">${PERM_U.map((t,i)=>toothSVG(t,od,false,i<8,true,dot(t))).join("")}</div>
     </div>
     <div style="text-align:center;margin-bottom:14px">
-      <div style="display:flex;justify-content:center;gap:2px;flex-wrap:wrap">${PERM_L.map((t,i)=>toothSVG(t,od,false,i<8,false)).join("")}</div>
+      <div style="display:flex;justify-content:center;gap:2px;flex-wrap:wrap">${PERM_L.map((t,i)=>toothSVG(t,od,false,i<8,false,dot(t))).join("")}</div>
       <div style="color:#666;font-size:8px;text-transform:uppercase;letter-spacing:1px;margin-top:4px">Permanentes — Inferior</div>
     </div>
     <div style="border-top:1px dashed rgba(198,164,109,0.12);padding-top:12px;text-align:center;margin-bottom:4px">
       <div style="color:#555;font-size:8px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">🍼 Decíduos — Superior</div>
-      <div style="display:flex;justify-content:center;gap:2px;flex-wrap:wrap">${DEC_U.map((t,i)=>toothSVG(t,od,true,i<5,true)).join("")}</div>
+      <div style="display:flex;justify-content:center;gap:2px;flex-wrap:wrap">${DEC_U.map((t,i)=>toothSVG(t,od,true,i<5,true,dot(t))).join("")}</div>
     </div>
     <div style="text-align:center;margin-bottom:10px">
-      <div style="display:flex;justify-content:center;gap:2px;flex-wrap:wrap">${DEC_L.map((t,i)=>toothSVG(t,od,true,i<5,false)).join("")}</div>
+      <div style="display:flex;justify-content:center;gap:2px;flex-wrap:wrap">${DEC_L.map((t,i)=>toothSVG(t,od,true,i<5,false,dot(t))).join("")}</div>
       <div style="color:#555;font-size:8px;text-transform:uppercase;letter-spacing:1px;margin-top:4px">🍼 Decíduos — Inferior</div>
     </div>
     <div style="display:flex;justify-content:flex-end;margin-top:8px">
@@ -4790,15 +4814,19 @@ function renderPlanoClinicoOdontograma(p){
   // Ordena por dente
   const ordenado=[...plan].sort((a,b)=>(a.tooth||0)-(b.tooth||0));
   const planejados=ordenado.filter(it=>it.status==="planejado");
+  const iniciados=ordenado.filter(it=>it.status==="iniciado");
   const feitos=ordenado.filter(it=>it.status==="feito");
   const totalPlanejado=planejados.reduce((s,it)=>s+Number(it.price||0),0);
+  const totalIniciado=iniciados.reduce((s,it)=>s+Number(it.price||0),0);
   const totalFeito=feitos.reduce((s,it)=>s+Number(it.price||0),0);
 
   const itemHTML=(it)=>{
     const condInfo=COND[it.cond]||{l:it.cond,c:"#888"};
     const facesLbl=it.faces?.length===5?"todas":(it.faces||[]).join(", ");
-    return `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:${it.status==="feito"?"rgba(34,197,94,0.05)":"#0a0a0a"};border-radius:6px;margin-bottom:4px;border-left:3px solid ${it.status==="feito"?"#22c55e":condInfo.c}">
-      <input type="checkbox" ${it.status==="feito"?"checked":""} onchange="marcarProcFeito(${it.id},this.checked)" style="cursor:pointer;width:16px;height:16px;accent-color:#22c55e"/>
+    const st=PLANO_STATUS[it.status]||PLANO_STATUS.planejado;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:${it.status==="feito"?"rgba(34,197,94,0.05)":it.status==="iniciado"?"rgba(245,158,11,0.04)":"#0a0a0a"};border-radius:6px;margin-bottom:4px;border-left:3px solid ${st.c}">
+      <button onclick="ciclarStatusProc(${it.id})"
+        style="background:${st.c}22;border:1px solid ${st.c}44;border-radius:5px;padding:3px 7px;color:${st.c};cursor:pointer;font-size:9px;font-family:Georgia,serif;flex-shrink:0;white-space:nowrap">${st.btn}</button>
       <div style="background:${condInfo.c}22;color:${condInfo.c};font-size:10px;font-weight:800;width:32px;text-align:center;padding:3px 0;border-radius:4px;flex-shrink:0">${it.tooth}</div>
       <div style="flex:1;min-width:0">
         <div style="color:${it.status==="feito"?"#888":"#ddd"};font-size:12px;font-weight:600;${it.status==="feito"?"text-decoration:line-through":""}">${it.name}</div>
@@ -4819,18 +4847,23 @@ function renderPlanoClinicoOdontograma(p){
     </div>
 
     ${planejados.length>0?`
-      <div style="color:#C6A46D;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin:8px 0 4px">📋 A executar (${planejados.length}) — R$ ${totalPlanejado.toLocaleString("pt-BR")}</div>
+      <div style="color:#0ea5e9;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin:8px 0 4px">🔵 A Realizar (${planejados.length}) — R$ ${totalPlanejado.toLocaleString("pt-BR")}</div>
       ${planejados.map(itemHTML).join("")}
     `:""}
 
+    ${iniciados.length>0?`
+      <div style="color:#f59e0b;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin:12px 0 4px">🟡 Iniciado (${iniciados.length}) — R$ ${totalIniciado.toLocaleString("pt-BR")}</div>
+      ${iniciados.map(itemHTML).join("")}
+    `:""}
+
     ${feitos.length>0?`
-      <div style="color:#22c55e;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin:12px 0 4px">✓ Realizados (${feitos.length}) — R$ ${totalFeito.toLocaleString("pt-BR")}</div>
+      <div style="color:#22c55e;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin:12px 0 4px">✓ Concluído (${feitos.length}) — R$ ${totalFeito.toLocaleString("pt-BR")}</div>
       ${feitos.map(itemHTML).join("")}
     `:""}
 
     <div style="background:linear-gradient(135deg,#8B6914,#E2C99A,#C6A46D);border-radius:8px;padding:8px 14px;margin-top:10px;display:flex;justify-content:space-between;align-items:center">
       <span style="color:#000;font-size:11px;font-weight:700">TOTAL DO PLANO</span>
-      <span style="color:#000;font-size:14px;font-weight:900">R$ ${(totalPlanejado+totalFeito).toLocaleString("pt-BR")}</span>
+      <span style="color:#000;font-size:14px;font-weight:900">R$ ${(totalPlanejado+totalIniciado+totalFeito).toLocaleString("pt-BR")}</span>
     </div>
   </div>`;
 }
@@ -5062,6 +5095,18 @@ window.marcarProcFeito=function(itemId,feito){
   const nps=ST.pts.map(p=>{
     if(p.id!==ST.selPt)return p;
     return {...p,planoClinico:(p.planoClinico||[]).map(it=>it.id===itemId?{...it,status:feito?"feito":"planejado",doneAt:feito?new Date().toISOString():null}:it)};
+  });
+  save("rof_pts",nps);set({pts:nps});
+};
+window.ciclarStatusProc=function(itemId){
+  const cycle={planejado:"iniciado",iniciado:"feito",feito:"planejado"};
+  const nps=ST.pts.map(p=>{
+    if(p.id!==ST.selPt)return p;
+    return {...p,planoClinico:(p.planoClinico||[]).map(it=>{
+      if(it.id!==itemId)return it;
+      const ns=cycle[it.status]||"planejado";
+      return {...it,status:ns,doneAt:ns==="feito"?new Date().toISOString():null};
+    })};
   });
   save("rof_pts",nps);set({pts:nps});
 };
@@ -10227,13 +10272,23 @@ window.procSearch=function(val){
     d.style.cssText="padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(198,164,109,0.07);background:#11100E;color:#F7F2EA";
     d.addEventListener("mouseenter",function(){this.style.background="#241F17";});
     d.addEventListener("mouseleave",function(){this.style.background="#11100E";});
-    d.addEventListener("click",function(){procSelect(this);});
+    d.addEventListener("mousedown",function(e){e.preventDefault();procSelect(this);});
     d.innerHTML="<div style='color:#F7F2EA;font-size:13px;font-weight:500'>"+p.n+"</div>"
       +"<div style='color:#666;font-size:10px'>"+p.c+" · R$ "+p.p.toLocaleString("pt-BR")+"</div>";
     drop.appendChild(d);
   });
   drop.style.display="block";
 }
+window.procSelect=function(el){
+  var id=el.getAttribute("data-id");
+  var name=el.getAttribute("data-name");
+  var inp=document.getElementById("ap-proc-inp");
+  var hid=document.getElementById("ap-proc");
+  var drop=document.getElementById("ap-proc-drop");
+  if(inp)inp.value=name;
+  if(hid)hid.value=id;
+  if(drop)drop.style.display="none";
+};
 window.openLancamento=function(tipo){
   var ptOpts=ST.pts.map(function(p){return "<option value='"+p.name.replace(/'/g,"&#39;")+"'>"+p.name+"</option>";}).join("");
   var formasE=["Dinheiro","PIX","Cartão Débito","Cartão Crédito","Transferência","Convênio","Cheque"];
