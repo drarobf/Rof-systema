@@ -3097,7 +3097,7 @@ window.printContrato=function(ptId){
 };
 
 // ══════════════════════════════════════════════════════════════════
-// RECIBO DE PAGAMENTO
+// RECIBO DE PAGAMENTO — modal na própria página (sem popup)
 // ══════════════════════════════════════════════════════════════════
 window.printRecibo=function(ptId,pgIdx){
   const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
@@ -3105,205 +3105,188 @@ window.printRecibo=function(ptId,pgIdx){
   const num=String(pgIdx+1).padStart(4,"0");
   const valorFmt=(pg.valor||0).toLocaleString("pt-BR",{minimumFractionDigits:2});
   const hoje=new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"});
-  const w=window.open("","_blank","width=780,height=900");
-  w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Recibo ${num} — ${p.name}</title>
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:Georgia,serif;background:#f5f5f0;color:#111;font-size:13px;line-height:1.7;padding:20px}
-    .wrap{max-width:640px;margin:0 auto}
-    /* ── RECIBO ── */
-    .recibo{background:#fff;border-radius:12px;padding:28px 32px;border:1px solid #e8e4de;box-shadow:0 2px 8px rgba(0,0,0,0.07);margin-bottom:16px}
-    .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;border-bottom:2px solid #C6A46D;margin-bottom:20px}
-    .clinic-name{font-size:16px;font-weight:900;letter-spacing:1px;color:#8B6914}
-    .clinic-sub{font-size:10px;color:#888;margin-top:3px;line-height:1.5}
-    .recibo-title h1{font-size:14px;font-weight:900;letter-spacing:2px;text-transform:uppercase;color:#333;text-align:right}
-    .recibo-title .num{font-size:11px;color:#aaa;margin-top:2px;text-align:right}
-    .valor-box{background:linear-gradient(135deg,#f9f5e8,#fdf8ef);border:1.5px solid rgba(198,164,109,0.3);border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;justify-content:space-between;align-items:center}
-    .valor-label{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#888;margin-bottom:4px}
-    .valor-num{font-size:24px;font-weight:900;color:#8B6914;letter-spacing:1px}
-    table{width:100%;border-collapse:collapse;margin-bottom:14px}
-    td{padding:6px 4px;border-bottom:1px solid #f0ede8;font-size:12.5px}
-    td:first-child{color:#888;width:42%}
-    td:last-child{font-weight:600;color:#222}
-    .decl{font-size:11.5px;color:#555;line-height:1.8;padding:12px 14px;background:#fafaf8;border-radius:7px;border:1px solid #ede9e0;margin-bottom:20px}
-    /* ── ASSINATURAS ── */
-    .sig-section{background:#fff;border-radius:12px;padding:20px 24px;border:2px solid #C6A46D;box-shadow:0 1px 6px rgba(198,164,109,0.1);margin-bottom:14px}
-    .sig-title{font-size:13px;font-weight:900;color:#333;margin-bottom:16px;text-align:center;font-family:Georgia,serif}
-    .sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-    .sig-pad-wrap{text-align:center}
-    .sig-pad-label{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#8B6914;font-weight:700;margin-bottom:8px}
-    canvas{border:2px dashed #C6A46D;border-radius:8px;background:#fafaf8;touch-action:none;cursor:crosshair;display:block;width:100%}
-    .pad-btns{display:flex;gap:6px;margin-top:7px;justify-content:center}
-    .btn-clear{padding:5px 12px;background:#fff;border:1.5px solid #ddd;border-radius:6px;font-size:11px;cursor:pointer;font-family:Georgia,serif;color:#888}
-    .btn-ok{padding:5px 14px;background:rgba(34,197,94,0.1);border:1.5px solid rgba(34,197,94,0.3);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:Georgia,serif;color:#166534;display:none}
-    .sig-done-img{max-height:56px;max-width:100%;display:block;margin:0 auto 4px}
-    .sig-name-line{border-top:1.5px solid #333;padding-top:7px;margin-top:8px;font-size:11px;color:#333;line-height:1.5;text-align:center}
-    .btn-print{width:100%;padding:14px;background:linear-gradient(135deg,#8B6914,#C6A46D);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:Georgia,serif;letter-spacing:0.5px}
-    .btn-print:disabled{opacity:0.4;cursor:not-allowed}
-    .status-hint{text-align:center;font-size:11px;color:#888;margin-bottom:10px;min-height:18px}
-    /* ── PRINT ── */
-    @media print{
-      body{background:#fff;padding:0}
-      .sig-section,.btn-print,.status-hint,.pad-btns{display:none!important}
-      .recibo{box-shadow:none;border:none;padding:0}
-      .sig-print-row{display:flex!important}
-    }
-    .sig-print-row{display:none;justify-content:space-between;gap:32px;margin-top:20px;padding-top:16px;border-top:1px solid #e5e5e5}
-    .sig-print-box{flex:1;text-align:center}
-    .sig-print-img{max-height:56px;max-width:160px;display:block;margin:0 auto 6px}
-    .sig-print-line{border-top:1.5px solid #333;padding-top:7px;font-size:11px;color:#333;line-height:1.5}
-  </style></head><body>
-  <div class="wrap">
-    <!-- ── RECIBO ── -->
-    <div class="recibo" id="recibo-doc">
-      <div class="header">
+  const ptFirst=p.name.split(" ")[0];
+
+  document.getElementById("rof-recibo-modal")?.remove();
+  const m=document.createElement("div");
+  m.id="rof-recibo-modal";
+  m.style.cssText="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);overflow-y:auto;padding:16px";
+  m.innerHTML=`
+  <div style="max-width:640px;margin:0 auto;font-family:Georgia,serif">
+    <!-- cabeçalho do modal -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="color:#E2C99A;font-weight:900;font-size:15px">🖨️ Recibo Nº ${num}</div>
+      <button onclick="document.getElementById('rof-recibo-modal').remove()" style="background:none;border:none;color:#555;font-size:24px;cursor:pointer;line-height:1">✕</button>
+    </div>
+
+    <!-- documento recibo -->
+    <div id="rb-doc" style="background:#fff;border-radius:12px;padding:26px 28px;margin-bottom:14px;color:#111">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:14px;border-bottom:2px solid #C6A46D;margin-bottom:18px">
         <div>
-          <div class="clinic-name">Dra. Rossana Batista Fucks</div>
-          <div class="clinic-sub">Cirurgiã-Dentista · CRO/SC 21403<br/>R. 220, nº 200 Sala 02 · Edif. Paris · Meia Praia<br/>Itapema/SC · drarobf@gmail.com</div>
+          <div style="font-size:15px;font-weight:900;letter-spacing:1px;color:#8B6914">Dra. Rossana Batista Fucks</div>
+          <div style="font-size:10px;color:#888;margin-top:3px;line-height:1.5">Cirurgiã-Dentista · CRO/SC 21403<br/>R. 220, nº 200 Sala 02 · Edif. Paris · Meia Praia<br/>Itapema/SC · drarobf@gmail.com</div>
         </div>
-        <div class="recibo-title"><h1>Recibo</h1><div class="num">Nº ${num}</div></div>
+        <div style="text-align:right">
+          <div style="font-size:13px;font-weight:900;letter-spacing:2px;text-transform:uppercase;color:#333">Recibo</div>
+          <div style="font-size:11px;color:#aaa;margin-top:2px">Nº ${num}</div>
+        </div>
       </div>
-      <div class="valor-box">
-        <div><div class="valor-label">Valor recebido</div><div class="valor-num">R$ ${valorFmt}</div></div>
-        <div style="text-align:right"><div style="font-size:10px;color:#aaa;margin-bottom:4px">Data</div><div style="font-weight:700;font-size:13px;color:#555">${fmtDate(pg.date)}</div></div>
+      <div style="background:linear-gradient(135deg,#f9f5e8,#fdf8ef);border:1.5px solid rgba(198,164,109,0.3);border-radius:10px;padding:14px 18px;margin:0 0 16px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#888;margin-bottom:4px">Valor recebido</div>
+          <div style="font-size:22px;font-weight:900;color:#8B6914">R$ ${valorFmt}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:10px;color:#aaa;margin-bottom:3px">Data</div>
+          <div style="font-weight:700;font-size:13px;color:#555">${fmtDate(pg.date)}</div>
+        </div>
       </div>
-      <table>
-        <tr><td>Paciente</td><td>${p.name}</td></tr>
-        ${p.cpf?`<tr><td>CPF</td><td>${p.cpf}</td></tr>`:""}
-        ${p.rg?`<tr><td>RG</td><td>${p.rg}</td></tr>`:""}
-        <tr><td>Descrição</td><td>${pg.desc||"Serviços odontológicos"}</td></tr>
-        <tr><td>Forma de pagamento</td><td>${pg.forma||"—"}</td></tr>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:14px;font-size:12.5px">
+        <tr><td style="padding:6px 4px;border-bottom:1px solid #f0ede8;color:#888;width:42%">Paciente</td><td style="padding:6px 4px;border-bottom:1px solid #f0ede8;font-weight:600;color:#222">${p.name}</td></tr>
+        ${p.cpf?`<tr><td style="padding:6px 4px;border-bottom:1px solid #f0ede8;color:#888">CPF</td><td style="padding:6px 4px;border-bottom:1px solid #f0ede8;font-weight:600;color:#222">${p.cpf}</td></tr>`:""}
+        ${p.rg?`<tr><td style="padding:6px 4px;border-bottom:1px solid #f0ede8;color:#888">RG</td><td style="padding:6px 4px;border-bottom:1px solid #f0ede8;font-weight:600;color:#222">${p.rg}</td></tr>`:""}
+        <tr><td style="padding:6px 4px;border-bottom:1px solid #f0ede8;color:#888">Descrição</td><td style="padding:6px 4px;border-bottom:1px solid #f0ede8;font-weight:600;color:#222">${pg.desc||"Serviços odontológicos"}</td></tr>
+        <tr><td style="padding:6px 4px;color:#888">Forma de pagamento</td><td style="padding:6px 4px;font-weight:600;color:#222">${pg.forma||"—"}</td></tr>
       </table>
-      <div class="decl">
+      <div style="font-size:11.5px;color:#555;line-height:1.8;padding:12px 14px;background:#fafaf8;border-radius:7px;border:1px solid #ede9e0;margin-bottom:16px">
         Declaro ter recebido de <b>${p.name}</b>${p.cpf?", CPF "+p.cpf:""} a importância de
         <b>R$ ${valorFmt}</b> (${valorPorExtenso(pg.valor||0)}), referente aos serviços odontológicos
         acima discriminados. Para maior clareza, firmo o presente recibo.
       </div>
-      <div style="font-size:11px;color:#aaa;text-align:center;margin-bottom:8px">Itapema/SC, ${hoje}</div>
-      <!-- Aparece só no print, preenchido com as imgs das assinaturas -->
-      <div class="sig-print-row" id="sig-print-row">
-        <div class="sig-print-box">
-          <img id="sig-img-dra" class="sig-print-img" src="" style="display:none"/>
-          <div class="sig-print-line"><b>Dra. Rossana Batista Fucks</b><br/>CRO/SC 21403 · Prestadora de Serviços</div>
+      <div style="font-size:11px;color:#aaa;text-align:center;margin-bottom:4px">Itapema/SC, ${hoje}</div>
+      <!-- linha de assinaturas — visível só após confirmar -->
+      <div id="rb-sig-print-row" style="display:none;justify-content:space-between;gap:32px;margin-top:18px;padding-top:14px;border-top:1px solid #e5e5e5">
+        <div style="flex:1;text-align:center">
+          <img id="rb-sig-dra" style="max-height:52px;max-width:160px;display:block;margin:0 auto 6px"/>
+          <div style="border-top:1.5px solid #333;padding-top:6px;font-size:11px;color:#333;line-height:1.5"><b>Dra. Rossana Batista Fucks</b><br/>CRO/SC 21403 · Prestadora de Serviços</div>
         </div>
-        <div class="sig-print-box">
-          <img id="sig-img-pt" class="sig-print-img" src="" style="display:none"/>
-          <div class="sig-print-line"><b>${p.name}</b><br/>${p.cpf?"CPF "+p.cpf+" · ":""}Contratante</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── ASSINATURAS ── -->
-    <div class="sig-section" id="sig-section">
-      <div class="sig-title">✍️ Assinar antes de imprimir</div>
-      <div class="sig-grid">
-        <div class="sig-pad-wrap">
-          <div class="sig-pad-label">Dra. Rossana</div>
-          <div id="dra-done" style="display:none">
-            <img id="dra-done-img" class="sig-done-img"/>
-            <button onclick="resetPad('dra')" class="btn-clear" style="margin:4px auto;display:block">↺ Refazer</button>
-          </div>
-          <div id="dra-pad">
-            <canvas id="cv-dra" height="70"></canvas>
-            <div class="pad-btns">
-              <button class="btn-clear" onclick="clearPad('dra')">🗑 Limpar</button>
-              <button class="btn-ok" id="ok-dra" onclick="confirmPad('dra')">✅ OK</button>
-            </div>
-          </div>
-        </div>
-        <div class="sig-pad-wrap">
-          <div class="sig-pad-label">${p.name.split(" ")[0]} (Paciente)</div>
-          <div id="pt-done" style="display:none">
-            <img id="pt-done-img" class="sig-done-img"/>
-            <button onclick="resetPad('pt')" class="btn-clear" style="margin:4px auto;display:block">↺ Refazer</button>
-          </div>
-          <div id="pt-pad">
-            <canvas id="cv-pt" height="70"></canvas>
-            <div class="pad-btns">
-              <button class="btn-clear" onclick="clearPad('pt')">🗑 Limpar</button>
-              <button class="btn-ok" id="ok-pt" onclick="confirmPad('pt')">✅ OK</button>
-            </div>
-          </div>
+        <div style="flex:1;text-align:center">
+          <img id="rb-sig-pt" style="max-height:52px;max-width:160px;display:block;margin:0 auto 6px"/>
+          <div style="border-top:1.5px solid #333;padding-top:6px;font-size:11px;color:#333;line-height:1.5"><b>${p.name}</b><br/>${p.cpf?"CPF "+p.cpf+" · ":""}Contratante</div>
         </div>
       </div>
     </div>
 
-    <div class="status-hint" id="status-hint">Aguardando as duas assinaturas para imprimir…</div>
-    <button class="btn-print" id="btn-print" disabled onclick="imprimirRecibo()">
+    <!-- assinaturas -->
+    <div id="rb-sig-section" style="background:#1a1a1a;border-radius:12px;padding:18px 20px;margin-bottom:12px;border:1.5px solid rgba(198,164,109,0.3)">
+      <div style="color:#E2C99A;font-weight:800;font-size:13px;text-align:center;margin-bottom:14px">✍️ Assinar antes de imprimir</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <!-- Dra -->
+        <div style="text-align:center">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#C6A46D;font-weight:700;margin-bottom:7px">Dra. Rossana</div>
+          <div id="rb-dra-done" style="display:none">
+            <img id="rb-dra-done-img" style="max-height:50px;max-width:100%;display:block;margin:0 auto 6px;border:1px solid #333;border-radius:6px"/>
+            <button onclick="rbResetPad('dra')" style="padding:4px 10px;background:#222;border:1px solid #444;border-radius:6px;font-size:11px;cursor:pointer;color:#aaa;font-family:Georgia,serif">↺ Refazer</button>
+          </div>
+          <div id="rb-dra-pad">
+            <canvas id="rb-cv-dra" style="border:2px dashed #C6A46D;border-radius:8px;background:#fafaf8;touch-action:none;cursor:crosshair;display:block;width:100%;height:70px"></canvas>
+            <div style="display:flex;gap:6px;margin-top:6px;justify-content:center">
+              <button onclick="rbClearPad('dra')" style="padding:4px 10px;background:#fff;border:1.5px solid #ddd;border-radius:6px;font-size:11px;cursor:pointer;font-family:Georgia,serif;color:#888">🗑</button>
+              <button id="rb-ok-dra" onclick="rbConfirmPad('dra')" style="display:none;padding:4px 12px;background:rgba(34,197,94,0.1);border:1.5px solid rgba(34,197,94,0.3);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:Georgia,serif;color:#166534">✅ OK</button>
+            </div>
+          </div>
+        </div>
+        <!-- Paciente -->
+        <div style="text-align:center">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#C6A46D;font-weight:700;margin-bottom:7px">${ptFirst}</div>
+          <div id="rb-pt-done" style="display:none">
+            <img id="rb-pt-done-img" style="max-height:50px;max-width:100%;display:block;margin:0 auto 6px;border:1px solid #333;border-radius:6px"/>
+            <button onclick="rbResetPad('pt')" style="padding:4px 10px;background:#222;border:1px solid #444;border-radius:6px;font-size:11px;cursor:pointer;color:#aaa;font-family:Georgia,serif">↺ Refazer</button>
+          </div>
+          <div id="rb-pt-pad">
+            <canvas id="rb-cv-pt" style="border:2px dashed #C6A46D;border-radius:8px;background:#fafaf8;touch-action:none;cursor:crosshair;display:block;width:100%;height:70px"></canvas>
+            <div style="display:flex;gap:6px;margin-top:6px;justify-content:center">
+              <button onclick="rbClearPad('pt')" style="padding:4px 10px;background:#fff;border:1.5px solid #ddd;border-radius:6px;font-size:11px;cursor:pointer;font-family:Georgia,serif;color:#888">🗑</button>
+              <button id="rb-ok-pt" onclick="rbConfirmPad('pt')" style="display:none;padding:4px 12px;background:rgba(34,197,94,0.1);border:1.5px solid rgba(34,197,94,0.3);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:Georgia,serif;color:#166534">✅ OK</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="rb-hint" style="text-align:center;font-size:11px;color:#555;margin-bottom:10px">Aguardando as duas assinaturas para imprimir…</div>
+    <button id="rb-btn-print" disabled onclick="rbImprimir()" style="width:100%;padding:14px;background:linear-gradient(135deg,#8B6914,#C6A46D);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:Georgia,serif;opacity:0.45">
       🖨️ Imprimir / Salvar como PDF
     </button>
-  </div>
+  </div>`;
+  document.body.appendChild(m);
 
-  <script>
-  const sigs={dra:null,pt:null};
-
-  function initPad(id){
-    const cv=document.getElementById("cv-"+id);if(!cv)return;
+  // ── Lógica dos pads ──────────────────────────────────────────
+  const rbSigs={dra:null,pt:null};
+  function rbInitPad(id){
+    const cv=document.getElementById("rb-cv-"+id);if(!cv)return;
     const dpr=window.devicePixelRatio||1;
-    cv.width=cv.offsetWidth*dpr||300;cv.height=70*dpr;
-    cv.style.height="70px";
+    const w=cv.offsetWidth||280;
+    cv.width=w*dpr;cv.height=70*dpr;
     const ctx=cv.getContext("2d");
     ctx.scale(dpr,dpr);
-    ctx.strokeStyle="#111";ctx.lineWidth=2;ctx.lineJoin="round";ctx.lineCap="round";
+    ctx.strokeStyle="#111";ctx.lineWidth=2.2;ctx.lineJoin="round";ctx.lineCap="round";
     let dr=false,has=false;
     const xy=(e,c)=>{const r=c.getBoundingClientRect(),s=e.touches?e.touches[0]:e;
       return[(s.clientX-r.left)*(c.width/r.width/dpr),(s.clientY-r.top)*(c.height/r.height/dpr)];};
-    const s=e=>{e.preventDefault();dr=true;const[x,y]=xy(e,cv);ctx.beginPath();ctx.moveTo(x,y);};
-    const m=e=>{e.preventDefault();if(!dr)return;const[x,y]=xy(e,cv);ctx.lineTo(x,y);ctx.stroke();
-      has=true;document.getElementById("ok-"+id).style.display="inline-block";};
-    const u=e=>{e.preventDefault();dr=false;ctx.beginPath();};
-    cv.addEventListener("mousedown",s);cv.addEventListener("mousemove",m);cv.addEventListener("mouseup",u);
-    cv.addEventListener("touchstart",s,{passive:false});cv.addEventListener("touchmove",m,{passive:false});cv.addEventListener("touchend",u,{passive:false});
+    cv.addEventListener("mousedown",e=>{e.preventDefault();dr=true;const[x,y]=xy(e,cv);ctx.beginPath();ctx.moveTo(x,y);},{passive:false});
+    cv.addEventListener("mousemove",e=>{e.preventDefault();if(!dr)return;const[x,y]=xy(e,cv);ctx.lineTo(x,y);ctx.stroke();has=true;document.getElementById("rb-ok-"+id).style.display="inline-block";},{passive:false});
+    cv.addEventListener("mouseup",e=>{e.preventDefault();dr=false;ctx.beginPath();},{passive:false});
+    cv.addEventListener("touchstart",e=>{e.preventDefault();dr=true;const[x,y]=xy(e,cv);ctx.beginPath();ctx.moveTo(x,y);},{passive:false});
+    cv.addEventListener("touchmove",e=>{e.preventDefault();if(!dr)return;const[x,y]=xy(e,cv);ctx.lineTo(x,y);ctx.stroke();has=true;document.getElementById("rb-ok-"+id).style.display="inline-block";},{passive:false});
+    cv.addEventListener("touchend",e=>{e.preventDefault();dr=false;ctx.beginPath();},{passive:false});
     cv._getImg=()=>has?cv.toDataURL("image/png"):null;
-    cv._clear=()=>{ctx.clearRect(0,0,cv.width/dpr,cv.height/dpr);has=false;document.getElementById("ok-"+id).style.display="none";};
+    cv._clear=()=>{ctx.clearRect(0,0,cv.width/dpr,cv.height/dpr);has=false;document.getElementById("rb-ok-"+id).style.display="none";};
   }
-
-  function clearPad(id){document.getElementById("cv-"+id)?._clear();}
-  function resetPad(id){
-    sigs[id]=null;
-    document.getElementById(id+"-done").style.display="none";
-    document.getElementById(id+"-pad").style.display="block";
-    updateBtn();
-  }
-  function confirmPad(id){
-    const cv=document.getElementById("cv-"+id);
+  window.rbClearPad=id=>{document.getElementById("rb-cv-"+id)?._clear();};
+  window.rbResetPad=id=>{
+    rbSigs[id]=null;
+    document.getElementById("rb-"+id+"-done").style.display="none";
+    document.getElementById("rb-"+id+"-pad").style.display="block";
+    rbUpdateBtn();
+  };
+  window.rbConfirmPad=id=>{
+    const cv=document.getElementById("rb-cv-"+id);
     const img=cv?._getImg();if(!img)return;
-    sigs[id]=img;
-    document.getElementById(id+"-done").style.display="block";
-    document.getElementById(id+"-pad").style.display="none";
-    document.getElementById(id+"-done-img").src=img;
-    updateBtn();
-  }
-  function updateBtn(){
-    const both=sigs.dra&&sigs.pt;
-    document.getElementById("btn-print").disabled=!both;
-    document.getElementById("status-hint").textContent=
-      both?"✅ Ambos assinaram — pronto para imprimir!"
-      :(!sigs.dra&&!sigs.pt)?"Aguardando as duas assinaturas…"
-      :!sigs.dra?"Aguardando assinatura da Dra. Rossana…"
+    rbSigs[id]=img;
+    document.getElementById("rb-"+id+"-done").style.display="block";
+    document.getElementById("rb-"+id+"-pad").style.display="none";
+    document.getElementById("rb-"+id+"-done-img").src=img;
+    rbUpdateBtn();
+  };
+  function rbUpdateBtn(){
+    const both=rbSigs.dra&&rbSigs.pt;
+    const btn=document.getElementById("rb-btn-print");
+    if(btn){btn.disabled=!both;btn.style.opacity=both?"1":"0.45";}
+    const hint=document.getElementById("rb-hint");
+    if(hint)hint.textContent=both?"✅ Ambos assinaram — pronto para imprimir!"
+      :(!rbSigs.dra&&!rbSigs.pt)?"Aguardando as duas assinaturas…"
+      :!rbSigs.dra?"Aguardando assinatura da Dra. Rossana…"
       :"Aguardando assinatura do paciente…";
   }
-  function imprimirRecibo(){
-    if(!sigs.dra||!sigs.pt)return;
-    // Injeta imgs no bloco de print
-    const row=document.getElementById("sig-print-row");
+  window.rbImprimir=()=>{
+    if(!rbSigs.dra||!rbSigs.pt)return;
+    // Injeta imagens no bloco de assinaturas e mostra
+    const row=document.getElementById("rb-sig-print-row");
+    const iDra=document.getElementById("rb-sig-dra");
+    const iPt=document.getElementById("rb-sig-pt");
+    iDra.src=rbSigs.dra;iPt.src=rbSigs.pt;
     row.style.display="flex";
-    const iDra=document.getElementById("sig-img-dra");
-    iDra.src=sigs.dra;iDra.style.display="block";
-    const iPt=document.getElementById("sig-img-pt");
-    iPt.src=sigs.pt;iPt.style.display="block";
-    setTimeout(()=>window.print(),200);
-  }
-
-  window.onload=function(){
-    initPad("dra");
-    initPad("pt");
+    // Esconde modal chrome para imprimir só o documento
+    const overlay=document.getElementById("rof-recibo-modal");
+    const oldStyle=overlay.style.cssText;
+    overlay.style.cssText="position:fixed;inset:0;z-index:9999;background:#fff;overflow-y:auto;padding:20px";
+    document.getElementById("rb-sig-section").style.display="none";
+    document.getElementById("rb-hint").style.display="none";
+    document.getElementById("rb-btn-print").style.display="none";
+    setTimeout(()=>{
+      window.print();
+      // Restaura após print
+      setTimeout(()=>{
+        overlay.style.cssText=oldStyle;
+        document.getElementById("rb-sig-section").style.display="";
+        document.getElementById("rb-hint").style.display="";
+        document.getElementById("rb-btn-print").style.display="";
+      },800);
+    },200);
   };
-  <\/script>
-  </body></html>`);
-  w.document.close();
+  // Inicializa pads após o modal estar no DOM
+  setTimeout(()=>{rbInitPad("dra");rbInitPad("pt");},80);
 };
 
 // Valor por extenso básico para recibos
@@ -7241,7 +7224,8 @@ window.sendDocWhats=function(ptId,idx){
   if(!phone){toast("Paciente sem WhatsApp cadastrado.","warning");return;}
   if(phone.length===10||phone.length===11)phone="55"+phone;
   var primeiro=(p.name||"paciente").split(" ")[0];
-  var msg=doc.whatsText||("Olá, "+primeiro+"! 😊\n\nSegue o registro do documento *"+doc.title+"*, assinado digitalmente em "+(doc.date||todayFmt())+".\n\nDra. Rossana Fucks — CRO/SC 21403");
+  var linkDoc=doc.supabaseId?("\n\n🔗 Visualizar documento assinado:\n"+_CONTRATO_BASE_URL+"?id="+doc.supabaseId):"";
+  var msg=doc.whatsText||("Olá, "+primeiro+"! 😊\n\nSegue o registro do documento *"+doc.title+"*, assinado digitalmente em "+(doc.date||todayFmt())+"."+linkDoc+"\n\nDra. Rossana Fucks — CRO/SC 21403");
   window.open("https://wa.me/"+phone+"?text="+encodeURIComponent(msg),"_blank");
 };
 
