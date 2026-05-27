@@ -2865,7 +2865,12 @@ window.gerarLinkContrato=async function(ptId,tipo){
     setTimeout(()=>enviarLinkWhats(ptId),400);
   }catch(e){
     console.error("Erro ao gerar link:",e);
-    toast("Erro ao gerar link: "+((e&&e.message)||"verifique o Supabase"),"error");
+    const msg=String((e&&e.message)||"");
+    if(msg.toLowerCase().includes("fetch")||msg.includes("521")||msg.includes("522")||!msg){
+      _mostrarErrSupabasePausado();
+    }else{
+      toast("Erro ao gerar link: "+msg,"error",6000);
+    }
   }
 };
 
@@ -2989,7 +2994,12 @@ window.gerarLinkTermo=async function(termKey){
     }
     setTimeout(()=>window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`,"_blank"),400);
   }catch(e){
-    toast("Erro ao gerar link: "+((e&&e.message)||""),"error");
+    const msg=String((e&&e.message)||"");
+    if(msg.toLowerCase().includes("fetch")||msg.includes("521")||msg.includes("522")||!msg){
+      _mostrarErrSupabasePausado();
+    }else{
+      toast("Erro ao gerar link: "+msg,"error",6000);
+    }
   }
 };
 
@@ -7571,13 +7581,67 @@ window.confirmGerarLink=async function(){
   const label=document.getElementById("gen-label").value.trim();
   if(!label){toast("Por favor, coloque uma identificação.","warning");return;}
   document.getElementById("gen-modal")?.remove();
+  toast("Gerando link...","info");
   try{
-    const{data,error}=await _sb.from('rof_intake').insert({dr_label:label,status:'pending'}).select().single();
+    const{data,error}=await _sb.from('rof_intake')
+      .insert({dr_label:label,status:'pending',data:{}})
+      .select('id').single();
     if(error)throw error;
+    if(!data||!data.id)throw new Error("ID não retornado pelo servidor");
     const link=CADASTRO_URL_BASE+"?id="+data.id;
     showLinkModal(link,label);
     loadIntakes();
-  }catch(e){toast("Erro ao gerar link: "+(e.message||"tente novamente"),"error");}
+  }catch(e){
+    const msg=String((e&&e.message)||"");
+    const isSbDown=msg.toLowerCase().includes("failed to fetch")||msg.includes("521")||msg.includes("522")||msg.includes("network")||msg.includes("fetch");
+    if(isSbDown||!msg){
+      _mostrarErrSupabasePausado();
+    }else{
+      toast("Erro ao gerar link: "+msg,"error",6000);
+    }
+  }
+};
+function _mostrarErrSupabasePausado(){
+  document.getElementById("rof-sb-paused-modal")?.remove();
+  const m=document.createElement("div");m.className="mbg";m.id="rof-sb-paused-modal";
+  m.innerHTML=`<div class="mbx" style="max-width:460px">
+    <div class="mhd">
+      <div class="mhd-title">⚠️ Banco de dados pausado</div>
+      <button onclick="document.getElementById('rof-sb-paused-modal').remove()" style="background:none;border:none;color:#555;cursor:pointer;font-size:22px">✕</button>
+    </div>
+    <div class="mbd">
+      <p style="color:#aaa;font-size:13px;line-height:1.7;margin-bottom:16px">
+        O projeto Supabase ficou inativo e foi <b style="color:#f59e0b">pausado automaticamente</b> pela plataforma (acontece após ~7 dias sem uso).<br/><br/>
+        É fácil reativar — leva menos de 1 minuto:
+      </p>
+      <ol style="color:#ccc;font-size:13px;line-height:2;padding-left:18px;margin-bottom:16px">
+        <li>Clique no botão abaixo para abrir o painel</li>
+        <li>Clique em <b style="color:#E2C99A">Restore project</b></li>
+        <li>Aguarde ~30 segundos e tente de novo aqui</li>
+      </ol>
+      <a href="https://supabase.com/dashboard/project/dhgfoxdxihjkhzmctaea" target="_blank"
+        style="display:block;width:100%;text-align:center;padding:13px;background:linear-gradient(135deg,#22c55e,#16a34a);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;text-decoration:none;margin-bottom:10px">
+        🚀 Abrir Supabase Dashboard
+      </a>
+      <button onclick="testarConexaoSupabase()" class="bg" style="width:100%;color:#60a5fa;border-color:#60a5fa33">
+        🔄 Testar conexão agora
+      </button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+}
+window.testarConexaoSupabase=async function(){
+  const btn=document.querySelector("#rof-sb-paused-modal button:last-child");
+  if(btn){btn.textContent="🔄 Testando...";btn.disabled=true;}
+  try{
+    const{data,error}=await _sb.from('rof_intake').select('id').limit(1);
+    if(error)throw error;
+    toast("✅ Supabase conectado! Pode gerar o link agora.","success");
+    document.getElementById("rof-sb-paused-modal")?.remove();
+  }catch(e){
+    toast("Ainda offline — aguarde mais alguns segundos e tente novamente.","warning",4000);
+    if(btn){btn.textContent="🔄 Testar conexão agora";btn.disabled=false;}
+  }
 };
 function showLinkModal(link,label){
   const m=document.createElement("div");m.className="mbg";m.id="link-modal";
