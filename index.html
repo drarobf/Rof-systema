@@ -1632,7 +1632,7 @@ const _sb=(()=>{
   catch(e){console.warn("Supabase init falhou:",e);return _sbStub;}
 })();
 
-const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_stk','rof_procs','rof_caixa','rof_whats_templates','rof_orientacoes','rof_pt_photos']);
+const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_stk','rof_procs','rof_caixa','rof_whats_templates','rof_orientacoes','rof_pt_photos','rof_pt_xrays']);
 const _syncQ = (()=>{try{return JSON.parse(localStorage.getItem("rof_sync_q")||"[]");}catch{return[];}})();
 const _pendingCloudWrites = new Set();
 const _lastLocalWriteAt = {};
@@ -1695,15 +1695,21 @@ function _setSyncBadge(ok){
 }
 function _applyCloudData(k,v){
   if(k==='rof_pts'&&Array.isArray(v)){
-    // Fotos estão em rof_pt_photos — mescla de volta sem salvar no rof_pts
+    // Fotos e Rx estão em chaves separadas — mescla de volta sem salvar no rof_pts
     localStorage.setItem(k,JSON.stringify(v));
-    ST.pts=mergePtPhotos(v.map(normalizePt));
+    ST.pts=mergePtXrays(mergePtPhotos(v.map(normalizePt)));
   }else if(k==='rof_pt_photos'&&v&&typeof v==='object'&&!Array.isArray(v)){
     // Mescla: fotos locais têm prioridade sobre nuvem (evita sync apagar foto recém-tirada)
     const localPh=_loadPtPhotos();
     const merged=Object.assign({},v,localPh);
     localStorage.setItem(k,JSON.stringify(merged));
     ST.pts=mergePtPhotos((ST.pts||[]).map(normalizePt));
+  }else if(k==='rof_pt_xrays'&&v&&typeof v==='object'&&!Array.isArray(v)){
+    // Mescla: xrays locais têm prioridade sobre nuvem
+    const localXr=_loadPtXrays();
+    const merged=Object.assign({},v,localXr);
+    localStorage.setItem(k,JSON.stringify(merged));
+    ST.pts=mergePtXrays((ST.pts||[]).map(normalizePt));
   }else{
     localStorage.setItem(k,JSON.stringify(v));
     // ── Atualiza o estado em memória conforme o tipo ──
@@ -3707,6 +3713,21 @@ const _savePtPhoto=(ptId,url)=>{
   }
 };
 const mergePtPhotos=(pts)=>{const ph=_loadPtPhotos();return pts.map(p=>ph[String(p.id)]?{...p,photo:ph[String(p.id)]}:p);};
+
+// ── XRAYS — armazenadas separado de rof_pts para não estouro ─────
+const PT_XRAYS_KEY="rof_pt_xrays";
+const _loadPtXrays=()=>{try{return JSON.parse(localStorage.getItem(PT_XRAYS_KEY)||"{}");}catch{return{};}};
+const _savePtXraysStore=(ptId,xrays)=>{
+  const all=_loadPtXrays();
+  if(xrays&&xrays.length>0)all[String(ptId)]=xrays;else delete all[String(ptId)];
+  try{
+    localStorage.setItem(PT_XRAYS_KEY,JSON.stringify(all));
+    if(typeof save==="function")save(PT_XRAYS_KEY,all);
+    return true;
+  }catch(e){console.warn("rof_pt_xrays cheio:",e);return false;}
+};
+const mergePtXrays=(pts)=>{const xd=_loadPtXrays();return pts.map(p=>xd[String(p.id)]?{...p,xrays:xd[String(p.id)]}:p);};
+
 // Indicador visual "✓ Salvo automaticamente" — disponível globalmente
 function _showSaveIndicator(){
   let el=document.getElementById("rof-save-indicator");
@@ -3724,8 +3745,9 @@ function _showSaveIndicator(){
 window._showSaveIndicator=_showSaveIndicator;
 
 const save=(k,v)=>{
-  // Fotos ficam em rof_pt_photos — nunca dentro de rof_pts (evita estouro do localStorage e do Supabase)
-  const stripped=(k==='rof_pts'&&Array.isArray(v))?v.map(({photo,...r})=>r):v;
+  // Fotos e Rx ficam em chaves separadas — nunca dentro de rof_pts (evita estouro do localStorage e do Supabase)
+  // eslint-disable-next-line no-unused-vars
+  const stripped=(k==='rof_pts'&&Array.isArray(v))?v.map(({photo,xrays,...r})=>r):v;
   try{localStorage.setItem(k,JSON.stringify(stripped));}catch(e){console.warn("localStorage cheio:",e);}
   // Feedback visual GLOBAL: pisca "✓ Salvo" no canto sempre que algo é salvo
   if(typeof _showSaveIndicator==="function")_showSaveIndicator();
@@ -4090,6 +4112,17 @@ ST.pts=(Array.isArray(ST.pts)?ST.pts:[]).map(normalizePt);
   }
 })();
 ST.pts=mergePtPhotos(ST.pts);
+// Migração única: move xrays que ainda estão em rof_pts para rof_pt_xrays
+(function(){
+  const hasXrays=ST.pts.some(p=>p.xrays&&p.xrays.length>0);
+  if(hasXrays){
+    ST.pts.forEach(p=>{if(p.xrays&&p.xrays.length>0)_savePtXraysStore(p.id,p.xrays);});
+    // eslint-disable-next-line no-unused-vars
+    ST.pts=ST.pts.map(({xrays,...r})=>r);
+    try{localStorage.setItem("rof_pts",JSON.stringify(ST.pts));}catch{}
+  }
+})();
+ST.pts=mergePtXrays(ST.pts);
 function findPtById(id){
   if(id&&typeof id==="object"&&Object.prototype.hasOwnProperty.call(id,"id"))id=id.id;
   const sid=String(id??"");
@@ -7919,12 +7952,43 @@ window.setPtPhoto=(id,inp)=>{
 };
 // Versão que aceita File diretamente (usada pelo openPhotoMenu)
 window.setPtPhotoF=function(id,file){window.setPtPhoto(id,{files:[file],value:""});}
-window.addXray=(id,inp)=>{Array.from(inp.files).forEach(file=>{const r=new FileReader();r.onload=ev=>{const p=findPtById(id);if(!p)return;updPt(id,"xrays",[...(p.xrays||[]),{name:file.name,data:ev.target.result}],true);};r.readAsDataURL(file);});};
+window.addXray=(id,inp)=>{
+  const files=Array.from(inp.files);if(!files.length)return;
+  try{inp.value="";}catch(e){}
+  files.forEach(file=>{
+    const isPdf=file.type==="application/pdf";
+    const doSave=(dataUrl)=>{
+      const p=findPtById(id);if(!p)return;
+      const newXrays=[...(p.xrays||[]),{id:Date.now(),name:file.name,data:dataUrl,date:todayISO()}];
+      const ok=_savePtXraysStore(id,newXrays);
+      if(ok){
+        const nps=ST.pts.map(x=>sameId(x.id,id)?{...x,xrays:newXrays}:x);
+        ST.pts=nps;set({pts:nps});
+        toast("✅ Rx salva com sucesso!","success");
+      }else{
+        toast("⚠️ Armazenamento cheio — remova Rx antigas e tente novamente.","error",5000);
+      }
+    };
+    if(isPdf){
+      const r=new FileReader();
+      r.onload=ev=>doSave(ev.target.result);
+      r.readAsDataURL(file);
+    }else{
+      compressImg(file,1400,0.80,function(dataUrl){
+        if(!dataUrl){toast("Não foi possível processar a imagem.","error");return;}
+        doSave(dataUrl);
+      });
+    }
+  });
+};
 window.delXray=(id,i)=>{
   const p=findPtById(id);if(!p)return;
   rConfirm("Excluir esta radiografia / imagem?",()=>{
-    updPt(id,"xrays",(p.xrays||[]).filter((_,j)=>j!==i),true);
-    toast("Rx excluído.","success");
+    const newXrays=(p.xrays||[]).filter((_,j)=>j!==i);
+    _savePtXraysStore(id,newXrays);
+    const nps=ST.pts.map(x=>sameId(x.id,id)?{...x,xrays:newXrays}:x);
+    ST.pts=nps;set({pts:nps});
+    toast("Rx excluída.","success");
   },"Excluir Rx");
 };
 
