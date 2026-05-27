@@ -2809,38 +2809,9 @@ window.whatsContrato=function(ptId){
 // ════════════════════════════════════════════════════════════════
 const _CONTRATO_BASE_URL="https://drarobf.github.io/Rof-systema/contrato.html";
 
+// Gera link direto sem modal de seleção — contrato unificado (Geral + Implante + Prótese)
 window.abrirModalContratoLink=function(ptId){
-  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
-  if(document.getElementById("rof-ct-link-modal"))document.getElementById("rof-ct-link-modal").remove();
-  const ov=document.createElement("div");
-  ov.id="rof-ct-link-modal";
-  ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9990;display:flex;align-items:center;justify-content:center;padding:16px";
-  ov.innerHTML=`<div style="background:#0f0f0f;border:1px solid rgba(198,164,109,0.25);border-radius:16px;padding:22px;width:100%;max-width:400px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
-      <div style="color:#E2C99A;font-weight:800;font-size:14px">🔗 Enviar Contrato para Assinar</div>
-      <button onclick="document.getElementById('rof-ct-link-modal').remove()" style="background:none;border:none;color:#444;font-size:20px;cursor:pointer;padding:0 4px">✕</button>
-    </div>
-    <div style="color:#888;font-size:12px;margin-bottom:16px">Selecione o tipo de contrato a ser enviado para <b style="color:#C6A46D">${p.name}</b>:</div>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      <button onclick="gerarLinkContrato(${ptId},'Geral')" style="background:rgba(198,164,109,0.08);border:1px solid rgba(198,164,109,0.2);border-radius:10px;padding:14px 16px;cursor:pointer;text-align:left;color:#ddd;font-family:Inter,sans-serif">
-        <div style="font-weight:700;font-size:13px;color:#E2C99A;margin-bottom:3px">📋 Contrato Geral de Serviços</div>
-        <div style="font-size:11px;color:#666">Orçamento, procedimentos, pagamento e multas contratuais</div>
-      </button>
-      <button onclick="gerarLinkContrato(${ptId},'Implante')" style="background:rgba(96,165,250,0.06);border:1px solid rgba(96,165,250,0.18);border-radius:10px;padding:14px 16px;cursor:pointer;text-align:left;color:#ddd;font-family:Inter,sans-serif">
-        <div style="font-weight:700;font-size:13px;color:#60a5fa;margin-bottom:3px">🦷 Consentimento — Cirurgia de Implante</div>
-        <div style="font-size:11px;color:#666">Riscos específicos de cirurgia, osseointegração e pós-op</div>
-      </button>
-      <button onclick="gerarLinkContrato(${ptId},'Protese')" style="background:rgba(167,139,250,0.06);border:1px solid rgba(167,139,250,0.18);border-radius:10px;padding:14px 16px;cursor:pointer;text-align:left;color:#ddd;font-family:Inter,sans-serif">
-        <div style="font-weight:700;font-size:13px;color:#a78bfa;margin-bottom:3px">💎 Consentimento — Parte Protética</div>
-        <div style="font-size:11px;color:#666">Coroas, facetas, próteses — adaptação, cor e garantias</div>
-      </button>
-    </div>
-    <div style="margin-top:14px;padding:10px;background:rgba(96,165,250,0.05);border-radius:8px;border:1px solid rgba(96,165,250,0.12)">
-      <div style="font-size:10px;color:#555;line-height:1.6">💡 Um link seguro e único será gerado. Você envia pelo WhatsApp e o paciente assina pelo celular. A assinatura aparece aqui automaticamente.</div>
-    </div>
-  </div>`;
-  ov.addEventListener("click",e=>{if(e.target===ov)ov.remove();});
-  document.body.appendChild(ov);
+  gerarLinkContrato(ptId,"Completo");
 };
 
 window.gerarLinkContrato=async function(ptId,tipo){
@@ -2896,12 +2867,10 @@ window.enviarLinkWhats=function(ptId){
   const phone=(p.phone||"").replace(/\D/g,"");
   const fullPhone=phone.startsWith("55")?phone:"55"+phone;
   const link=`${_CONTRATO_BASE_URL}?id=${p.contratoLinkId}`;
-  const tipo=p.contratoLinkTipo||"Geral";
-  const tipoLabel=tipo==="Implante"?"Cirurgia de Implante":tipo==="Protese"?"Prótese Dentária":"Serviços Odontológicos";
   const msg=`Olá, ${p.name}! 😊\n\n`
-    +`Segue o link para você ler e assinar seu contrato de *${tipoLabel}* com a *Clínica Dra. Rossana Fucks*:\n\n`
+    +`Segue o link para você ler e assinar seu *Contrato e Termos de Consentimento* com a *Clínica Dra. Rossana Fucks*:\n\n`
     +`👉 ${link}\n\n`
-    +`Você pode assinar diretamente pelo celular. Qualquer dúvida, estamos à disposição! 🦷`;
+    +`É rápido — você lê, assina com o dedo e envia direto pelo celular. Qualquer dúvida, estamos à disposição! 🦷`;
   if(!phone){
     // Copia o link para área de transferência
     navigator.clipboard?.writeText(link).catch(()=>{});

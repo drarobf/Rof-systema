@@ -3,27 +3,24 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
-<title>Contrato Digital — Clínica Dra. Rossana Fucks</title>
+<title>Contrato & Consentimento — Clínica Dra. Rossana Fucks</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#f5f5f0;color:#1a1a1a;font-size:14px;line-height:1.6;min-height:100vh}
 .wrap{max-width:680px;margin:0 auto;padding:16px}
 
-/* Header */
 .header{background:linear-gradient(135deg,#0D0D0D 0%,#1a1205 100%);color:#E2C99A;padding:22px 20px;border-radius:14px;margin-bottom:16px;text-align:center;border:1px solid rgba(198,164,109,0.25)}
 .header h1{font-size:22px;font-weight:900;letter-spacing:2px;font-family:Georgia,serif;margin-bottom:4px}
-.header .sub{font-size:11px;color:#8B6914;letter-spacing:3px;text-transform:uppercase}
+.header .sub{font-size:10px;color:#8B6914;letter-spacing:3px;text-transform:uppercase}
 .header .clinic{font-size:12px;color:#C6A46D;margin-top:8px;opacity:0.9}
 
-/* Cards */
 .card{background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;border:1px solid #e8e4de;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
 .card-title{font-size:9px;text-transform:uppercase;letter-spacing:2px;font-weight:700;color:#8B6914;margin-bottom:12px;border-left:3px solid #C6A46D;padding-left:8px}
 .field{margin-bottom:8px}
 .field label{display:block;font-size:10px;color:#888;font-weight:600;margin-bottom:2px;text-transform:uppercase;letter-spacing:0.5px}
 .field value{display:block;color:#1a1a1a;font-size:13px;font-weight:600}
 
-/* Procedures table */
 .proc-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0ede8;gap:8px}
 .proc-row:last-child{border-bottom:none}
 .proc-name{flex:1;font-size:13px;color:#333}
@@ -32,335 +29,95 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f5f5f0;color:#1a1a1
 .total-label{font-weight:700;font-size:13px}
 .total-val{font-weight:900;font-size:16px;color:#8B6914}
 
-/* Clauses */
-.clause{margin-bottom:14px}
-.clause h3{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#8B6914;font-weight:700;margin-bottom:6px}
-.clause p,.clause li{font-size:12px;color:#555;line-height:1.8}
-.clause ul{padding-left:16px}
-.clause li{margin-bottom:2px}
+/* Consent document */
+.consent-box{background:#fff;border-radius:12px;padding:18px;margin-bottom:12px;border:1px solid #e8e4de;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
+.consent-box h2{font-size:14px;font-weight:900;text-align:center;margin-bottom:6px;color:#1a1a1a;font-family:Georgia,serif;line-height:1.4}
+.consent-box .doc-sub{text-align:center;font-size:10px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid #f0ede8}
+.consent-box h3{font-size:10px;font-weight:700;color:#8B6914;text-transform:uppercase;letter-spacing:1.5px;margin:16px 0 6px;padding-bottom:3px;border-bottom:1px solid #f5f0e8}
+.consent-box p{font-size:12px;color:#444;line-height:1.8;margin-bottom:6px}
+.consent-box ul{padding-left:16px;margin-bottom:6px}
+.consent-box li{font-size:12px;color:#444;line-height:1.8;margin-bottom:2px}
+.consent-box .section-divider{border:none;border-top:2px solid #C6A46D;margin:20px 0 16px;opacity:0.4}
+.consent-box .section-title{font-size:12px;font-weight:800;color:#8B6914;text-align:center;text-transform:uppercase;letter-spacing:2px;margin:20px 0 14px;padding:8px;background:rgba(198,164,109,0.06);border-radius:7px;border:1px solid rgba(198,164,109,0.15)}
 
 /* Signature */
-.sig-section{background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;border:2px solid #C6A46D;box-shadow:0 2px 12px rgba(198,164,109,0.15)}
-.sig-title{font-size:13px;font-weight:800;color:#1a1a1a;margin-bottom:14px;text-align:center}
+.sig-section{background:#fff;border-radius:12px;padding:18px;margin-bottom:12px;border:2px solid #C6A46D;box-shadow:0 2px 14px rgba(198,164,109,0.12)}
+.sig-title{font-size:14px;font-weight:800;color:#1a1a1a;margin-bottom:16px;text-align:center}
 .inp{width:100%;padding:11px 14px;border:1.5px solid #ddd;border-radius:9px;font-size:14px;font-family:inherit;outline:none;background:#fafaf8;color:#1a1a1a;transition:border-color 0.2s;margin-bottom:10px}
 .inp:focus{border-color:#C6A46D;background:#fff}
 canvas{border:2px dashed #C6A46D;border-radius:10px;background:#fafaf8;cursor:crosshair;display:block;width:100%;max-width:100%;touch-action:none}
 .btn-row{display:flex;gap:8px;margin:8px 0}
 .btn-clear{flex:1;padding:9px;background:#fff;border:1.5px solid #ddd;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;color:#888}
-.btn-ok{flex:2;padding:9px;background:rgba(198,164,109,0.1);border:1.5px solid rgba(198,164,109,0.4);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;color:#8B6914;display:none}
-.btn-submit{width:100%;padding:15px;background:linear-gradient(135deg,#8B6914,#C6A46D);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:12px;letter-spacing:0.5px;transition:opacity 0.2s}
-.btn-submit:disabled{opacity:0.5;cursor:not-allowed}
+.btn-ok{flex:2;padding:9px;background:rgba(34,197,94,0.08);border:1.5px solid rgba(34,197,94,0.3);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;color:#166534;display:none}
+.btn-submit{width:100%;padding:16px;background:linear-gradient(135deg,#8B6914,#C6A46D);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:12px;letter-spacing:0.5px;transition:opacity 0.2s}
+.btn-submit:disabled{opacity:0.45;cursor:not-allowed}
 
-/* Status badges */
-.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px}
-.badge-pending{background:rgba(245,158,11,0.1);color:#b45309;border:1px solid rgba(245,158,11,0.3)}
-.badge-ok{background:rgba(34,197,94,0.1);color:#166534;border:1px solid rgba(34,197,94,0.3)}
+.sig-tabs{display:flex;gap:6px;margin-bottom:12px}
+.sig-tab{flex:1;padding:9px;background:#f5f5f0;border:1.5px solid #ddd;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;text-align:center;color:#888;transition:all 0.15s;font-family:inherit}
+.sig-tab.active{background:rgba(198,164,109,0.1);border-color:rgba(198,164,109,0.5);color:#8B6914}
 
-/* Alert box */
+.check-row{display:flex;align-items:flex-start;gap:10px;padding:12px;background:#faf9f6;border-radius:8px;margin-bottom:10px;cursor:pointer;border:1px solid #ede9e0}
+.check-row input[type=checkbox]{width:18px;height:18px;flex-shrink:0;margin-top:2px;accent-color:#C6A46D;cursor:pointer}
+.check-row span{font-size:12px;color:#444;line-height:1.6}
+
+.badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px}
+.badge-pending{background:rgba(245,158,11,0.15);color:#b45309;border:1px solid rgba(245,158,11,0.35)}
+.badge-ok{background:rgba(34,197,94,0.12);color:#166534;border:1px solid rgba(34,197,94,0.3)}
+
 .alert{padding:12px 14px;border-radius:10px;font-size:12px;line-height:1.6;margin-bottom:12px}
 .alert-info{background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);color:#1e40af}
-.alert-warn{background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);color:#92400e}
-.alert-err{background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);color:#991b1b}
-.alert-ok{background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);color:#166534}
 
-/* Consent text */
-.consent-box{background:#fafaf8;border-radius:10px;padding:14px;border:1px solid #e8e4de;max-height:55vh;overflow-y:auto;margin-bottom:14px}
-.consent-box h2{font-size:13px;font-weight:800;text-align:center;margin-bottom:10px;color:#1a1a1a;font-family:Georgia,serif}
-.consent-box h3{font-size:11px;font-weight:700;color:#8B6914;text-transform:uppercase;letter-spacing:1px;margin:14px 0 5px;border-bottom:1px solid #e8e4de;padding-bottom:3px}
-.consent-box p,.consent-box li{font-size:11.5px;color:#444;line-height:1.8;margin-bottom:4px}
-.consent-box ul{padding-left:16px}
-
-/* Loading */
 .loading{text-align:center;padding:60px 20px;color:#888}
 .loading .spinner{width:36px;height:36px;border:3px solid #e8e4de;border-top-color:#C6A46D;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 16px}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* Success screen */
 .success-screen{text-align:center;padding:40px 20px}
 .success-screen .icon{font-size:64px;margin-bottom:16px}
 .success-screen h2{font-size:20px;font-weight:800;color:#166534;margin-bottom:8px;font-family:Georgia,serif}
-.success-screen p{color:#555;font-size:13px;line-height:1.6;max-width:300px;margin:0 auto}
-
-/* Sig mode tabs */
-.sig-tabs{display:flex;gap:6px;margin-bottom:12px}
-.sig-tab{flex:1;padding:8px;background:#f5f5f0;border:1.5px solid #ddd;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;text-align:center;color:#888;transition:all 0.15s;font-family:inherit}
-.sig-tab.active{background:rgba(198,164,109,0.1);border-color:rgba(198,164,109,0.5);color:#8B6914}
-
-/* Checkbox */
-.check-row{display:flex;align-items:flex-start;gap:10px;padding:10px;background:#f9f8f5;border-radius:8px;margin-bottom:10px;cursor:pointer}
-.check-row input[type=checkbox]{width:18px;height:18px;flex-shrink:0;margin-top:1px;accent-color:#C6A46D;cursor:pointer}
-.check-row span{font-size:12px;color:#444;line-height:1.5}
+.success-screen p{color:#555;font-size:13px;line-height:1.7;max-width:320px;margin:0 auto}
 
 @media(max-width:480px){
   .wrap{padding:10px}
   .header{padding:18px 14px}
-  .card{padding:13px}
-  .consent-box{max-height:45vh}
+  .card,.consent-box,.sig-section{padding:13px}
 }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div id="app">
-    <div class="loading">
-      <div class="spinner"></div>
-      <div>Carregando contrato...</div>
-    </div>
-  </div>
-</div>
+<div class="wrap"><div id="app">
+  <div class="loading"><div class="spinner"></div><div>Carregando contrato...</div></div>
+</div></div>
 
 <script>
 const SUPABASE_URL      = 'https://dhgfoxdxihjkhzmctaea.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_tn4i8425nfjfR5gKkWFb-A_wNwBd6Ec';
-
 const _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ── helpers ──────────────────────────────────────────────────────
 function fmt(v){return Number(v||0).toLocaleString("pt-BR",{minimumFractionDigits:2});}
-function getIdFromUrl(){
-  const p=new URLSearchParams(location.search);
-  return p.get("id")||p.get("token")||"";
-}
 function el(id){return document.getElementById(id);}
+function getIdFromUrl(){return new URLSearchParams(location.search).get("id")||"";}
 
-// ── Signature Pad ────────────────────────────────────────────────
-let _sigDone=false;
+// ── Signature Pad ───────────────────────────────────────────────
+let _padApi=null;
 function initPad(canvasId,doneBtnId){
-  const cv=el(canvasId);if(!cv)return;
-  cv.width=cv.offsetWidth*window.devicePixelRatio||600;
-  cv.height=120*window.devicePixelRatio||240;
+  const cv=el(canvasId);if(!cv)return null;
+  const dpr=window.devicePixelRatio||1;
+  cv.width=cv.offsetWidth*dpr||600;
+  cv.height=120*dpr;
   cv.style.height="120px";
   const ctx=cv.getContext("2d");
-  ctx.scale(window.devicePixelRatio||1,window.devicePixelRatio||1);
-  ctx.strokeStyle="#1a1a1a";ctx.lineWidth=2;ctx.lineJoin="round";ctx.lineCap="round";
+  ctx.scale(dpr,dpr);
+  ctx.strokeStyle="#1a1a1a";ctx.lineWidth=2.2;ctx.lineJoin="round";ctx.lineCap="round";
   let drawing=false,hasDraw=false;
   const gxy=(e,c)=>{const r=c.getBoundingClientRect(),s=e.touches?e.touches[0]:e;
-    return[(s.clientX-r.left)*(c.width/r.width/window.devicePixelRatio),(s.clientY-r.top)*(c.height/r.height/window.devicePixelRatio)];};
+    return[(s.clientX-r.left)*(c.width/r.width/dpr),(s.clientY-r.top)*(c.height/r.height/dpr)];};
   const start=e=>{e.preventDefault();drawing=true;const[x,y]=gxy(e,cv);ctx.beginPath();ctx.moveTo(x,y);};
-  const move=e=>{e.preventDefault();if(!drawing)return;const[x,y]=gxy(e,cv);ctx.lineTo(x,y);ctx.stroke();hasDraw=true;_sigDone=true;const b=el(doneBtnId);if(b)b.style.display="flex";};
+  const move=e=>{e.preventDefault();if(!drawing)return;const[x,y]=gxy(e,cv);ctx.lineTo(x,y);ctx.stroke();hasDraw=true;const b=el(doneBtnId);if(b)b.style.display="flex";};
   const end=e=>{e.preventDefault();drawing=false;ctx.beginPath();};
   cv.addEventListener("mousedown",start);cv.addEventListener("mousemove",move);cv.addEventListener("mouseup",end);
   cv.addEventListener("touchstart",start,{passive:false});cv.addEventListener("touchmove",move,{passive:false});cv.addEventListener("touchend",end,{passive:false});
-  window["clearPad_"+canvasId]=function(){ctx.clearRect(0,0,cv.width/window.devicePixelRatio,cv.height/window.devicePixelRatio);hasDraw=false;_sigDone=false;const b=el(doneBtnId);if(b)b.style.display="none";};
-  return {getImg:()=>hasDraw?cv.toDataURL("image/png"):null};
-}
-let _padApi=null;
-
-// ── Render ────────────────────────────────────────────────────────
-function renderError(msg){
-  el("app").innerHTML=`<div class="header"><h1>ROF™</h1><div class="sub">Sistema Odontológico</div></div>
-  <div class="alert alert-err" style="margin-top:12px">⚠️ ${msg}</div>
-  <div style="text-align:center;padding:20px;color:#aaa;font-size:12px">Se o problema persistir, entre em contato com a clínica.</div>`;
-}
-
-function renderSuccess(ptName){
-  el("app").innerHTML=`<div class="header"><h1>ROF™</h1><div class="sub">Sistema Odontológico</div></div>
-  <div class="success-screen">
-    <div class="icon">✅</div>
-    <h2>Contrato Assinado!</h2>
-    <p>Obrigado, <b>${ptName}</b>! Sua assinatura digital foi registrada com segurança.<br/><br/>A Dra. Rossana receberá a confirmação automaticamente. Qualquer dúvida, entre em contato com a clínica.</p>
-    <div style="margin-top:24px;padding:14px;background:rgba(34,197,94,0.07);border-radius:10px;border:1px solid rgba(34,197,94,0.2)">
-      <div style="font-size:12px;color:#166534">🔒 Assinatura registrada com data, hora e dados de acesso seguros.</div>
-    </div>
-  </div>`;
-}
-
-function renderAlreadySigned(ptName){
-  el("app").innerHTML=`<div class="header"><h1>ROF™</h1><div class="sub">Sistema Odontológico</div></div>
-  <div class="success-screen">
-    <div class="icon">✅</div>
-    <h2>Já Assinado</h2>
-    <p>Este contrato já foi assinado por <b>${ptName}</b>.<br/>Entre em contato com a clínica se tiver dúvidas.</p>
-  </div>`;
-}
-
-function buildConsentHtml(tipo, d){
-  const procs=(d.etapas||[]).map((e,i)=>`<li>${e.proc||"Procedimento"}${e.valor?` — R$ ${fmt(e.valor)}`:""}</li>`).join("");
-  const pgtoDesc=d.forma==="Parcelado"&&d.total>0
-    ?`${d.parcelas}x de R$ ${fmt(d.total/d.parcelas)} (total R$ ${fmt(d.total)})`
-    :`${d.forma||"À vista"} — R$ ${fmt(d.total)}`;
-  const prazoBruto=d.prazo?`${d.prazo} meses`:"a definir";
-
-  let tipoTitle="CONTRATO DE PRESTAÇÃO DE SERVIÇOS ODONTOLÓGICOS";
-  let tipoSpecific="";
-
-  if(tipo==="Implante"){
-    tipoTitle="TERMO DE CONSENTIMENTO INFORMADO — CIRURGIA DE IMPLANTE OSSEOINTEGRADO";
-    tipoSpecific=`
-    <h3>Informações sobre o Procedimento</h3>
-    <p>O implante dentário osseointegrado é um dispositivo de titânio inserido cirurgicamente no osso alveolar, servindo de raiz artificial para suporte de coroa, prótese parcial ou total. O processo de osseointegração (fusão do implante ao osso) leva de 3 a 6 meses.</p>
-
-    <h3>Riscos e Intercorrências Possíveis</h3>
-    <ul>
-      <li><b>Falha na osseointegração</b> (5 a 10% dos casos): pode exigir remoção e novo implante após cicatrização.</li>
-      <li>Dor, edema e hematoma no pós-operatório (normal e esperado).</li>
-      <li>Infecção local (peri-implantite) caso as orientações de higiene não sejam seguidas.</li>
-      <li>Sensibilidade ou alteração temporária de sensibilidade na região operada.</li>
-      <li>Reabsorção óssea marginal ao redor do implante ao longo do tempo.</li>
-      <li>Necessidade de enxerto ósseo prévio caso o volume ósseo seja insuficiente.</li>
-      <li>Em casos raros: comunicação com seio maxilar (implantes superiores posteriores).</li>
-    </ul>
-
-    <h3>Fatores que Aumentam o Risco de Falha</h3>
-    <ul>
-      <li>Tabagismo — reduz significativamente a taxa de sucesso.</li>
-      <li>Diabetes não controlada.</li>
-      <li>Osteoporose e uso de bifosfonatos.</li>
-      <li>Higiene bucal inadequada.</li>
-      <li>Ausência de comparecimento às consultas de acompanhamento.</li>
-    </ul>
-
-    <h3>Cuidados Pós-operatórios Obrigatórios</h3>
-    <ul>
-      <li>Repouso nas primeiras 24h; evitar esforço físico por 72h.</li>
-      <li>Aplicar compressas frias nas primeiras 24h (gelo protegido com pano).</li>
-      <li>Dieta líquida/pastosa fria nos primeiros dias.</li>
-      <li>Não fumar por no mínimo 30 dias.</li>
-      <li>Tomar os medicamentos prescritos rigorosamente.</li>
-      <li>Higiene suave na região cirúrgica conforme orientação.</li>
-    </ul>
-
-    <h3>Responsabilidade Financeira em caso de Intercorrência</h3>
-    <p>A falha na osseointegração, quando comprovada, poderá ser corrigida com novo implante mediante novo orçamento, salvo disposição específica em contrato. A Contratada empregará todos os recursos disponíveis para o sucesso do tratamento, mas não pode garantir resultados absolutos em razão da resposta biológica individual.</p>`;
-  } else if(tipo==="Protese"){
-    tipoTitle="TERMO DE CONSENTIMENTO INFORMADO — PRÓTESE DENTÁRIA";
-    tipoSpecific=`
-    <h3>Informações sobre o Procedimento</h3>
-    <p>As próteses dentárias (coroas, facetas, pontes, próteses sobre implante, próteses removíveis) visam restaurar função mastigatória, estética e fonação. O resultado estético é personalizado e pode exigir ajustes até a adaptação ideal.</p>
-
-    <h3>Limitações e Expectativas Realistas</h3>
-    <ul>
-      <li>A seleção de cor é realizada com guias padronizados, mas pode haver variação entre a cor aprovada e o resultado final em boca, dada a influência da iluminação e tecidos adjacentes.</li>
-      <li>Ajustes de oclusão (mordida) são comuns e esperados nas consultas iniciais.</li>
-      <li>Facetas de porcelana podem apresentar pequenas trincas ou lascamento em situações de trauma ou hábitos parafuncionais (bruxismo).</li>
-      <li>Próteses removíveis requerem período de adaptação de semanas a meses.</li>
-      <li>Reabsorção óssea progressiva pode alterar o assentamento de próteses totais ao longo dos anos.</li>
-    </ul>
-
-    <h3>Riscos</h3>
-    <ul>
-      <li>Sensibilidade dentinária temporária após preparo dos dentes (esperado e transitório).</li>
-      <li>Necessidade de tratamento endodôntico (canal) caso o dente não suporte o preparo — situação incomum porém possível.</li>
-      <li>Descimentação da prótese — requer recimentação sem custo adicional dentro do período de garantia.</li>
-      <li>Fratura da peça protética por trauma ou bruxismo — avaliação individual de cobertura.</li>
-    </ul>
-
-    <h3>Cuidados e Manutenção</h3>
-    <ul>
-      <li>Higiene cuidadosa com escova macia e fio dental.</li>
-      <li>Uso de placa de bruxismo se indicado.</li>
-      <li>Evitar morder objetos duros (unhas, canetas, gelo).</li>
-      <li>Retornos de manutenção semestrais obrigatórios.</li>
-    </ul>
-
-    <h3>Garantia</h3>
-    <p>A prótese tem garantia de reajuste e recimentação (se aplicável) por 12 meses a partir da entrega, desde que os cuidados acima sejam seguidos e o paciente compareça às consultas de manutenção.</p>`;
-  }
-
-  return `<div class="consent-box" id="consent-scroll">
-    <h2>${tipoTitle}</h2>
-
-    <h3>Cláusula 1ª — Das Partes</h3>
-    <p><b>CONTRATANTE:</b> ${d.ptName||"___"} — CPF: ${d.ptCpf||"___"} — Tel: ${d.ptPhone||"___"}<br/>
-    Endereço: ${d.ptEnd||"___"}</p>
-    <p style="margin-top:6px"><b>CONTRATADA:</b> ${d.drName||"Dra. Rossana Batista Fucks"} — ${d.drCro||"CRO/SC 21403"}<br/>
-    CPF: ${d.drCpf||"546.313.190-20"}<br/>
-    ${d.drEnd||"R. 220, nº 200 - Sala 02 - Edif. Paris, Meia Praia — Itapema/SC"}</p>
-
-    <h3>Cláusula 2ª — Objeto e Procedimentos</h3>
-    <ul>${procs||"<li>A definir</li>"}</ul>
-
-    <h3>Cláusula 3ª — Prazo de Execução</h3>
-    <p>Os serviços serão executados em aproximadamente <b>${prazoBruto}</b>, podendo ser prorrogado conforme complexidade do caso, resposta biológica individual, assiduidade às consultas e cumprimento das orientações.</p>
-
-    <h3>Cláusula 4ª — Preço e Condições de Pagamento</h3>
-    ${d.desconto>0?`<p>Valor bruto: R$ ${fmt(d.subtotal)} — Desconto: − R$ ${fmt(d.desconto)}</p>`:""}
-    <p><b>Valor total: R$ ${fmt(d.total)}</b><br/>
-    Forma de pagamento: <b>${pgtoDesc}</b>${d.obs?`<br/>${d.obs}`:""}</p>
-
-    <h3>Cláusula 5ª — Multas e Encargos por Atraso</h3>
-    <p>Valores vencidos e não pagos ficam sujeitos a: <b>atualização monetária</b> pelo IPCA; <b>multa moratória de 2%</b>; e <b>juros de mora de 0,1% ao dia</b>. No parcelamento, os juros legais de 1% a.m. estão inclusos nas parcelas. A inadimplência superior a 30 dias autoriza a suspensão dos procedimentos até a regularização.</p>
-
-    <h3>Cláusula 6ª — Obrigações do Contratante</h3>
-    <ul>
-      <li>Prestar informações verdadeiras na anamnese, especialmente sobre saúde e medicamentos em uso.</li>
-      <li>Comparecer pontualmente às consultas. Cancelamentos com menos de 24h de antecedência sujeitam-se à cobrança da consulta.</li>
-      <li>Seguir rigorosamente as prescrições e orientações fornecidas pela Contratada.</li>
-      <li>Comunicar insatisfações ou intercorrências imediatamente.</li>
-      <li>Manter dados cadastrais e de contato sempre atualizados.</li>
-    </ul>
-
-    <h3>Cláusula 7ª — Obrigações da Contratada</h3>
-    <ul>
-      <li>Empregar técnicas atualizadas e materiais de qualidade comprovada.</li>
-      <li>Informar ao Contratante sobre evolução do tratamento e eventuais intercorrências.</li>
-      <li>Guardar sigilo das informações clínicas, respeitando o Código de Ética Odontológica e a LGPD (Lei nº 13.709/2018).</li>
-      <li>Fornecer receitas, atestados e documentação clínica quando necessário.</li>
-    </ul>
-
-    ${tipoSpecific}
-
-    <h3>Cláusula 8ª — Fotografias e Imagens Clínicas</h3>
-    <p>O(a) Contratante autoriza a Contratada a registrar imagens fotográficas e radiológicas para fins clínicos e de documentação. O uso para fins de divulgação (redes sociais, material educativo) depende de autorização específica e separada.</p>
-
-    <h3>Cláusula 9ª — Rescisão</h3>
-    <p>Qualquer das partes poderá rescindir este contrato mediante comunicação prévia de 15 dias. Em caso de rescisão pelo Contratante após início dos procedimentos, será devida a remuneração proporcional aos serviços já realizados.</p>
-
-    <h3>Cláusula 10ª — Validade Jurídica da Assinatura Digital</h3>
-    <p>As partes reconhecem que a assinatura digital coletada neste instrumento possui validade jurídica nos termos do art. 10 da MP 2.200-2/2001 e da Lei nº 14.063/2020, sendo suficiente para todos os fins legais. O registro de IP, data, hora e identificação do dispositivo ficam armazenados como prova de autenticidade.</p>
-
-    <h3>Cláusula 11ª — Foro</h3>
-    <p>Fica eleito o Foro da Comarca de Itapema/SC para dirimir quaisquer controvérsias oriundas deste contrato.</p>
-
-    <p style="text-align:center;margin-top:18px;color:#888;font-size:11px">Itapema/SC, ${new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"})}</p>
-  </div>`;
-}
-
-function buildSigningForm(d, intakeId){
-  const today=new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"});
-  return `
-    <div class="sig-section">
-      <div class="sig-title">✍️ Assinatura Digital do Paciente</div>
-
-      <div class="alert alert-info">
-        📖 Role para ler o contrato acima antes de assinar. Ao assinar você declara ter lido, compreendido e concordado com todas as cláusulas.
-      </div>
-
-      <input id="sig-nome" class="inp" placeholder="Nome completo (igual ao documento)" autocomplete="name"/>
-      <input id="sig-cpf" class="inp" placeholder="CPF (ex: 123.456.789-00)" autocomplete="off" inputmode="numeric"/>
-
-      <div class="sig-tabs">
-        <button class="sig-tab active" id="tab-draw" onclick="switchSigTab('draw')">✍️ Desenhar</button>
-        <button class="sig-tab" id="tab-type" onclick="switchSigTab('type')">⌨️ Digitar nome</button>
-      </div>
-
-      <div id="sig-draw-area">
-        <div style="font-size:11px;color:#888;margin-bottom:6px;text-align:center">Assine com o dedo ou mouse</div>
-        <canvas id="sig-canvas"></canvas>
-        <div class="btn-row">
-          <button class="btn-clear" onclick="clearPad_sig-canvas()">🗑 Limpar</button>
-          <button class="btn-ok" id="sig-ok-btn">✅ Assinatura registrada</button>
-        </div>
-      </div>
-
-      <div id="sig-type-area" style="display:none">
-        <input id="sig-typed" class="inp" placeholder="Digite seu nome para assinar..." style="font-family:cursive;font-size:18px;color:#8B6914"/>
-      </div>
-
-      <label class="check-row">
-        <input type="checkbox" id="sig-agree"/>
-        <span>Li e concordo com todas as cláusulas do contrato acima. Compreendo os procedimentos, riscos, valores e condições de pagamento.</span>
-      </label>
-
-      <button id="btn-submit" class="btn-submit" onclick="submitAssinatura('${intakeId}','${d.ptName||""}')" disabled>
-        ✅ Assinar e Enviar Contrato
-      </button>
-
-      <div style="text-align:center;margin-top:10px;font-size:10px;color:#aaa">
-        🔒 Sua assinatura é registrada com segurança — data, hora e identificação do dispositivo ficam armazenados.<br/>
-        Este documento tem validade jurídica conforme Lei 14.063/2020.
-      </div>
-    </div>`;
+  window["clearPad_"+canvasId]=()=>{ctx.clearRect(0,0,cv.width/dpr,cv.height/dpr);hasDraw=false;const b=el(doneBtnId);if(b)b.style.display="none";};
+  return{getImg:()=>hasDraw?cv.toDataURL("image/png"):null};
 }
 
 window.switchSigTab=function(tab){
@@ -377,156 +134,298 @@ function enableSubmitCheck(){
   btn.disabled=!(nome.length>2&&agree);
 }
 
-window.submitAssinatura=async function(intakeId, ptName){
+window.submitAssinatura=async function(intakeId,ptName){
   const nome=(el("sig-nome")?.value||"").trim();
   const cpf=(el("sig-cpf")?.value||"").trim();
   const agree=el("sig-agree")?.checked;
-
   if(!nome){alert("Por favor, insira seu nome completo.");el("sig-nome").focus();return;}
-  if(!agree){alert("Você precisa confirmar que leu e concordou com o contrato.");return;}
+  if(!agree){alert("Você precisa confirmar que leu e concordou com todo o contrato.");return;}
 
-  // Captura assinatura
-  const drawArea=el("sig-draw-area");
-  const typeArea=el("sig-type-area");
-  const isType=typeArea&&typeArea.style.display!=="none";
-  let sigCanvas=null, sigTyped=null;
-  if(isType){
-    sigTyped=(el("sig-typed")?.value||"").trim()||nome;
-  } else {
-    sigCanvas=_padApi?_padApi.getImg():null;
-    if(!sigCanvas){
-      // Ainda assim aceita se não desenhou — usará nome tipado
-      sigTyped=nome;
-    }
-  }
+  const isType=el("sig-type-area")&&el("sig-type-area").style.display!=="none";
+  const sigCanvas=(!isType&&_padApi)?_padApi.getImg():null;
+  const sigTyped=isType?(el("sig-typed")?.value||"").trim()||nome:null;
 
   const btn=el("btn-submit");
   if(btn){btn.disabled=true;btn.textContent="Enviando...";}
-
   try{
-    const {error}=await _sb.from("rof_intake").update({
-      status:"submitted",
-      submitted_at:new Date().toISOString(),
-      data:_sb.rpc?undefined:undefined // handled below
-    }).eq("id",intakeId);
-
-    // Update data field separately to merge signature
     const {data:row}=await _sb.from("rof_intake").select("data").eq("id",intakeId).single();
     const merged=Object.assign({},row?.data||{},{
-      sigCanvas,
-      sigTyped,
-      sigNome:nome,
-      sigCpf:cpf,
+      sigCanvas,sigTyped,sigNome:nome,sigCpf:cpf,
       assinadoEm:new Date().toISOString(),
       sigUserAgent:navigator.userAgent
     });
-    await _sb.from("rof_intake").update({
-      status:"submitted",
-      submitted_at:new Date().toISOString(),
-      data:merged
+    const {error}=await _sb.from("rof_intake").update({
+      status:"submitted",submitted_at:new Date().toISOString(),data:merged
     }).eq("id",intakeId);
-
-    renderSuccess(ptName);
+    if(error)throw error;
+    el("app").innerHTML=`<div class="header"><h1>ROF™</h1><div class="sub">Clínica Odontológica</div><div class="clinic">Dra. Rossana Batista Fucks — CRO/SC 21403</div></div>
+    <div class="success-screen">
+      <div class="icon">✅</div>
+      <h2>Contrato Assinado!</h2>
+      <p>Obrigado, <b>${ptName}</b>!<br/><br/>Sua assinatura digital foi registrada com segurança. A Dra. Rossana receberá a confirmação automaticamente.<br/><br/>Qualquer dúvida, entre em contato com a clínica. 🦷</p>
+      <div style="margin-top:22px;padding:14px;background:rgba(34,197,94,0.07);border-radius:10px;border:1px solid rgba(34,197,94,0.2)">
+        <div style="font-size:11px;color:#166534">🔒 Registro: ${new Date().toLocaleString("pt-BR")} — dados de acesso armazenados com segurança.</div>
+      </div>
+    </div>`;
   }catch(e){
     console.error(e);
     if(btn){btn.disabled=false;btn.textContent="✅ Assinar e Enviar Contrato";}
-    alert("Erro ao enviar assinatura. Verifique sua conexão e tente novamente.\n\n"+((e&&e.message)||""));
+    alert("Erro ao enviar. Verifique sua conexão e tente novamente.\n\n"+((e&&e.message)||""));
   }
 };
 
-// ── Main ──────────────────────────────────────────────────────────
+// ── Build full unified contract HTML ───────────────────────────
+function buildContract(d){
+  const etapas=d.etapas||[];
+  const procsHtml=etapas.length>0
+    ?etapas.map(e=>`<div class="proc-row"><span class="proc-name">${e.proc||"Procedimento"}</span><span class="proc-val">R$ ${fmt(e.valor)}</span></div>`).join("")
+      +(d.desconto>0
+        ?`<div class="proc-row"><span class="proc-name" style="font-size:11px;color:#aaa">Subtotal</span><span class="proc-val" style="font-size:11px;color:#aaa">R$ ${fmt(d.subtotal)}</span></div>
+           <div class="proc-row"><span class="proc-name" style="font-size:11px;color:#b91c1c">Desconto</span><span class="proc-val" style="font-size:11px;color:#b91c1c">− R$ ${fmt(d.desconto)}</span></div>`
+        :"")
+    :`<div style="color:#aaa;font-size:12px;padding:8px 0">A definir</div>`;
+
+  const pgtoDesc=d.forma==="Parcelado"&&d.total>0
+    ?`${d.parcelas}x de R$ ${fmt(d.total/d.parcelas)} (total R$ ${fmt(d.total)})`
+    :`${d.forma||"À vista"} — R$ ${fmt(d.total)}`;
+
+  const hoje=new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"});
+
+  return`
+  <div class="card">
+    <div class="card-title">Dados do Paciente (Contratante)</div>
+    <div class="field"><label>Nome completo</label><value>${d.ptName||"—"}</value></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">
+      <div class="field"><label>CPF</label><value>${d.ptCpf||"—"}</value></div>
+      <div class="field"><label>RG</label><value>${d.ptRg||"—"}</value></div>
+    </div>
+    <div class="field"><label>Telefone</label><value>${d.ptPhone||"—"}</value></div>
+    ${d.ptEnd?`<div class="field"><label>Endereço</label><value>${d.ptEnd}</value></div>`:""}
+  </div>
+
+  <div class="card">
+    <div class="card-title">Procedimentos Contratados</div>
+    ${procsHtml}
+    <div class="total-row">
+      <span class="total-label">TOTAL</span>
+      <span class="total-val">R$ ${fmt(d.total)}</span>
+    </div>
+    <div style="margin-top:10px;padding:9px 11px;background:#faf9f6;border-radius:8px;border:1px solid #ede9e0">
+      <div style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Pagamento</div>
+      <div style="font-size:13px;font-weight:700;color:#333">${pgtoDesc}</div>
+      ${d.obs?`<div style="font-size:11px;color:#888;margin-top:3px">${d.obs}</div>`:""}
+    </div>
+    ${d.prazo?`<div style="margin-top:7px;font-size:11px;color:#888">⏱ Prazo estimado: ${d.prazo} meses</div>`:""}
+  </div>
+
+  <div class="consent-box">
+    <h2>CONTRATO DE PRESTAÇÃO DE SERVIÇOS ODONTOLÓGICOS<br/>E TERMOS DE CONSENTIMENTO INFORMADO</h2>
+    <div class="doc-sub">Clínica Dra. Rossana Batista Fucks — CRO/SC 21403</div>
+
+    <h3>Cláusula 1ª — Das Partes</h3>
+    <p><b>CONTRATANTE:</b> ${d.ptName||"___"}, CPF: ${d.ptCpf||"___"}, Tel: ${d.ptPhone||"___"}<br/>
+    ${d.ptEnd?`Endereço: ${d.ptEnd}<br/>`:""}
+    <b>CONTRATADA:</b> ${d.drName||"Dra. Rossana Batista Fucks"}, ${d.drCro||"CRO/SC 21403"}, CPF: ${d.drCpf||"546.313.190-20"}<br/>
+    ${d.drEnd||"R. 220, nº 200 - Sala 02 - Edif. Paris, Meia Praia — Itapema/SC"}</p>
+
+    <h3>Cláusula 2ª — Procedimentos Contratados</h3>
+    <ul>${etapas.length>0?etapas.map(e=>`<li>${e.proc||"Procedimento"}${e.valor?` — R$ ${fmt(e.valor)}`:""}</li>`).join(""):"<li>A definir</li>"}</ul>
+
+    <h3>Cláusula 3ª — Prazo de Execução</h3>
+    <p>Os serviços serão executados em aproximadamente <b>${d.prazo?d.prazo+" meses":"a definir"}</b>, podendo ser prorrogado conforme complexidade do caso, resposta biológica individual e assiduidade às consultas.</p>
+
+    <h3>Cláusula 4ª — Preço e Condições de Pagamento</h3>
+    ${d.desconto>0?`<p>Valor bruto: R$ ${fmt(d.subtotal)} — Desconto: − R$ ${fmt(d.desconto)}</p>`:""}
+    <p><b>Valor total: R$ ${fmt(d.total)}</b><br/>Forma de pagamento: <b>${pgtoDesc}</b>${d.obs?`<br/>${d.obs}`:""}</p>
+
+    <h3>Cláusula 5ª — Multas e Encargos por Atraso</h3>
+    <p>Valores vencidos ficam sujeitos a: atualização monetária pelo IPCA; <b>multa moratória de 2%</b>; e <b>juros de mora de 0,1% ao dia</b>. No parcelamento, juros legais de 1% a.m. já inclusos nas parcelas. Inadimplência superior a 30 dias autoriza suspensão dos procedimentos até regularização.</p>
+
+    <h3>Cláusula 6ª — Obrigações do Contratante</h3>
+    <ul>
+      <li>Prestar informações verdadeiras na anamnese, especialmente sobre saúde e medicamentos em uso.</li>
+      <li>Comparecer pontualmente. Cancelamentos com menos de 24h sujeitam-se à cobrança da consulta.</li>
+      <li>Seguir rigorosamente as prescrições e orientações da Contratada.</li>
+      <li>Comunicar insatisfações ou intercorrências imediatamente.</li>
+      <li>Manter dados cadastrais e de contato sempre atualizados.</li>
+    </ul>
+
+    <h3>Cláusula 7ª — Obrigações da Contratada</h3>
+    <ul>
+      <li>Empregar técnicas atualizadas e materiais de qualidade comprovada.</li>
+      <li>Manter sigilo das informações clínicas (Código de Ética e LGPD — Lei nº 13.709/2018).</li>
+      <li>Informar o Contratante sobre evolução e eventuais intercorrências do tratamento.</li>
+      <li>Fornecer receitas, atestados e documentação clínica quando necessário.</li>
+    </ul>
+
+    <h3>Cláusula 8ª — Fotografias e Imagens Clínicas</h3>
+    <p>O Contratante autoriza registros fotográficos e radiológicos para fins clínicos e documentação. O uso para divulgação requer autorização separada e específica.</p>
+
+    <h3>Cláusula 9ª — Rescisão</h3>
+    <p>Qualquer das partes pode rescindir mediante aviso de 15 dias. Rescisão pelo Contratante após início dos procedimentos: remuneração proporcional ao já realizado.</p>
+
+    <!-- ══ IMPLANTE ══════════════════════════════════════════════ -->
+    <hr class="section-divider"/>
+    <div class="section-title">🦷 Termo de Consentimento — Cirurgia de Implante Osseointegrado</div>
+
+    <h3>O Procedimento</h3>
+    <p>O implante dentário osseointegrado é um dispositivo de titânio inserido cirurgicamente no osso alveolar, servindo de raiz artificial para suporte de coroa, prótese parcial ou total. A osseointegração (fusão implante/osso) leva de 3 a 6 meses.</p>
+
+    <h3>Riscos e Possíveis Intercorrências</h3>
+    <ul>
+      <li><b>Falha na osseointegração</b> (5–10% dos casos): pode exigir remoção e novo implante após cicatrização.</li>
+      <li>Dor, edema e hematoma pós-operatórios (esperados e transitórios).</li>
+      <li>Infecção local (peri-implantite) se higiene inadequada.</li>
+      <li>Sensibilidade ou alteração temporária de sensibilidade na região.</li>
+      <li>Reabsorção óssea marginal ao redor do implante ao longo do tempo.</li>
+      <li>Possível necessidade de enxerto ósseo prévio se volume ósseo insuficiente.</li>
+      <li>Em casos raros: comunicação com seio maxilar (implantes superiores posteriores).</li>
+    </ul>
+
+    <h3>Fatores que Aumentam o Risco de Falha</h3>
+    <ul>
+      <li>Tabagismo — reduz significativamente a taxa de sucesso.</li>
+      <li>Diabetes não controlada e osteoporose.</li>
+      <li>Uso de bifosfonatos ou medicamentos que afetam o metabolismo ósseo.</li>
+      <li>Higiene bucal inadequada e ausência às consultas de acompanhamento.</li>
+    </ul>
+
+    <h3>Cuidados Pós-operatórios Obrigatórios</h3>
+    <ul>
+      <li>Repouso nas primeiras 24h; evitar esforço físico por 72h.</li>
+      <li>Compressas frias nas primeiras 24h (gelo protegido com pano).</li>
+      <li>Dieta líquida/pastosa fria nos primeiros dias.</li>
+      <li>Não fumar por no mínimo 30 dias.</li>
+      <li>Tomar os medicamentos prescritos rigorosamente e no horário.</li>
+      <li>Higiene suave na região cirúrgica conforme orientação recebida.</li>
+    </ul>
+
+    <h3>Responsabilidade em Caso de Falha</h3>
+    <p>A falha na osseointegração, quando comprovada, poderá ser corrigida com novo implante mediante novo orçamento. A Contratada emprega todos os recursos disponíveis, mas não pode garantir resultados absolutos em razão da resposta biológica individual.</p>
+
+    <!-- ══ PRÓTESE ════════════════════════════════════════════════ -->
+    <hr class="section-divider"/>
+    <div class="section-title">💎 Termo de Consentimento — Prótese Dentária</div>
+
+    <h3>O Procedimento</h3>
+    <p>Próteses dentárias (coroas, facetas, pontes, próteses sobre implante, próteses removíveis) visam restaurar função mastigatória, estética e fonação. O resultado estético é personalizado e pode exigir ajustes até a adaptação ideal.</p>
+
+    <h3>Limitações e Expectativas</h3>
+    <ul>
+      <li>A seleção de cor é realizada com guias padronizados; pode haver variação entre a cor aprovada e o resultado final em boca conforme iluminação e tecidos adjacentes.</li>
+      <li>Ajustes de oclusão (mordida) são comuns e esperados nas consultas iniciais.</li>
+      <li>Facetas de porcelana podem apresentar trincas ou lascamento em traumas ou bruxismo.</li>
+      <li>Próteses removíveis requerem período de adaptação de semanas a meses.</li>
+      <li>Reabsorção óssea progressiva pode alterar o assentamento de próteses totais ao longo dos anos.</li>
+    </ul>
+
+    <h3>Riscos</h3>
+    <ul>
+      <li>Sensibilidade dentinária temporária após preparo dos dentes (esperado e transitório).</li>
+      <li>Necessidade de tratamento endodôntico (canal) caso o dente não suporte o preparo — situação incomum mas possível.</li>
+      <li>Descimentação da prótese — recimentação sem custo adicional no período de garantia.</li>
+      <li>Fratura da peça por trauma ou bruxismo — avaliação individual de cobertura.</li>
+    </ul>
+
+    <h3>Cuidados e Manutenção</h3>
+    <ul>
+      <li>Higiene cuidadosa com escova macia e fio dental.</li>
+      <li>Uso de placa de bruxismo se indicado.</li>
+      <li>Evitar morder objetos duros (unhas, canetas, gelo, embalagens).</li>
+      <li>Retornos de manutenção semestrais obrigatórios.</li>
+    </ul>
+
+    <h3>Garantia</h3>
+    <p>A prótese tem garantia de reajuste e recimentação (se aplicável) por 12 meses a partir da entrega, desde que os cuidados acima sejam seguidos e o paciente compareça às consultas de manutenção.</p>
+
+    <!-- ══ DISPOSIÇÕES FINAIS ════════════════════════════════════ -->
+    <hr class="section-divider"/>
+
+    <h3>Validade Jurídica da Assinatura Digital</h3>
+    <p>As partes reconhecem que a assinatura digital coletada possui validade jurídica nos termos do art. 10 da MP 2.200-2/2001 e da Lei nº 14.063/2020. O registro de IP, data, hora e identificação do dispositivo ficam armazenados como prova de autenticidade.</p>
+
+    <h3>Foro</h3>
+    <p>Fica eleito o Foro da Comarca de Itapema/SC para dirimir controvérsias oriundas deste contrato.</p>
+
+    <p style="text-align:center;margin-top:20px;color:#888;font-size:11px">Itapema/SC, ${hoje}</p>
+  </div>
+
+  <div class="sig-section">
+    <div class="sig-title">✍️ Assinatura Digital do Paciente</div>
+    <div class="alert alert-info">📖 Role para cima para ler o contrato completo antes de assinar. Ao assinar você declara ter lido, compreendido e concordado com todas as cláusulas acima.</div>
+
+    <input id="sig-nome" class="inp" placeholder="Nome completo (igual ao documento de identidade)" autocomplete="name"/>
+    <input id="sig-cpf" class="inp" placeholder="CPF (ex: 123.456.789-00)" inputmode="numeric"/>
+
+    <div class="sig-tabs">
+      <button class="sig-tab active" id="tab-draw" onclick="switchSigTab('draw')">✍️ Assinar com o dedo</button>
+      <button class="sig-tab" id="tab-type" onclick="switchSigTab('type')">⌨️ Digitar nome</button>
+    </div>
+
+    <div id="sig-draw-area">
+      <div style="font-size:11px;color:#888;text-align:center;margin-bottom:7px">Use o dedo para assinar no campo abaixo</div>
+      <canvas id="sig-canvas"></canvas>
+      <div class="btn-row">
+        <button class="btn-clear" onclick="clearPad_sig-canvas()">🗑 Limpar</button>
+        <button class="btn-ok" id="sig-ok-btn">✅ Assinatura registrada</button>
+      </div>
+    </div>
+
+    <div id="sig-type-area" style="display:none">
+      <input id="sig-typed" class="inp" placeholder="Digite seu nome completo para assinar..." style="font-family:cursive;font-size:18px;color:#8B6914"/>
+    </div>
+
+    <label class="check-row">
+      <input type="checkbox" id="sig-agree"/>
+      <span><b>Confirmo que li e concordo</b> com todas as cláusulas do Contrato de Prestação de Serviços, do Termo de Consentimento de Implante e do Termo de Consentimento de Prótese acima, incluindo os valores, formas de pagamento e multas contratuais.</span>
+    </label>
+
+    <button id="btn-submit" class="btn-submit" disabled>✅ Assinar e Enviar Contrato</button>
+
+    <div style="text-align:center;margin-top:10px;font-size:10px;color:#bbb">
+      🔒 Assinatura registrada com segurança — data, hora e dispositivo armazenados.<br/>
+      Validade jurídica conforme Lei 14.063/2020.
+    </div>
+  </div>`;
+}
+
+// ── Main ────────────────────────────────────────────────────────
 async function main(){
   const id=getIdFromUrl();
-  if(!id){renderError("Link inválido — nenhum identificador de contrato encontrado na URL.");return;}
-
+  if(!id){el("app").innerHTML=`<div class="header"><h1>ROF™</h1></div><div style="padding:30px;text-align:center;color:#888">⚠️ Link inválido — nenhum identificador encontrado.</div>`;return;}
   try{
     const {data:row,error}=await _sb.from("rof_intake").select("*").eq("id",id).single();
-    if(error||!row){renderError("Contrato não encontrado. O link pode ter expirado ou estar incorreto.");return;}
-
+    if(error||!row){el("app").innerHTML=`<div class="header"><h1>ROF™</h1></div><div style="padding:30px;text-align:center;color:#888">⚠️ Contrato não encontrado. O link pode ter expirado.</div>`;return;}
     if(row.status==="submitted"||row.status==="approved"){
-      renderAlreadySigned((row.data&&row.data.ptName)||"paciente");
+      const nm=(row.data&&row.data.ptName)||"paciente";
+      el("app").innerHTML=`<div class="header"><h1>ROF™</h1><div class="sub">Clínica Odontológica</div><div class="clinic">Dra. Rossana Batista Fucks — CRO/SC 21403</div></div>
+      <div class="success-screen"><div class="icon">✅</div><h2>Já Assinado</h2><p>Este contrato já foi assinado por <b>${nm}</b>.<br/>Entre em contato com a clínica se tiver dúvidas.</p></div>`;
       return;
     }
-
     const d=row.data||{};
-    const tipo=d.tipo||"Geral";
-
-    const tipoLabel=tipo==="Implante"?"Cirurgia de Implante Osseointegrado":tipo==="Protese"?"Prótese Dentária":"Prestação de Serviços Odontológicos";
-    const tipoColor=tipo==="Implante"?"#1e40af":tipo==="Protese"?"#5b21b6":"#8B6914";
-
-    // Build procedures HTML
-    const etapas=d.etapas||[];
-    const procsHtml=etapas.length>0
-      ?etapas.map(e=>`<div class="proc-row"><span class="proc-name">${e.proc||"Procedimento"}</span><span class="proc-val">R$ ${fmt(e.valor)}</span></div>`).join("")
-        +(d.desconto>0?`<div class="proc-row" style="color:#888"><span class="proc-name" style="font-size:12px">Subtotal</span><span class="proc-val" style="font-size:12px">R$ ${fmt(d.subtotal)}</span></div>
-          <div class="proc-row" style="color:#b91c1c"><span class="proc-name" style="font-size:12px">Desconto</span><span class="proc-val" style="font-size:12px;color:#b91c1c">− R$ ${fmt(d.desconto)}</span></div>`:"")
-      :`<div style="color:#aaa;font-size:12px;padding:8px 0">A definir</div>`;
-
-    const pgtoDesc=d.forma==="Parcelado"&&d.total>0
-      ?`${d.parcelas}x de R$ ${fmt(d.total/d.parcelas)}`
-      :`${d.forma||"À vista"}`;
-
     el("app").innerHTML=`
       <div class="header">
         <h1>ROF™</h1>
-        <div class="sub">Sistema Odontológico</div>
+        <div class="sub">Contrato & Consentimento</div>
         <div class="clinic">Dra. Rossana Batista Fucks — CRO/SC 21403</div>
-        <div style="margin-top:10px">
-          <span class="badge badge-pending">Aguardando sua assinatura</span>
-        </div>
+        <div style="margin-top:10px"><span class="badge badge-pending">Aguardando sua assinatura</span></div>
       </div>
+      ${buildContract(d)}`;
 
-      <div class="card">
-        <div class="card-title">Tipo de Contrato</div>
-        <div style="font-weight:700;font-size:14px;color:${tipoColor}">${tipoLabel}</div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Seus dados</div>
-        <div class="field"><label>Nome</label><value>${d.ptName||"—"}</value></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">
-          <div class="field"><label>CPF</label><value>${d.ptCpf||"—"}</value></div>
-          <div class="field"><label>Telefone</label><value>${d.ptPhone||"—"}</value></div>
-        </div>
-        ${d.ptEnd?`<div class="field"><label>Endereço</label><value>${d.ptEnd}</value></div>`:""}
-      </div>
-
-      <div class="card">
-        <div class="card-title">Procedimentos Contratados</div>
-        ${procsHtml}
-        <div class="total-row">
-          <span class="total-label">TOTAL</span>
-          <span class="total-val">R$ ${fmt(d.total)}</span>
-        </div>
-        <div style="margin-top:10px;padding:8px 10px;background:#faf9f6;border-radius:7px;border:1px solid #ede9e0">
-          <div style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Pagamento</div>
-          <div style="font-size:13px;font-weight:700;color:#444">${pgtoDesc}</div>
-          ${d.obs?`<div style="font-size:11px;color:#888;margin-top:3px">${d.obs}</div>`:""}
-        </div>
-        ${d.prazo?`<div style="margin-top:8px;font-size:11px;color:#888">⏱ Prazo estimado: ${d.prazo} meses</div>`:""}
-      </div>
-
-      ${buildConsentHtml(tipo, d)}
-
-      ${buildSigningForm(d, id)}
-    `;
-
-    // Init signature pad
+    // Wire up events
     setTimeout(()=>{
       _padApi=initPad("sig-canvas","sig-ok-btn");
-      // Enable/disable submit button
       el("sig-nome")?.addEventListener("input",enableSubmitCheck);
       el("sig-cpf")?.addEventListener("input",enableSubmitCheck);
       el("sig-agree")?.addEventListener("change",enableSubmitCheck);
       el("sig-typed")?.addEventListener("input",enableSubmitCheck);
-    },100);
-
+      el("btn-submit")?.addEventListener("click",()=>submitAssinatura(id,d.ptName||"paciente"));
+    },120);
   }catch(e){
     console.error(e);
-    renderError("Erro ao carregar o contrato: "+((e&&e.message)||"verifique sua conexão."));
+    el("app").innerHTML=`<div class="header"><h1>ROF™</h1></div><div style="padding:30px;text-align:center;color:#888">⚠️ Erro ao carregar: ${e.message||"verifique sua conexão."}</div>`;
   }
 }
-
 main();
 </script>
 </body>
