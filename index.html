@@ -3836,26 +3836,16 @@ function pageDashboard(){
       </div>
 
       <div class="dash-grid">
-        <section class="dash-panel">
-          <div class="dash-panel-head">
-            <div>
-              <div class="dash-panel-title">Próximas consultas</div>
-              <div class="dash-panel-sub">${upcomingDash.length} horários em destaque</div>
-            </div>
-            <button class="dash-mini-btn" onclick="go('agenda')">Agenda</button>
-          </div>
-          <div class="dash-panel-body">${upcomingHtmlDash}</div>
-        </section>
-
-        <div class="dash-stack">
+        <div style="display:flex;flex-direction:column;gap:14px">
           <section class="dash-panel">
             <div class="dash-panel-head">
               <div>
-                <div class="dash-panel-title">Aniversários</div>
-                <div class="dash-panel-sub">Esta semana</div>
+                <div class="dash-panel-title">Próximas consultas</div>
+                <div class="dash-panel-sub">${upcomingDash.length} horários em destaque</div>
               </div>
+              <button class="dash-mini-btn" onclick="go('agenda')">Agenda</button>
             </div>
-            <div class="dash-panel-body">${bdaysHtmlDash}</div>
+            <div class="dash-panel-body">${upcomingHtmlDash}</div>
           </section>
 
           <section class="dash-panel">
@@ -3873,6 +3863,16 @@ function pageDashboard(){
             </div>
           </section>
         </div>
+
+        <section class="dash-panel">
+          <div class="dash-panel-head">
+            <div>
+              <div class="dash-panel-title">Aniversários</div>
+              <div class="dash-panel-sub">Esta semana</div>
+            </div>
+          </div>
+          <div class="dash-panel-body">${bdaysHtmlDash}</div>
+        </section>
       </div>
     </div>`;
   }
