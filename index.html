@@ -1948,11 +1948,12 @@ function _doSearch(q){
   const ql=q.toLowerCase();
   let html="";
 
-  // Pacientes
-  const pts=(ST.pts||[]).filter(p=>!q||p.name.toLowerCase().includes(ql)||(p.phone||"").includes(ql));
-  if(pts.length){
+  // Pacientes — ordenados por relevância, sem limite
+  const ptsAll=(ST.pts||[]).filter(p=>!q||p.name.toLowerCase().includes(ql)||(p.phone||"").includes(ql))
+    .sort((a,b)=>{if(!q)return(a.name||"").localeCompare(b.name||"","pt-BR");const as=a.name.toLowerCase().startsWith(ql),bs=b.name.toLowerCase().startsWith(ql);if(as&&!bs)return -1;if(!as&&bs)return 1;return(a.name||"").localeCompare(b.name||"","pt-BR");});
+  if(ptsAll.length){
     html+=`<div class="srch-sec">Pacientes</div>`;
-    html+=pts.slice(0,4).map(p=>`<div class="srch-row" onclick="document.getElementById('rof-search-ov').remove();openPt(${jsArg(p.id)},'info')">
+    html+=ptsAll.slice(0,8).map(p=>`<div class="srch-row" onclick="document.getElementById('rof-search-ov').remove();openPt(${jsArg(p.id)},'info')">
       ${ptAvatar(p.name,28)}
       <div class="srch-row-main">
         <div class="srch-row-title">${p.name}</div>
@@ -1961,11 +1962,11 @@ function _doSearch(q){
     </div>`).join("");
   }
 
-  // Consultas (próximas 10 com match)
+  // Consultas — sem limite rígido
   const apts=(ST.apts||[]).filter(a=>!q||a.patient.toLowerCase().includes(ql)||(PROCS.find(p=>p.id===a.procId)?.n||"").toLowerCase().includes(ql));
   if(apts.length){
     html+=`<div class="srch-sec">Consultas</div>`;
-    html+=apts.slice(0,4).map(a=>{
+    html+=apts.slice(0,6).map(a=>{
       const pr=PROCS.find(p=>p.id===a.procId);
       return`<div class="srch-row" onclick="document.getElementById('rof-search-ov').remove();set({page:'agenda',agDate:'${a.date}'})">
         <div class="srch-row-ic">📅</div>
@@ -1978,11 +1979,12 @@ function _doSearch(q){
     }).join("");
   }
 
-  // Procedimentos
-  const procs=(PROCS||[]).filter(p=>!q||p.n.toLowerCase().includes(ql)||p.c.toLowerCase().includes(ql));
-  if(procs.length){
+  // Procedimentos — ordenados por relevância, sem limite
+  const procsAll=(PROCS||[]).filter(p=>!q||p.n.toLowerCase().includes(ql)||p.c.toLowerCase().includes(ql))
+    .sort((a,b)=>{if(!q)return(a.n||"").localeCompare(b.n||"","pt-BR");const as=a.n.toLowerCase().startsWith(ql),bs=b.n.toLowerCase().startsWith(ql);if(as&&!bs)return -1;if(!as&&bs)return 1;return(a.n||"").localeCompare(b.n||"","pt-BR");});
+  if(procsAll.length){
     html+=`<div class="srch-sec">Procedimentos</div>`;
-    html+=procs.slice(0,3).map(p=>`<div class="srch-row" onclick="document.getElementById('rof-search-ov').remove();set({page:'agenda'})">
+    html+=procsAll.slice(0,6).map(p=>`<div class="srch-row" onclick="document.getElementById('rof-search-ov').remove();set({page:'agenda'})">
       <div class="srch-row-ic">🦷</div>
       <div class="srch-row-main">
         <div class="srch-row-title">${p.n}</div>
@@ -2389,9 +2391,21 @@ window.showProcDrop=function(ptId,idx,val){
     wrap.appendChild(drop);
   }
   const q=(val||"").toLowerCase().trim();
-  const hits=q.length===0?PROCS.slice(0,12):PROCS.filter(pr=>pr.n.toLowerCase().includes(q)).slice(0,12);
+  const allP=[...PROCS].sort((a,b)=>(a.n||"").localeCompare(b.n||"","pt-BR"));
+  const hits=q.length===0?allP:allP.filter(pr=>pr.n.toLowerCase().includes(q)||pr.c.toLowerCase().includes(q))
+    .sort((a,b)=>{const as=a.n.toLowerCase().startsWith(q),bs=b.n.toLowerCase().startsWith(q);if(as&&!bs)return -1;if(!as&&bs)return 1;return a.n.localeCompare(b.n,"pt-BR");});
+  drop.innerHTML="";
   if(hits.length===0){drop.innerHTML="<div style='padding:10px 12px;color:#555;font-size:12px'>Nenhum resultado</div>";}
-  else{drop.innerHTML=hits.map(pr=>`<div onmousedown="selectProcDrop(${ptId},${idx},${pr.id})" style="padding:9px 12px;cursor:pointer;border-bottom:1px solid rgba(198,164,109,0.08)" onmouseover="this.style.background='#2a2510'" onmouseout="this.style.background='transparent'"><div style="color:#E2C99A;font-size:12px;font-weight:600">${pr.n}</div><div style="color:#C6A46D;font-size:10px;margin-top:1px">${pr.c} · R$ ${pr.p.toLocaleString("pt-BR")}</div></div>`).join("");}
+  else{hits.forEach(pr=>{
+    const d=document.createElement("div");
+    d.style.cssText="padding:9px 12px;cursor:pointer;border-bottom:1px solid rgba(198,164,109,0.08)";
+    d.innerHTML=`<div style="color:#E2C99A;font-size:12px;font-weight:600">${pr.n}</div><div style="color:#C6A46D;font-size:10px;margin-top:1px">${pr.c} · R$ ${pr.p.toLocaleString("pt-BR")}</div>`;
+    d.addEventListener("touchstart",e=>{e.preventDefault();selectProcDrop(ptId,idx,pr.id);},{passive:false});
+    d.addEventListener("mousedown",e=>{e.preventDefault();selectProcDrop(ptId,idx,pr.id);});
+    d.addEventListener("mouseover",()=>d.style.background="#2a2510");
+    d.addEventListener("mouseout",()=>d.style.background="transparent");
+    drop.appendChild(d);
+  });}
   drop.style.display="block";
 };
 window.hideProcDrop=function(ptId,idx){
@@ -5065,7 +5079,8 @@ window.abrirPlanoClinicoModal=function(tooth,cond,faces){
       <label class="lbl">Procedimento</label>
       <input id="modal-proc-search" class="inp" inputmode="search" autocomplete="off"
         oninput="filtrarProcsOdonto(this.value)"
-        placeholder="Digite a letra inicial. Ex: R para restauração..."
+        onfocus="filtrarProcsOdonto(this.value)"
+        placeholder="🔍 Buscar por nome ou palavra-chave..."
         style="margin-bottom:6px"/>
       <div id="modal-proc-count" style="color:#666;font-size:10px;margin:-1px 0 6px;text-align:right">${sugeridos.length} procedimento(s)</div>
       <select id="modal-proc" class="inp" size="7" onchange="syncOdontoProcPrice()" style="margin-bottom:8px;height:168px;overflow-y:auto">
