@@ -4046,7 +4046,7 @@ function pageAgenda(){
       <div style="grid-column:1/-1"><label class="lbl">Paciente</label>
         <div style="position:relative">
           <input id="ap-pat" class="inp" placeholder="🔍 Buscar ou cadastrar novo paciente..." value="${(ST.aptPatName||'').replace(/"/g,'&quot;')}" data-pt-id="${ST.aptPatId||''}"
-            oninput="aptSearch(this.value)" autocomplete="off"/>
+            oninput="aptSearch(this.value)" onfocus="aptSearch(this.value)" autocomplete="off"/>
           <div id="ap-drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:#11100E;color:#F7F2EA;border:1px solid rgba(198,164,109,0.3);border-radius:0 0 10px 10px;z-index:999;max-height:210px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.8);scrollbar-color:#C6A46D #11100E"></div>
         </div>
         <div id="ap-pat-badge" style="font-size:11px;margin-top:4px;font-weight:600">${ST.aptPatId?'<span style="color:#22c55e">✓ Paciente cadastrado</span>':''}</div>
@@ -4272,20 +4272,41 @@ window.aptSearch=function(val){
     if(badge)badge.innerHTML="";
   }
   if(!drop)return;
-  if(val.length<1){drop.style.display="none";return;}
+  // Sem texto: mostra todos os pacientes ordenados por nome
+  var allSorted=[...ST.pts].sort(function(a,b){return(a.name||"").localeCompare(b.name||"","pt-BR");});
+  if(val.length<1){
+    var html0=allSorted.map(function(p){
+      var age=p.birthday?(" · "+calcAge(p.birthday)+" anos"):"";
+      return "<div data-name='"+p.name.replace(/'/g,"&#39;")+"' ontouchstart='aptSelectPt(this)' onclick='aptSelectPt(this)' "
+        +"style='display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(198,164,109,0.07);background:#11100E;color:#F7F2EA'>"
+        +(p.photo?"<img src='"+p.photo+"' style='width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid rgba(198,164,109,0.3)'/>"
+          :"<div style='width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#8B6914,#C6A46D);display:flex;align-items:center;justify-content:center;color:#000;font-weight:700;font-size:13px;flex-shrink:0'>"+p.name[0]+"</div>")
+        +"<div style='flex:1;min-width:0'><div style='color:#F7F2EA;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>"+p.name+"</div>"
+        +"<div style='color:#666;font-size:10px'>"+(p.treatment||"Sem tratamento")+age+"</div></div></div>";
+    }).join("");
+    if(html0){drop.innerHTML=html0;drop.style.display="block";}else{drop.style.display="none";}
+    return;
+  }
 
-  var matches=ST.pts.filter(function(p){
-    return p.name.toLowerCase().includes(val.toLowerCase())
+  // Com texto: ordena por relevância (começa com > contém) e mostra todos os matches
+  var vl=val.toLowerCase();
+  var matches=allSorted.filter(function(p){
+    return p.name.toLowerCase().includes(vl)
       ||(p.phone||"").replace(/\D/g,"").includes(val.replace(/\D/g,""))
       ||(p.cpf||"").replace(/\D/g,"").includes(val.replace(/\D/g,""));
-  }).slice(0,6);
+  }).sort(function(a,b){
+    var an=a.name.toLowerCase(),bn=b.name.toLowerCase();
+    var aStarts=an.startsWith(vl),bStarts=bn.startsWith(vl);
+    if(aStarts&&!bStarts)return -1;if(!aStarts&&bStarts)return 1;
+    return an.localeCompare(bn,"pt-BR");
+  });
 
   var html2="";
 
   // Pacientes encontrados
   html2+=matches.map(function(p){
     var age=p.birthday?(" · "+calcAge(p.birthday)+" anos"):"";
-    return "<div data-name='"+p.name.replace(/'/g,"&#39;")+"' onclick='aptSelectPt(this)' "
+    return "<div data-name='"+p.name.replace(/'/g,"&#39;")+"' ontouchstart='aptSelectPt(this)' onclick='aptSelectPt(this)' "
       +"style='display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(198,164,109,0.07);transition:background 0.1s;background:#11100E;color:#F7F2EA' "
       +"onmouseenter=\"this.style.background='#241F17'\" onmouseleave=\"this.style.background='#11100E'\">"
       +(p.photo
