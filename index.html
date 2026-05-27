@@ -3348,7 +3348,7 @@ window.openWhatsMsgTemplates=function(phone,nome,interesse){
     {id:"orcamento",ic:"💰",titulo:"Orçamento enviado",msg:`Olá, {nome}! 😊\n\nConforme conversamos, segue o orçamento do seu tratamento{interesse}.\n\nTemos condições especiais de parcelamento. 💳\n\nQualquer dúvida estou à disposição por aqui!\n\nDra. Rossana Fucks — CRO/SC 21403`},
     {id:"retorno",ic:"⏳",titulo:"Lembrete de retorno",msg:`Olá, {nome}! Tudo bem? 😊\n\nPassando para lembrar que está na hora do seu retorno aqui no consultório.\n\nVamos agendar? Tenho horários disponíveis esta semana. 📅\n\nDra. Rossana Fucks — CRO/SC 21403`},
     {id:"pos",ic:"🎉",titulo:"Pós-procedimento",msg:`Olá, {nome}! 😊\n\nEspero que esteja se sentindo bem após o procedimento de hoje!\n\nLembre-se das orientações que passei. Qualquer desconforto ou dúvida, pode me chamar a qualquer hora. 💛\n\nDra. Rossana Fucks`},
-    {id:"avaliacao",ic:"🌟",titulo:"Avaliação / Feedback",msg:`Olá, {nome}! Tudo bem? 😊\n\nFoi um prazer atendê-la(o)! ✨\n\nSua opinião é muito importante. Se quiser, pode deixar uma avaliação no Google — leva só 1 minuto e ajuda muito o consultório!\n\nGrande abraço 💛\nDra. Rossana Fucks`},
+    {id:"avaliacao",ic:"🌟",titulo:"Avaliação Google",msg:`Olá, {nome}! Tudo bem? 😊\n\nFoi um prazer atendê-la(o)! ✨\n\nSua opinião faz toda a diferença para nós. Se tiver um minutinho, adoraria receber uma avaliação sua no Google — é rapidinho! 🙏\n\n⭐ *Dra. Rossana Fucks | Dentista em Itapema | Reabilitação Oral & Facial integrados | Método ROF*\n👇 Clique no link abaixo:\nhttps://g.page/r/CSCjXk-R__uCEBM/review\n\nMuito obrigada! 💛\nDra. Rossana Fucks — CRO/SC 21403`},
     {id:"orientacoes",ic:"📋",titulo:"Orientações pós-procedimento",msg:`Olá, {nome}! 😊\n\nSegue um resumo das orientações pós-procedimento:\n\n• Evite alimentos quentes nas próximas 2h\n• Não fume ou consuma álcool por 24h\n• Tome a medicação conforme prescrito\n• Em caso de dor intensa ou inchaço, me avise imediatamente\n\nQualquer dúvida estou aqui! 💛\nDra. Rossana Fucks`},
     {id:"reagendar",ic:"📆",titulo:"Reagendamento",msg:`Olá, {nome}! 😊\n\nVi que sua consulta não pôde ser realizada. Sem problema!\n\nVamos remarcar? Qual dia da semana fica melhor para você? 📅\n\nDra. Rossana Fucks — CRO/SC 21403`},
     {id:"endereco",ic:"📍",titulo:"Endereço do consultório",msg:`Olá, {nome}! 😊\n\nSegue o endereço para sua consulta:\n\n📍 Rua 220, nº 200, Sala 2\nEdifício Paris\nMeia Praia — Itapema/SC\n\nQualquer dúvida na chegada, é só me chamar por aqui!\n\nDra. Rossana Fucks`},
@@ -6331,8 +6331,12 @@ function pagePts(){
     else if(ptTab==="xray"){
       const xrays=p.xrays||[];
       tc=`<div>
-        <input type="file" id="xray-inp" accept="image/*,.pdf" multiple style="display:none" onchange="addXray(${jsArg(p.id)},this)"/>
-        <button onclick="document.getElementById('xray-inp').click()" class="bp" style="width:100%;margin-bottom:12px;font-size:12px">📁 Adicionar Imagem / Radiografia</button>
+        <input type="file" id="xray-inp" accept="image/*,.pdf" multiple style="position:absolute;left:-9999px;opacity:0;pointer-events:none" onchange="addXray(${jsArg(p.id)},this)"/>
+        <input type="file" id="xray-cam" accept="image/*" capture="environment" style="position:absolute;left:-9999px;opacity:0;pointer-events:none" onchange="addXray(${jsArg(p.id)},this)"/>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <label for="xray-inp" class="bp" style="flex:1;text-align:center;cursor:pointer;margin:0;font-size:12px;padding:10px 8px">📁 Galeria / Arquivo</label>
+          <label for="xray-cam" class="bp" style="flex:1;text-align:center;cursor:pointer;margin:0;font-size:12px;padding:10px 8px;background:rgba(96,165,250,0.08);color:#60a5fa;border-color:rgba(96,165,250,0.3)">📷 Câmera</label>
+        </div>
         ${xrays.length===0?`<div style="color:#333;text-align:center;padding:22px 0;font-size:13px">🩻 Nenhuma radiografia adicionada ainda.</div>`
         :`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(115px,1fr));gap:10px">
           ${xrays.map((rx,i)=>`<div class="card" style="padding:0;overflow:hidden;position:relative">
@@ -7961,15 +7965,26 @@ window.addXray=(id,inp)=>{
   try{inp.value="";}catch(e){}
   files.forEach(file=>{
     const isPdf=file.type==="application/pdf";
+    toast("⏳ Processando imagem...","info",2500);
     const doSave=(dataUrl)=>{
       if(!dataUrl){toast("Não foi possível processar a imagem.","error");return;}
       const p=findPtById(id);if(!p){toast("Paciente não encontrado.","error");return;}
       const entry={id:Date.now(),name:file.name,data:dataUrl,date:todayISO()};
       const newXrays=[...(p.xrays||[]),entry];
-      // 1. Salva na chave separada (não estoura rof_pts)
-      const ok=_savePtXraysStore(id,newXrays);
-      if(!ok){toast("⚠️ Armazenamento cheio — remova Rx antigas e tente novamente.","error",5000);return;}
-      // 2. Atualiza memória e re-renderiza (updPt salva rof_pts sem xrays)
+      // Tenta salvar; se cheio, reduz qualidade progressivamente
+      const tries=[null,{px:900,q:0.65},{px:640,q:0.55},{px:480,q:0.45}];
+      let saved=false;
+      for(let i=0;i<tries.length;i++){
+        const ok=_savePtXraysStore(id,i===0?newXrays:newXrays.slice(0,-1).concat([{...entry,data:dataUrl}]));
+        if(ok){saved=true;break;}
+        // Próxima tentativa com imagem mais comprimida — apenas se temos o file original
+        if(i<tries.length-1&&!isPdf){
+          // comprime mais e tenta de novo de forma síncrona
+          const t=tries[i+1];
+          compressImg(file,t.px,t.q,recompressed=>{dataUrl=recompressed||dataUrl;});
+        }
+      }
+      if(!saved){toast("⚠️ Armazenamento cheio — remova Rx antigas e tente novamente.","error",5000);return;}
       updPt(id,"xrays",newXrays,true);
       toast("✅ Rx salva!","success");
     };
@@ -7979,6 +7994,7 @@ window.addXray=(id,inp)=>{
       r.onerror=()=>toast("Não foi possível ler o PDF.","error");
       r.readAsDataURL(file);
     }else{
+      // Tenta primeiro com alta qualidade; se falhar no localStorage, cai no fallback do doSave
       compressImg(file,1400,0.80,dataUrl=>doSave(dataUrl));
     }
   });
