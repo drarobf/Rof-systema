@@ -3769,7 +3769,7 @@ function pageDashboard(){
       const next=new Date(nowDash.getFullYear(),parts[1]-1,parts[2]);
       if(next<nowDash)next.setFullYear(nowDash.getFullYear()+1);
       return{...p,diff:Math.ceil((next-nowDash)/86400000)};
-    }).filter(Boolean).sort((a,b)=>a.diff-b.diff).slice(0,5);
+    }).filter(Boolean).filter(p=>p.diff<=7).sort((a,b)=>a.diff-b.diff);
     const monthDash=todayDash.slice(0,7);
     const monthAptsDash=aptsDash.filter(a=>String(a.date||"").slice(0,7)===monthDash).length;
     const activePtsDash=ptsDash.filter(p=>!p.status||p.status==="Ativo").length;
@@ -3852,7 +3852,7 @@ function pageDashboard(){
             <div class="dash-panel-head">
               <div>
                 <div class="dash-panel-title">Aniversários</div>
-                <div class="dash-panel-sub">Próximos pacientes</div>
+                <div class="dash-panel-sub">Esta semana</div>
               </div>
             </div>
             <div class="dash-panel-body">${bdaysHtmlDash}</div>
