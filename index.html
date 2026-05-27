@@ -249,6 +249,7 @@ pre { white-space: pre-wrap; font-family: var(--font-body); }
 @keyframes syncPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.85)} }
 .sync-spin { display: inline-block; animation: syncSpin 1.2s linear infinite; }
 @keyframes syncSpin { to{transform:rotate(360deg)} }
+@keyframes slideDown { from{transform:translateY(-100%);opacity:0} to{transform:translateY(0);opacity:1} }
 
 /* ── AVATAR DE PACIENTE ─────────────────────────────────────────── */
 .pt-avatar {
@@ -3665,6 +3666,25 @@ window.doLogin=async function(){
     if(typeof toast==="function")toast("Erro: "+e.message,"error");
   }
 };
+// Botão Voltar na ficha do paciente — pede confirmação antes de sair
+window.voltarListaPt=function(){
+  const p=findPtById&&findPtById(ST.selPt);
+  const nome=p?p.name.split(" ")[0]:"paciente";
+  // Cria mini-barra de confirmação inline no topo da página
+  document.getElementById("voltar-confirm")?.remove();
+  const bar=document.createElement("div");
+  bar.id="voltar-confirm";
+  bar.style.cssText="position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(135deg,#1a1a1a,#0d0d0d);border-bottom:2px solid #C6A46D;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;animation:slideDown .18s ease";
+  bar.innerHTML=`
+    <span style="color:#E2C99A;font-size:13px;font-weight:700">Sair da ficha de ${nome}?</span>
+    <div style="display:flex;gap:8px">
+      <button onclick="document.getElementById('voltar-confirm').remove()" style="padding:8px 18px;background:rgba(198,164,109,0.1);border:1px solid rgba(198,164,109,0.35);border-radius:8px;color:#C6A46D;font-size:12px;font-weight:700;cursor:pointer">Continuar na ficha</button>
+      <button onclick="document.getElementById('voltar-confirm').remove();set({selPt:null})" style="padding:8px 18px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;color:#ef4444;font-size:12px;font-weight:700;cursor:pointer">← Sair</button>
+    </div>`;
+  document.body.appendChild(bar);
+  // Auto-fecha em 5s se não interagir
+  setTimeout(()=>document.getElementById("voltar-confirm")?.remove(),5000);
+};
 window.doLogout=function(){
   localStorage.removeItem("rof_auth");
   clearAuthToken();
@@ -6334,7 +6354,7 @@ function pagePts(){
         :`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(115px,1fr));gap:10px">
           ${xrays.map((rx,i)=>`<div class="card" style="padding:0;overflow:hidden;position:relative">
             <button onclick="delXray(${jsArg(p.id)},${i})" title="Excluir Rx" style="position:absolute;top:6px;right:6px;z-index:2;background:rgba(8,8,8,0.82);border:1px solid #ef444466;border-radius:7px;color:#ef4444;cursor:pointer;font-size:12px;padding:5px 8px">🗑</button>
-            ${rx.data.startsWith("data:image")?`<img src="${rx.data}" style="width:100%;height:85px;object-fit:cover"/>`:`<div style="height:85px;display:flex;align-items:center;justify-content:center;font-size:30px">📄</div>`}
+            ${(rx.data&&rx.data.startsWith("data:image"))?`<img src="${rx.data}" style="width:100%;height:85px;object-fit:cover"/>`:`<div style="height:85px;display:flex;align-items:center;justify-content:center;font-size:30px">📄</div>`}
             <div style="padding:5px 7px;display:flex;justify-content:space-between;align-items:center">
               <span style="color:#666;font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${rx.name}</span>
             </div>
@@ -6383,7 +6403,7 @@ function pagePts(){
     }
 
     return`<div style="margin-bottom:12px;display:flex;align-items:center;gap:8px">
-      <button onclick="set({selPt:null})" class="bg" style="padding:6px 12px;font-size:12px">← Voltar</button>
+      <button onclick="voltarListaPt()" class="bg" style="padding:6px 12px;font-size:12px">← Voltar</button>
       <div style="flex:1;min-width:0">
         <div style="color:#E2C99A;font-size:14px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</div>
         ${p.cpf?`<div style="color:#444;font-size:10px">CPF: ${p.cpf}</div>`:""}
@@ -7958,26 +7978,24 @@ window.addXray=(id,inp)=>{
   files.forEach(file=>{
     const isPdf=file.type==="application/pdf";
     const doSave=(dataUrl)=>{
-      const p=findPtById(id);if(!p)return;
-      const newXrays=[...(p.xrays||[]),{id:Date.now(),name:file.name,data:dataUrl,date:todayISO()}];
+      if(!dataUrl){toast("Não foi possível processar a imagem.","error");return;}
+      const p=findPtById(id);if(!p){toast("Paciente não encontrado.","error");return;}
+      const entry={id:Date.now(),name:file.name,data:dataUrl,date:todayISO()};
+      const newXrays=[...(p.xrays||[]),entry];
+      // 1. Salva na chave separada (não estoura rof_pts)
       const ok=_savePtXraysStore(id,newXrays);
-      if(ok){
-        const nps=ST.pts.map(x=>sameId(x.id,id)?{...x,xrays:newXrays}:x);
-        ST.pts=nps;set({pts:nps});
-        toast("✅ Rx salva com sucesso!","success");
-      }else{
-        toast("⚠️ Armazenamento cheio — remova Rx antigas e tente novamente.","error",5000);
-      }
+      if(!ok){toast("⚠️ Armazenamento cheio — remova Rx antigas e tente novamente.","error",5000);return;}
+      // 2. Atualiza memória e re-renderiza (updPt salva rof_pts sem xrays)
+      updPt(id,"xrays",newXrays,true);
+      toast("✅ Rx salva!","success");
     };
     if(isPdf){
       const r=new FileReader();
       r.onload=ev=>doSave(ev.target.result);
+      r.onerror=()=>toast("Não foi possível ler o PDF.","error");
       r.readAsDataURL(file);
     }else{
-      compressImg(file,1400,0.80,function(dataUrl){
-        if(!dataUrl){toast("Não foi possível processar a imagem.","error");return;}
-        doSave(dataUrl);
-      });
+      compressImg(file,1400,0.80,dataUrl=>doSave(dataUrl));
     }
   });
 };
