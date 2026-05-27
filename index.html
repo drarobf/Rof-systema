@@ -4080,7 +4080,7 @@ function pageAgenda(){
       <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">${catBtns}</div>
       <div style="position:relative">
         <input id="ap-proc-inp" class="inp" placeholder="🔍 Buscar procedimento..."
-          oninput="procSearch(this.value)" autocomplete="off"/>
+          oninput="procSearch(this.value)" onfocus="procSearch(this.value)" autocomplete="off"/>
         <input type="hidden" id="ap-proc" value=""/>
         <div id="ap-proc-drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:#11100E;border:1px solid rgba(198,164,109,0.3);border-radius:0 0 10px 10px;z-index:999;max-height:210px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.8)"></div>
       </div>
@@ -10347,10 +10347,21 @@ window.procSearch=function(val){
   val=(val||"").trim().toLowerCase();
   var drop=document.getElementById("ap-proc-drop");
   if(!drop)return;
-  if(val.length<1){drop.style.display="none";return;}
-  var matches=PROCS.filter(function(p){
-    return p.n.toLowerCase().includes(val)||p.c.toLowerCase().includes(val);
-  }).slice(0,8);
+  var allProcs=[...PROCS].sort(function(a,b){return(a.n||"").localeCompare(b.n||"","pt-BR");});
+  // Sem texto: mostra todos os procedimentos
+  var matches;
+  if(val.length<1){
+    matches=allProcs;
+  } else {
+    matches=allProcs.filter(function(p){
+      return p.n.toLowerCase().includes(val)||p.c.toLowerCase().includes(val);
+    }).sort(function(a,b){
+      var an=a.n.toLowerCase(),bn=b.n.toLowerCase();
+      var aS=an.startsWith(val),bS=bn.startsWith(val);
+      if(aS&&!bS)return -1;if(!aS&&bS)return 1;
+      return an.localeCompare(bn,"pt-BR");
+    });
+  }
   if(matches.length===0){drop.style.display="none";return;}
   drop.innerHTML="";
   matches.forEach(function(p){
