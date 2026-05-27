@@ -6269,7 +6269,8 @@ function pagePts(){
   <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
     <button onclick="gerarLinkCadastro()" class="bg" style="flex:1;min-width:200px;padding:12px 16px;font-size:13px;font-weight:700;background:linear-gradient(135deg,rgba(34,197,94,0.15),rgba(34,197,94,0.05));border:1px solid #22c55e66;color:#22c55e" title="Gera link individual para 1 paciente específico (você identifica antes)">🔒 Link único (1 paciente)</button>
     <button onclick="abrirLinkPublico()" class="bg" style="flex:1;min-width:200px;padding:12px 16px;font-size:13px;font-weight:700;background:linear-gradient(135deg,rgba(96,165,250,0.15),rgba(96,165,250,0.05));border:1px solid #60a5fa66;color:#60a5fa" title="Link público para mandar em grupo, Instagram, listas de transmissão">🌐 Link público (em massa)</button>
-    <button onclick="openIntakeReview()" class="bg" style="flex:1;min-width:160px;padding:12px 16px;font-size:12px" title="Cadastros recebidos para revisão">🔔 Novos cadastros recebidos <span class="intake-badge" style="display:none;background:#22c55e;color:#000;font-weight:900;font-size:10px;padding:2px 7px;border-radius:50px;margin-left:4px;vertical-align:middle">0</span></button>
+    <button onclick="openIntakeReview()" class="bg" style="flex:1;min-width:140px;padding:12px 16px;font-size:12px" title="Cadastros recebidos para revisão">🔔 Cadastros <span class="intake-badge" style="display:none;background:#22c55e;color:#000;font-weight:900;font-size:10px;padding:2px 7px;border-radius:50px;margin-left:4px;vertical-align:middle">0</span></button>
+    <button onclick="openSignedDocsReview()" class="bg" style="flex:1;min-width:140px;padding:12px 16px;font-size:12px;color:#60a5fa;border-color:#60a5fa33" title="Termos e contratos assinados online">📬 Docs assinados <span class="signed-docs-badge" style="display:none;background:#60a5fa;color:#000;font-weight:900;font-size:10px;padding:2px 7px;border-radius:50px;margin-left:4px;vertical-align:middle">0</span></button>
   </div>
   <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">
     ${["Todos","VIP","Ortodontia","Implante","Clareamento","Urgência","Retorno","Convênio"].map(tag=>{
@@ -7310,18 +7311,30 @@ window.limparDemo=function(){
 // ═══════════════════════════════════════════════════════════════
 const CADASTRO_URL_BASE="https://drarobf.github.io/Rof-systema/cadastro.html";
 ST.intakes=ST.intakes||[];
+ST.signedDocs=ST.signedDocs||[];
 
 async function loadIntakes(){
   if(!_sbEnabled)return;
   try{
     const{data}=await _sb.from('rof_intake').select('*').in('status',['pending','submitted']).order('created_at',{ascending:false});
-    ST.intakes=data||[];
+    const all=data||[];
+    // Separa: cadastros normais vs. documentos assinados (contratos e termos)
+    ST.intakes=all.filter(i=>!(i.dr_label||'').startsWith('rof_contrato_')&&!(i.dr_label||'').startsWith('rof_termo_'));
+    ST.signedDocs=all.filter(i=>((i.dr_label||'').startsWith('rof_contrato_')||(i.dr_label||'').startsWith('rof_termo_'))&&i.status==='submitted');
     updateIntakeBadge();
+    updateSignedDocsBadge();
   }catch(e){}
 }
 function updateIntakeBadge(){
   const count=(ST.intakes||[]).filter(i=>i.status==='submitted').length;
   document.querySelectorAll('.intake-badge').forEach(el=>{
+    el.textContent=count;
+    el.style.display=count>0?'inline-flex':'none';
+  });
+}
+function updateSignedDocsBadge(){
+  const count=(ST.signedDocs||[]).length;
+  document.querySelectorAll('.signed-docs-badge').forEach(el=>{
     el.textContent=count;
     el.style.display=count>0?'inline-flex':'none';
   });
@@ -7484,6 +7497,89 @@ window.openIntakeReview=async function(){
     <button onclick="this.closest('#intake-modal').remove()" style="background:none;border:none;color:#555;cursor:pointer;font-size:22px">✕</button>
   </div><div class="mbd">${list}</div></div>`;
   document.body.appendChild(m);
+};
+
+// ── Documentos assinados online (termos + contratos) ──────────
+window.openSignedDocsReview=async function(){
+  await loadIntakes();
+  const docs=ST.signedDocs||[];
+  const m=document.createElement("div");m.className="mbg";m.id="signed-docs-modal";
+  const list=docs.length===0
+    ?`<div style="text-align:center;padding:40px 20px;color:#666"><div style="font-size:44px;margin-bottom:10px">📭</div>Nenhum documento aguardando revisão.</div>`
+    :docs.map(doc=>{
+        const d=doc.data||{};
+        const isTermo=doc.dr_label.startsWith('rof_termo_');
+        const nome=d.ptName||d.dr_label||"(sem nome)";
+        const titulo=isTermo?(d.termName||"Termo de Consentimento"):"Contrato de Serviços";
+        const emoji=isTermo?(d.termEmoji||"📋"):"📝";
+        const dataEnvio=doc.submitted_at?fmtDate(doc.submitted_at.slice(0,10)):"";
+        return`<div style="background:#181818;border:1px solid rgba(198,164,109,0.15);border-radius:10px;padding:14px;margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px">
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+                <span style="font-size:16px">${emoji}</span>
+                <span style="color:#E2C99A;font-weight:700;font-size:13px">${nome}</span>
+              </div>
+              <div style="color:#888;font-size:11px">${titulo}${dataEnvio?" · assinado em "+dataEnvio:""}</div>
+              ${d.sigNome?`<div style="color:#22c55e;font-size:11px;margin-top:4px">✅ Assinado por: ${d.sigNome}</div>`:""}
+            </div>
+            <span style="color:#22c55e;font-size:10px;background:#22c55e22;padding:3px 8px;border-radius:50px;flex-shrink:0">novo</span>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button onclick="aplicarDocAssinado('${doc.id}')" class="bp" style="flex:1;font-size:11px;padding:8px">✅ Salvar no paciente</button>
+            <button onclick="verDocAssinadoOnline('${doc.id}')" class="bg" style="flex:1;font-size:11px;padding:8px">👁 Ver documento</button>
+          </div>
+        </div>`;
+      }).join("");
+  m.innerHTML=`<div class="mbx" style="max-width:560px"><div class="mhd">
+    <div class="mhd-title">📬 Documentos Assinados Online</div>
+    <button onclick="this.closest('#signed-docs-modal').remove()" style="background:none;border:none;color:#555;cursor:pointer;font-size:22px">✕</button>
+  </div><div class="mbd">${list}</div></div>`;
+  document.body.appendChild(m);
+};
+
+window.aplicarDocAssinado=async function(intakeId){
+  const doc=(ST.signedDocs||[]).find(x=>x.id===intakeId);if(!doc)return;
+  const d=doc.data||{};
+  const ptId=d.ptId;
+  if(!ptId){toast("ID do paciente não encontrado no documento","error");return;}
+  const p=ST.pts.find(x=>String(x.id)===String(ptId));
+  if(!p){toast("Paciente não encontrado. Verifique se o cadastro existe.","error");return;}
+  const isTermo=doc.dr_label.startsWith('rof_termo_');
+  const titulo=isTermo?(d.termName||"Termo de Consentimento"):"Contrato de Serviços";
+  const hoje=new Date().toLocaleDateString("pt-BR");
+  // Monta objeto de documento para salvar no paciente
+  const sigCanvas=d.sigCanvas||null;
+  const sigNome=d.sigNome||"";
+  const novoDoc={
+    id:Date.now(),
+    title:titulo,
+    date:d.assinadoEm?new Date(d.assinadoEm).toLocaleDateString("pt-BR"):hoje,
+    assinadoOnline:true,
+    sigNome,
+    sigCanvas,
+    tipo:isTermo?"termo":"contrato",
+    termKey:d.termKey||null
+  };
+  const docs=[...(p.docs||[]),novoDoc];
+  const pts=ST.pts.map(x=>String(x.id)===String(ptId)?{...x,docs}:x);
+  ST.pts=pts;save("rof_pts",pts);set({pts});
+  // Atualiza status no Supabase
+  if(_sbEnabled)_sb.from("rof_intake").update({status:"approved"}).eq("id",intakeId).then(()=>{});
+  // Remove da lista local
+  ST.signedDocs=(ST.signedDocs||[]).filter(x=>x.id!==intakeId);
+  updateSignedDocsBadge();
+  document.getElementById("signed-docs-modal")?.remove();
+  toast(`✅ ${titulo} de ${p.name} salvo na aba Docs do paciente!`,"success");
+  // Navega para o paciente
+  setTimeout(()=>openPt(ptId,"docs"),600);
+};
+
+window.verDocAssinadoOnline=function(intakeId){
+  const doc=(ST.signedDocs||[]).find(x=>x.id===intakeId);if(!doc)return;
+  const d=doc.data||{};
+  const link=`${_CONTRATO_BASE_URL}?id=${intakeId}`;
+  window.open(link,"_blank");
 };
 
 window.showIntakeDetail=function(intakeId){
@@ -8450,7 +8546,12 @@ function renderFinanceiroPt(p){
         +"<div style='flex:1'><div style='color:#ddd;font-size:13px;font-weight:700'>"+pg.desc+"</div>"
         +"<div style='color:#555;font-size:11px'>"+fmtDate(pg.date)+(pg.forma?" · "+pg.forma:"")+"</div></div>"
         +"<div style='color:"+cor+";font-size:15px;font-weight:900;flex-shrink:0'>"+sinal+" R$ "+pg.valor.toLocaleString("pt-BR")+"</div>"
-        +(pg.tipo==="entrada"?"<button onclick='printRecibo("+p.id+","+pgIdx+")' style='background:none;border:none;color:#C6A46D;cursor:pointer;font-size:14px' title='Imprimir recibo PDF'>🖨️</button><button onclick='whatsRecibo("+p.id+","+pgIdx+")' style='background:none;border:none;color:#22c55e;cursor:pointer;font-size:14px' title='Enviar recibo por WhatsApp'>📱</button>":"")
+        +(pg.tipo==="entrada"
+        ?"<div style='display:flex;gap:4px'>"
+          +"<button onclick='printRecibo("+p.id+","+pgIdx+")' style='background:rgba(198,164,109,0.1);border:1px solid rgba(198,164,109,0.25);border-radius:6px;color:#C6A46D;cursor:pointer;font-size:11px;padding:4px 8px;font-weight:600' title='Imprimir / PDF'>🖨️ PDF</button>"
+          +"<button onclick='whatsRecibo("+p.id+","+pgIdx+")' style='background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.25);border-radius:6px;color:#22c55e;cursor:pointer;font-size:11px;padding:4px 8px;font-weight:600' title='Enviar pelo WhatsApp'>📱</button>"
+          +"</div>"
+        :"")
         +"<button onclick='delPagamento("+p.id+","+pg.id+")' style='background:none;border:none;color:#333;cursor:pointer;font-size:14px'>🗑</button>"
         +"</div>";
     }).join(""))
