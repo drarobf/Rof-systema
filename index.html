@@ -1633,8 +1633,11 @@ const _sb=(()=>{
   catch(e){console.warn("Supabase init falhou:",e);return _sbStub;}
 })();
 
-const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_stk','rof_procs','rof_caixa','rof_whats_templates','rof_orientacoes','rof_pt_photos','rof_pt_xrays']);
+// rof_pt_photos e rof_pt_xrays ficam FORA do sync — imagens base64 grandes demais para o Supabase free tier
+const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_stk','rof_procs','rof_caixa','rof_whats_templates','rof_orientacoes']);
 const _syncQ = (()=>{try{return JSON.parse(localStorage.getItem("rof_sync_q")||"[]");}catch{return[];}})();
+// Remove imediatamente quaisquer syncs de fotos/RX já enfileirados (eram pesados demais)
+(function(){const heavy=new Set(['rof_pt_photos','rof_pt_xrays']);let c=false;for(let i=_syncQ.length-1;i>=0;i--){if(_syncQ[i]&&heavy.has(_syncQ[i].k)){_syncQ.splice(i,1);c=true;}}if(c)try{localStorage.setItem("rof_sync_q",JSON.stringify(_syncQ));}catch{}})();
 const _pendingCloudWrites = new Set();
 const _lastLocalWriteAt = {};
 const SYNC_QUEUE_MAX_AGE_MS = 24*60*60*1000;
@@ -3759,7 +3762,7 @@ function _showSaveIndicator(){
 window._showSaveIndicator=_showSaveIndicator;
 
 const save=(k,v)=>{
-  // Fotos e Rx ficam em chaves separadas — nunca dentro de rof_pts (evita estouro do localStorage e do Supabase)
+  // Fotos e Rx ficam em chaves separadas e NÃO vão à nuvem (imagens base64 são grandes demais — só localStorage)
   // eslint-disable-next-line no-unused-vars
   const stripped=(k==='rof_pts'&&Array.isArray(v))?v.map(({photo,xrays,...r})=>r):v;
   try{localStorage.setItem(k,JSON.stringify(stripped));}catch(e){console.warn("localStorage cheio:",e);}
