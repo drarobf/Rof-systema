@@ -174,15 +174,28 @@ window.submitAssinatura=async function(intakeId,ptName){
   }
 };
 
+// ── Bloco de assinatura já realizada (modo leitura) ────────────
+function sigDoneBox(d){
+  const assinadoEm=d.assinadoEm?new Date(d.assinadoEm).toLocaleString("pt-BR"):"—";
+  return`<div style="background:#fff;border:2px solid #22c55e;border-radius:12px;padding:18px;margin-bottom:12px">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#166534;margin-bottom:14px">✅ Documento Assinado Digitalmente</div>
+    ${d.sigCanvas?`<img src="${d.sigCanvas}" style="max-height:64px;max-width:240px;display:block;margin-bottom:10px;border:1px solid #e5e5e5;border-radius:8px"/>`:""}
+    <div style="font-size:14px;font-weight:700;color:#1a1a1a">${d.sigNome||d.ptName||"—"}</div>
+    ${d.sigCpf?`<div style="font-size:12px;color:#888;margin-top:2px">CPF: ${d.sigCpf}</div>`:""}
+    <div style="font-size:11px;color:#888;margin-top:6px">📅 Assinado em: <b>${assinadoEm}</b></div>
+    <div style="margin-top:10px;font-size:10px;color:#aaa;line-height:1.5;padding:8px;background:#f9fef9;border-radius:6px;border:1px solid rgba(34,197,94,0.15)">🔒 Assinatura digital válida conforme Lei 14.063/2020 · Sistema ROF™</div>
+  </div>`;
+}
+
 // ── Build Termo de Consentimento HTML ──────────────────────────
-function buildTermo(d){
+function buildTermo(d, readOnly){
   const procs=(d.termProcs||[]).map((pr,i)=>`
     <div style="margin-bottom:10px;padding:10px 12px;background:#f9f5e8;border-radius:8px;border-left:3px solid #C6A46D">
       <div style="font-weight:700;font-size:12px;color:#8B6914;margin-bottom:3px">${i+1}. ${pr.n}</div>
       <div style="font-size:11.5px;color:#555;line-height:1.7">${pr.d}</div>
     </div>`).join("");
 
-  const sigSection=`
+  const sigSection=readOnly?sigDoneBox(d):`
   <div class="sig-section">
     <div class="sig-title">✍️ Assinatura Digital do Paciente</div>
     <div class="alert alert-info">📖 Role para cima para ler o termo completo. Ao assinar você declara ter lido, compreendido e concordado com tudo acima.</div>
@@ -251,7 +264,7 @@ function buildTermo(d){
 }
 
 // ── Build full unified contract HTML ───────────────────────────
-function buildContract(d){
+function buildContract(d, readOnly){
   const etapas=d.etapas||[];
   const procsHtml=etapas.length>0
     ?etapas.map(e=>`<div class="proc-row"><span class="proc-name">${e.proc||"Procedimento"}</span><span class="proc-val">R$ ${fmt(e.valor)}</span></div>`).join("")
@@ -426,7 +439,7 @@ function buildContract(d){
     <p style="text-align:center;margin-top:20px;color:#888;font-size:11px">Itapema/SC, ${hoje}</p>
   </div>
 
-  <div class="sig-section">
+  ${readOnly?sigDoneBox(d):`<div class="sig-section">
     <div class="sig-title">✍️ Assinatura Digital do Paciente</div>
     <div class="alert alert-info">📖 Role para cima para ler o contrato completo antes de assinar. Ao assinar você declara ter lido, compreendido e concordado com todas as cláusulas acima.</div>
 
@@ -462,7 +475,7 @@ function buildContract(d){
       🔒 Assinatura registrada com segurança — data, hora e dispositivo armazenados.<br/>
       Validade jurídica conforme Lei 14.063/2020.
     </div>
-  </div>`;
+  </div>`}`;
 }
 
 // ── Main ────────────────────────────────────────────────────────
@@ -473,9 +486,17 @@ async function main(){
     const {data:row,error}=await _sb.from("rof_intake").select("*").eq("id",id).single();
     if(error||!row){el("app").innerHTML=`<div class="header"><h1>ROF™</h1></div><div style="padding:30px;text-align:center;color:#888">⚠️ Contrato não encontrado. O link pode ter expirado.</div>`;return;}
     if(row.status==="submitted"||row.status==="approved"){
-      const nm=(row.data&&row.data.ptName)||"paciente";
-      el("app").innerHTML=`<div class="header"><h1>ROF™</h1><div class="sub">Clínica Odontológica</div><div class="clinic">Dra. Rossana Batista Fucks — CRO/SC 21403</div></div>
-      <div class="success-screen"><div class="icon">✅</div><h2>Já Assinado</h2><p>Este contrato já foi assinado por <b>${nm}</b>.<br/>Entre em contato com a clínica se tiver dúvidas.</p></div>`;
+      const d=row.data||{};
+      const isTermo=d.docType==="termo";
+      const headerSub=isTermo?"Termo de Consentimento":"Contrato & Consentimento";
+      el("app").innerHTML=`
+        <div class="header">
+          <h1>ROF™</h1>
+          <div class="sub">${headerSub}</div>
+          <div class="clinic">Dra. Rossana Batista Fucks — CRO/SC 21403</div>
+          <div style="margin-top:10px"><span class="badge badge-ok">✅ Documento Assinado</span></div>
+        </div>
+        ${isTermo?buildTermo(d,true):buildContract(d,true)}`;
       return;
     }
     const d=row.data||{};
