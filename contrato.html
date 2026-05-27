@@ -174,6 +174,82 @@ window.submitAssinatura=async function(intakeId,ptName){
   }
 };
 
+// ── Build Termo de Consentimento HTML ──────────────────────────
+function buildTermo(d){
+  const procs=(d.termProcs||[]).map((pr,i)=>`
+    <div style="margin-bottom:10px;padding:10px 12px;background:#f9f5e8;border-radius:8px;border-left:3px solid #C6A46D">
+      <div style="font-weight:700;font-size:12px;color:#8B6914;margin-bottom:3px">${i+1}. ${pr.n}</div>
+      <div style="font-size:11.5px;color:#555;line-height:1.7">${pr.d}</div>
+    </div>`).join("");
+
+  const sigSection=`
+  <div class="sig-section">
+    <div class="sig-title">✍️ Assinatura Digital do Paciente</div>
+    <div class="alert alert-info">📖 Role para cima para ler o termo completo. Ao assinar você declara ter lido, compreendido e concordado com tudo acima.</div>
+    <input id="sig-nome" class="inp" placeholder="Nome completo (igual ao documento)" autocomplete="name"/>
+    <input id="sig-cpf" class="inp" placeholder="CPF (ex: 123.456.789-00)" inputmode="numeric"/>
+    <div class="sig-tabs">
+      <button class="sig-tab active" id="tab-draw" onclick="switchSigTab('draw')">✍️ Assinar com o dedo</button>
+      <button class="sig-tab" id="tab-type" onclick="switchSigTab('type')">⌨️ Digitar nome</button>
+    </div>
+    <div id="sig-draw-area">
+      <div style="font-size:11px;color:#888;text-align:center;margin-bottom:7px">Use o dedo para assinar abaixo</div>
+      <canvas id="sig-canvas"></canvas>
+      <div class="btn-row">
+        <button class="btn-clear" onclick="clearPad_sig-canvas()">🗑 Limpar</button>
+        <button class="btn-ok" id="sig-ok-btn">✅ Assinatura registrada</button>
+      </div>
+    </div>
+    <div id="sig-type-area" style="display:none">
+      <input id="sig-typed" class="inp" placeholder="Digite seu nome completo..." style="font-family:cursive;font-size:18px;color:#8B6914"/>
+    </div>
+    <label class="check-row">
+      <input type="checkbox" id="sig-agree"/>
+      <span><b>Confirmo que li e concordo</b> com todas as informações do Termo de Consentimento acima, incluindo os riscos, contraindicações e cuidados pós-procedimento.</span>
+    </label>
+    <button id="btn-submit" class="btn-submit" disabled>✅ Assinar e Enviar Termo</button>
+    <div style="text-align:center;margin-top:10px;font-size:10px;color:#bbb">🔒 Assinatura registrada com segurança. Validade jurídica conforme Lei 14.063/2020.</div>
+  </div>`;
+
+  return`
+  <div class="card">
+    <div class="card-title">Paciente</div>
+    <div style="font-size:14px;font-weight:700;color:#1a1a1a">${d.ptName||"—"}</div>
+    ${d.ptCpf?`<div style="font-size:12px;color:#888;margin-top:2px">CPF: ${d.ptCpf}</div>`:""}
+  </div>
+
+  <div class="consent-box">
+    <div style="display:inline-flex;align-items:center;gap:10px;background:rgba(198,164,109,0.07);border:1px solid rgba(198,164,109,0.18);border-radius:10px;padding:10px 16px;margin-bottom:16px;width:100%">
+      <span style="font-size:26px">${d.termEmoji||"📋"}</span>
+      <div>
+        <div style="font-weight:900;font-size:14px;color:#1a1a1a">${d.termName||"Termo de Consentimento"}</div>
+        <div style="font-size:11px;color:#888;margin-top:1px">${d.termSub||""}</div>
+      </div>
+    </div>
+    <h2 style="font-size:12px;font-weight:700;text-align:center;text-transform:uppercase;letter-spacing:2px;color:#888;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid #f0ede8">TERMO DE CONSENTIMENTO LIVRE E ESCLARECIDO<br/>Clínica Dra. Rossana Batista Fucks — CRO/SC 21403</h2>
+
+    ${procs?`<h3>Procedimentos do Protocolo</h3>${procs}`:""}
+
+    <h3>⚠️ Riscos e Efeitos Adversos</h3>
+    <p style="white-space:pre-line">${d.termRiscos||""}</p>
+
+    <h3>🚫 Contraindicações</h3>
+    <p>${d.termContras||""}</p>
+
+    <h3>✅ Cuidados Pós-Procedimento</h3>
+    <p style="white-space:pre-line">${d.termPos||""}</p>
+
+    <h3>Declaração do Paciente</h3>
+    <p style="background:#faf5e8;padding:10px 12px;border-radius:7px;border:1px solid rgba(198,164,109,0.2);font-style:italic">${d.termDecl||""}</p>
+
+    <p style="font-size:11px;color:#888;margin-top:14px;padding:10px;background:#f9f9f9;border-radius:7px;border:1px solid #ede9e0;line-height:1.7">Declaro ter lido e compreendido todas as informações acima, ter tido oportunidade de esclarecer dúvidas com a Dra. Rossana Batista Fucks, e consinto livremente com a realização do procedimento descrito.</p>
+
+    <p style="text-align:center;margin-top:14px;font-size:11px;color:#aaa">Itapema/SC, ${new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"})}</p>
+  </div>
+
+  ${sigSection}`;
+}
+
 // ── Build full unified contract HTML ───────────────────────────
 function buildContract(d){
   const etapas=d.etapas||[];
@@ -403,14 +479,16 @@ async function main(){
       return;
     }
     const d=row.data||{};
+    const isTermo=d.docType==="termo";
+    const headerSub=isTermo?"Termo de Consentimento":"Contrato & Consentimento";
     el("app").innerHTML=`
       <div class="header">
         <h1>ROF™</h1>
-        <div class="sub">Contrato & Consentimento</div>
+        <div class="sub">${headerSub}</div>
         <div class="clinic">Dra. Rossana Batista Fucks — CRO/SC 21403</div>
         <div style="margin-top:10px"><span class="badge badge-pending">Aguardando sua assinatura</span></div>
       </div>
-      ${buildContract(d)}`;
+      ${isTermo ? buildTermo(d) : buildContract(d)}`;
 
     // Wire up events
     setTimeout(()=>{

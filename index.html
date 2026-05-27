@@ -2942,6 +2942,50 @@ window.aplicarAssinaturaOnline=async function(ptId){
   toast("✅ Assinatura do paciente importada com sucesso!","success");
 };
 
+// ── Enviar Termo de Consentimento Online ───────────────────────
+window.gerarLinkTermo=async function(termKey){
+  if(!_sbEnabled){toast("Supabase não configurado","error");return;}
+  const ptSel=document.getElementById("tp");
+  const ptId=ptSel?ptSel.value:"";
+  if(!ptId){toast("Selecione o paciente antes de gerar o link","warning");return;}
+  const p=ST.pts.find(x=>String(x.id)===String(ptId));
+  if(!p){toast("Paciente não encontrado","error");return;}
+  const t=TERMS.find(x=>x.k===termKey);
+  if(!t){toast("Termo não encontrado","error");return;}
+  toast("Gerando link...","info");
+  try{
+    const d={
+      docType:"termo",termKey,
+      termName:t.n,termSub:t.sub,termEmoji:t.e,termCol:t.col,
+      termProcs:t.procs||[],termRiscos:t.riscos,termContras:t.contras,
+      termPos:t.pos,termDecl:t.decl,
+      ptId:String(ptId),ptName:p.name,ptCpf:p.cpf||"",ptPhone:p.phone||"",
+      drName:"Dra. Rossana Batista Fucks",drCro:"CRO/SC 21403",
+      geradoEm:new Date().toISOString()
+    };
+    const {data:row,error}=await _sb.from("rof_intake")
+      .insert({dr_label:"rof_termo_"+String(ptId)+"_"+termKey,data:d,status:"pending"})
+      .select("id").single();
+    if(error)throw error;
+    const link=`${_CONTRATO_BASE_URL}?id=${row.id}`;
+    const phone=(p.phone||"").replace(/\D/g,"");
+    const fullPhone=phone.startsWith("55")?phone:"55"+phone;
+    const msg=`Olá, ${p.name}! 😊\n\n`
+      +`Segue o link para você ler e assinar o *Termo de Consentimento — ${t.n}* da Clínica Dra. Rossana Fucks:\n\n`
+      +`👉 ${link}\n\n`
+      +`É rápido — você lê, assina com o dedo e envia direto pelo celular! 🦷`;
+    toast("Link gerado!","success");
+    if(!phone){
+      navigator.clipboard?.writeText(link).catch(()=>{});
+      toast("Telefone não cadastrado. Link copiado para área de transferência!","warning");
+      return;
+    }
+    setTimeout(()=>window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`,"_blank"),400);
+  }catch(e){
+    toast("Erro ao gerar link: "+((e&&e.message)||""),"error");
+  }
+};
+
 // ── Imprimir / Salvar PDF ──────────────────────────────────────
 window.printContrato=function(ptId){
   const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
@@ -3051,32 +3095,107 @@ window.printContrato=function(ptId){
 window.printRecibo=function(ptId,pgIdx){
   const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
   const pg=(p.pagamentos||[])[pgIdx];if(!pg)return;
-  const w=window.open("","_blank","width=700,height=600");
+  const num=String(pgIdx+1).padStart(4,"0");
+  const w=window.open("","_blank","width=720,height=680");
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
-  <title>Recibo — ${p.name}</title>
+  <title>Recibo ${num} — ${p.name}</title>
   <style>
-    body{font-family:Georgia,serif;max-width:600px;margin:40px auto;padding:0 30px;font-size:13px;line-height:1.8;color:#111}
-    h1{font-size:20px;text-align:center;letter-spacing:2px;margin-bottom:4px}
-    .subtitle{text-align:center;font-size:11px;color:#555;margin-bottom:28px}
-    .row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #ccc}
-    .valor{font-size:22px;font-weight:900;text-align:center;margin:20px 0;letter-spacing:1px}
-    .sig{margin-top:60px;text-align:center;border-top:1px solid #333;padding-top:10px;font-size:12px}
-    @media print{body{margin:20px auto}}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Georgia,serif;background:#fff;color:#111;max-width:640px;margin:32px auto;padding:0 32px;font-size:13px;line-height:1.7}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;border-bottom:2px solid #C6A46D;margin-bottom:20px}
+    .clinic-name{font-size:17px;font-weight:900;letter-spacing:1px;color:#8B6914}
+    .clinic-sub{font-size:10px;color:#888;margin-top:3px;line-height:1.5}
+    .recibo-title{text-align:right}
+    .recibo-title h1{font-size:15px;font-weight:900;letter-spacing:2px;text-transform:uppercase;color:#333}
+    .recibo-title .num{font-size:11px;color:#aaa;margin-top:2px}
+    .valor-box{background:linear-gradient(135deg,#f9f5e8,#fdf8ef);border:1.5px solid #C6A46D44;border-radius:10px;padding:16px 20px;margin:18px 0;display:flex;justify-content:space-between;align-items:center}
+    .valor-label{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:#888}
+    .valor-num{font-size:26px;font-weight:900;color:#8B6914;letter-spacing:1px}
+    table{width:100%;border-collapse:collapse;margin-bottom:16px}
+    td{padding:7px 4px;border-bottom:1px solid #f0ede8;font-size:12.5px}
+    td:first-child{color:#888;width:42%}
+    td:last-child{font-weight:600;color:#222}
+    .decl{font-size:11.5px;color:#666;line-height:1.7;padding:12px;background:#fafaf8;border-radius:7px;border:1px solid #ede9e0;margin-bottom:24px}
+    .sig-row{display:flex;justify-content:space-between;gap:32px;margin-top:8px}
+    .sig-box{flex:1;text-align:center}
+    .sig-line{border-top:1.5px solid #333;padding-top:8px;margin-top:48px;font-size:11px;color:#333;line-height:1.5}
+    @media print{body{margin:16px auto}button{display:none!important}}
   </style></head><body>
-  <h1>RECIBO DE PAGAMENTO</h1>
-  <div class="subtitle">Clínica Dra. Rossana Fucks — CRO/SC 21403 — Itapema/SC</div>
-  <div class="valor">R$ ${(pg.valor||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
-  <div class="row"><span>Paciente</span><span><b>${p.name}</b></span></div>
-  <div class="row"><span>CPF</span><span>${p.cpf||"—"}</span></div>
-  <div class="row"><span>Descrição</span><span>${pg.desc||"—"}</span></div>
-  <div class="row"><span>Tipo</span><span>${pg.tipo==="entrada"?"Entrada (recebimento)":"Desconto/Saída"}</span></div>
-  <div class="row"><span>Forma de pagamento</span><span>${pg.forma||"—"}</span></div>
-  <div class="row"><span>Data</span><span>${fmtDate(pg.date)}</span></div>
-  <p style="margin-top:18px;font-size:12px;color:#555">Declaro ter recebido a importância acima referente aos serviços odontológicos prestados.</p>
-  <div class="sig">Dra. Rossana Batista Fucks — CRO/SC 21403</div>
+  <div class="header">
+    <div>
+      <div class="clinic-name">Dra. Rossana Batista Fucks</div>
+      <div class="clinic-sub">Cirurgiã-Dentista · CRO/SC 21403<br/>R. 220, nº 200 Sala 02 · Edif. Paris · Meia Praia<br/>Itapema/SC · drarobf@gmail.com</div>
+    </div>
+    <div class="recibo-title">
+      <h1>Recibo</h1>
+      <div class="num">Nº ${num}</div>
+    </div>
+  </div>
+  <div class="valor-box">
+    <div><div class="valor-label">Valor recebido</div><div class="valor-num">R$ ${(pg.valor||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</div></div>
+    <div style="text-align:right"><div style="font-size:10px;color:#aaa;margin-bottom:4px">Data</div><div style="font-weight:700;font-size:14px;color:#555">${fmtDate(pg.date)}</div></div>
+  </div>
+  <table>
+    <tr><td>Paciente</td><td>${p.name}</td></tr>
+    ${p.cpf?`<tr><td>CPF</td><td>${p.cpf}</td></tr>`:""}
+    ${p.rg?`<tr><td>RG</td><td>${p.rg}</td></tr>`:""}
+    <tr><td>Descrição dos serviços</td><td>${pg.desc||"Serviços odontológicos"}</td></tr>
+    <tr><td>Forma de pagamento</td><td>${pg.forma||"—"}</td></tr>
+    <tr><td>Tipo</td><td>${pg.tipo==="entrada"?"Recebimento":"Desconto / Estorno"}</td></tr>
+  </table>
+  <div class="decl">Declaro ter recebido de <b>${p.name}</b> a importância de <b>R$ ${(pg.valor||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</b> (${valorPorExtenso(pg.valor||0)}), referente aos serviços odontológicos acima discriminados. Para maior clareza, firmo o presente recibo.</div>
+  <div class="sig-row">
+    <div class="sig-box"><div class="sig-line"><b>Dra. Rossana Batista Fucks</b><br/>CRO/SC 21403 · Prestadora de Serviços</div></div>
+    <div class="sig-box"><div class="sig-line"><b>${p.name}</b><br/>${p.cpf?"CPF "+p.cpf+" · ":""}Contratante</div></div>
+  </div>
+  <div style="text-align:center;margin-top:28px;font-size:10px;color:#ccc">Itapema/SC · ${new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"})}</div>
+  <div style="text-align:center;margin-top:12px">
+    <button onclick="window.print()" style="padding:10px 24px;background:#8B6914;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:Georgia,serif">🖨️ Imprimir / Salvar PDF</button>
+  </div>
   <script>window.onload=function(){window.print();}<\/script>
   </body></html>`);
   w.document.close();
+};
+
+// Valor por extenso básico para recibos
+function valorPorExtenso(v){
+  if(!v||isNaN(v))return "valor informado";
+  const n=Math.round(v*100);
+  const reais=Math.floor(n/100);
+  const cents=n%100;
+  const u=["","um","dois","três","quatro","cinco","seis","sete","oito","nove","dez","onze","doze","treze","quatorze","quinze","dezesseis","dezessete","dezoito","dezenove"];
+  const d=["","","vinte","trinta","quarenta","cinquenta","sessenta","setenta","oitenta","noventa"];
+  const c=["","cem","duzentos","trezentos","quatrocentos","quinhentos","seiscentos","setecentos","oitocentos","novecentos"];
+  function conv(n){
+    if(n===0)return"";if(n===100)return"cem";
+    let r="";
+    if(n>=100){r+=c[Math.floor(n/100)];n%=100;if(n>0)r+=" e ";}
+    if(n>=20){r+=d[Math.floor(n/10)];n%=10;if(n>0)r+=" e ";}
+    if(n>0)r+=u[n];
+    return r;
+  }
+  let res="";
+  if(reais>0)res+=conv(reais)+(reais===1?" real":" reais");
+  if(cents>0){if(res)res+=" e ";res+=conv(cents)+(cents===1?" centavo":" centavos");}
+  return res||"zero";
+}
+
+// Botão WhatsApp do recibo
+window.whatsRecibo=function(ptId,pgIdx){
+  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  const pg=(p.pagamentos||[])[pgIdx];if(!pg)return;
+  const phone=(p.phone||"").replace(/\D/g,"");
+  if(!phone){toast("Telefone não cadastrado","warning");return;}
+  const full=phone.startsWith("55")?phone:"55"+phone;
+  const msg=`🧾 *RECIBO DE PAGAMENTO*\n`
+    +`Clínica Dra. Rossana Fucks — CRO/SC 21403\n\n`
+    +`👤 *Paciente:* ${p.name}${p.cpf?" — CPF: "+p.cpf:""}\n`
+    +`📅 *Data:* ${fmtDate(pg.date)}\n`
+    +`💰 *Valor:* R$ ${(pg.valor||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}\n`
+    +`📋 *Serviços:* ${pg.desc||"Serviços odontológicos"}\n`
+    +`💳 *Pagamento:* ${pg.forma||"—"}\n\n`
+    +`_Atendimento realizado na R. 220, nº 200, Sala 02 · Ed. Paris · Meia Praia · Itapema/SC_`;
+  window.open(`https://wa.me/${full}?text=${encodeURIComponent(msg)}`,"_blank");
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -8331,7 +8450,7 @@ function renderFinanceiroPt(p){
         +"<div style='flex:1'><div style='color:#ddd;font-size:13px;font-weight:700'>"+pg.desc+"</div>"
         +"<div style='color:#555;font-size:11px'>"+fmtDate(pg.date)+(pg.forma?" · "+pg.forma:"")+"</div></div>"
         +"<div style='color:"+cor+";font-size:15px;font-weight:900;flex-shrink:0'>"+sinal+" R$ "+pg.valor.toLocaleString("pt-BR")+"</div>"
-        +(pg.tipo==="entrada"?"<button onclick='printRecibo("+p.id+","+pgIdx+")' style='background:none;border:none;color:#C6A46D;cursor:pointer;font-size:14px' title='Imprimir recibo'>🖨️</button>":"")
+        +(pg.tipo==="entrada"?"<button onclick='printRecibo("+p.id+","+pgIdx+")' style='background:none;border:none;color:#C6A46D;cursor:pointer;font-size:14px' title='Imprimir recibo PDF'>🖨️</button><button onclick='whatsRecibo("+p.id+","+pgIdx+")' style='background:none;border:none;color:#22c55e;cursor:pointer;font-size:14px' title='Enviar recibo por WhatsApp'>📱</button>":"")
         +"<button onclick='delPagamento("+p.id+","+pg.id+")' style='background:none;border:none;color:#333;cursor:pointer;font-size:14px'>🗑</button>"
         +"</div>";
     }).join(""))
@@ -9148,6 +9267,12 @@ function pageTerms(){
           <button onclick="set({tSig:null})" class="bg" style="font-size:11px;padding:5px 10px;margin-top:8px;display:block">↺ Refazer assinatura</button>
         </div>`:`<div style="margin-bottom:12px">${renderSigPad()}</div>`}
       <button onclick="confirmTerm()" class="bp" style="width:100%;padding:12px;font-size:13px;opacity:${ST.tSig&&ST.tDraSig?1:.3}">📄 Gerar Documento Assinado</button>
+      <div style="display:flex;align-items:center;gap:8px;margin:10px 0">
+        <div style="flex:1;height:1px;background:rgba(198,164,109,0.15)"></div>
+        <span style="color:#444;font-size:10px">ou envie online</span>
+        <div style="flex:1;height:1px;background:rgba(198,164,109,0.15)"></div>
+      </div>
+      <button onclick="gerarLinkTermo('${selT.k}')" style="width:100%;padding:12px;background:linear-gradient(135deg,rgba(96,165,250,0.1),rgba(96,165,250,0.05));border:1px solid rgba(96,165,250,0.28);border-radius:10px;color:#60a5fa;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif">🔗 Enviar Link para Paciente Assinar Online</button>
     </div>`;
   }
 
