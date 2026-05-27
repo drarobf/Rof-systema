@@ -3096,63 +3096,205 @@ window.printRecibo=function(ptId,pgIdx){
   const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
   const pg=(p.pagamentos||[])[pgIdx];if(!pg)return;
   const num=String(pgIdx+1).padStart(4,"0");
-  const w=window.open("","_blank","width=720,height=680");
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+  const valorFmt=(pg.valor||0).toLocaleString("pt-BR",{minimumFractionDigits:2});
+  const hoje=new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"});
+  const w=window.open("","_blank","width=780,height=900");
+  w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Recibo ${num} — ${p.name}</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:Georgia,serif;background:#fff;color:#111;max-width:640px;margin:32px auto;padding:0 32px;font-size:13px;line-height:1.7}
+    body{font-family:Georgia,serif;background:#f5f5f0;color:#111;font-size:13px;line-height:1.7;padding:20px}
+    .wrap{max-width:640px;margin:0 auto}
+    /* ── RECIBO ── */
+    .recibo{background:#fff;border-radius:12px;padding:28px 32px;border:1px solid #e8e4de;box-shadow:0 2px 8px rgba(0,0,0,0.07);margin-bottom:16px}
     .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;border-bottom:2px solid #C6A46D;margin-bottom:20px}
-    .clinic-name{font-size:17px;font-weight:900;letter-spacing:1px;color:#8B6914}
+    .clinic-name{font-size:16px;font-weight:900;letter-spacing:1px;color:#8B6914}
     .clinic-sub{font-size:10px;color:#888;margin-top:3px;line-height:1.5}
-    .recibo-title{text-align:right}
-    .recibo-title h1{font-size:15px;font-weight:900;letter-spacing:2px;text-transform:uppercase;color:#333}
-    .recibo-title .num{font-size:11px;color:#aaa;margin-top:2px}
-    .valor-box{background:linear-gradient(135deg,#f9f5e8,#fdf8ef);border:1.5px solid #C6A46D44;border-radius:10px;padding:16px 20px;margin:18px 0;display:flex;justify-content:space-between;align-items:center}
-    .valor-label{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:#888}
-    .valor-num{font-size:26px;font-weight:900;color:#8B6914;letter-spacing:1px}
-    table{width:100%;border-collapse:collapse;margin-bottom:16px}
-    td{padding:7px 4px;border-bottom:1px solid #f0ede8;font-size:12.5px}
+    .recibo-title h1{font-size:14px;font-weight:900;letter-spacing:2px;text-transform:uppercase;color:#333;text-align:right}
+    .recibo-title .num{font-size:11px;color:#aaa;margin-top:2px;text-align:right}
+    .valor-box{background:linear-gradient(135deg,#f9f5e8,#fdf8ef);border:1.5px solid rgba(198,164,109,0.3);border-radius:10px;padding:14px 18px;margin:16px 0;display:flex;justify-content:space-between;align-items:center}
+    .valor-label{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#888;margin-bottom:4px}
+    .valor-num{font-size:24px;font-weight:900;color:#8B6914;letter-spacing:1px}
+    table{width:100%;border-collapse:collapse;margin-bottom:14px}
+    td{padding:6px 4px;border-bottom:1px solid #f0ede8;font-size:12.5px}
     td:first-child{color:#888;width:42%}
     td:last-child{font-weight:600;color:#222}
-    .decl{font-size:11.5px;color:#666;line-height:1.7;padding:12px;background:#fafaf8;border-radius:7px;border:1px solid #ede9e0;margin-bottom:24px}
-    .sig-row{display:flex;justify-content:space-between;gap:32px;margin-top:8px}
-    .sig-box{flex:1;text-align:center}
-    .sig-line{border-top:1.5px solid #333;padding-top:8px;margin-top:48px;font-size:11px;color:#333;line-height:1.5}
-    @media print{body{margin:16px auto}button{display:none!important}}
+    .decl{font-size:11.5px;color:#555;line-height:1.8;padding:12px 14px;background:#fafaf8;border-radius:7px;border:1px solid #ede9e0;margin-bottom:20px}
+    /* ── ASSINATURAS ── */
+    .sig-section{background:#fff;border-radius:12px;padding:20px 24px;border:2px solid #C6A46D;box-shadow:0 1px 6px rgba(198,164,109,0.1);margin-bottom:14px}
+    .sig-title{font-size:13px;font-weight:900;color:#333;margin-bottom:16px;text-align:center;font-family:Georgia,serif}
+    .sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+    .sig-pad-wrap{text-align:center}
+    .sig-pad-label{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#8B6914;font-weight:700;margin-bottom:8px}
+    canvas{border:2px dashed #C6A46D;border-radius:8px;background:#fafaf8;touch-action:none;cursor:crosshair;display:block;width:100%}
+    .pad-btns{display:flex;gap:6px;margin-top:7px;justify-content:center}
+    .btn-clear{padding:5px 12px;background:#fff;border:1.5px solid #ddd;border-radius:6px;font-size:11px;cursor:pointer;font-family:Georgia,serif;color:#888}
+    .btn-ok{padding:5px 14px;background:rgba(34,197,94,0.1);border:1.5px solid rgba(34,197,94,0.3);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:Georgia,serif;color:#166534;display:none}
+    .sig-done-img{max-height:56px;max-width:100%;display:block;margin:0 auto 4px}
+    .sig-name-line{border-top:1.5px solid #333;padding-top:7px;margin-top:8px;font-size:11px;color:#333;line-height:1.5;text-align:center}
+    .btn-print{width:100%;padding:14px;background:linear-gradient(135deg,#8B6914,#C6A46D);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:Georgia,serif;letter-spacing:0.5px}
+    .btn-print:disabled{opacity:0.4;cursor:not-allowed}
+    .status-hint{text-align:center;font-size:11px;color:#888;margin-bottom:10px;min-height:18px}
+    /* ── PRINT ── */
+    @media print{
+      body{background:#fff;padding:0}
+      .sig-section,.btn-print,.status-hint,.pad-btns{display:none!important}
+      .recibo{box-shadow:none;border:none;padding:0}
+      .sig-print-row{display:flex!important}
+    }
+    .sig-print-row{display:none;justify-content:space-between;gap:32px;margin-top:20px;padding-top:16px;border-top:1px solid #e5e5e5}
+    .sig-print-box{flex:1;text-align:center}
+    .sig-print-img{max-height:56px;max-width:160px;display:block;margin:0 auto 6px}
+    .sig-print-line{border-top:1.5px solid #333;padding-top:7px;font-size:11px;color:#333;line-height:1.5}
   </style></head><body>
-  <div class="header">
-    <div>
-      <div class="clinic-name">Dra. Rossana Batista Fucks</div>
-      <div class="clinic-sub">Cirurgiã-Dentista · CRO/SC 21403<br/>R. 220, nº 200 Sala 02 · Edif. Paris · Meia Praia<br/>Itapema/SC · drarobf@gmail.com</div>
+  <div class="wrap">
+    <!-- ── RECIBO ── -->
+    <div class="recibo" id="recibo-doc">
+      <div class="header">
+        <div>
+          <div class="clinic-name">Dra. Rossana Batista Fucks</div>
+          <div class="clinic-sub">Cirurgiã-Dentista · CRO/SC 21403<br/>R. 220, nº 200 Sala 02 · Edif. Paris · Meia Praia<br/>Itapema/SC · drarobf@gmail.com</div>
+        </div>
+        <div class="recibo-title"><h1>Recibo</h1><div class="num">Nº ${num}</div></div>
+      </div>
+      <div class="valor-box">
+        <div><div class="valor-label">Valor recebido</div><div class="valor-num">R$ ${valorFmt}</div></div>
+        <div style="text-align:right"><div style="font-size:10px;color:#aaa;margin-bottom:4px">Data</div><div style="font-weight:700;font-size:13px;color:#555">${fmtDate(pg.date)}</div></div>
+      </div>
+      <table>
+        <tr><td>Paciente</td><td>${p.name}</td></tr>
+        ${p.cpf?`<tr><td>CPF</td><td>${p.cpf}</td></tr>`:""}
+        ${p.rg?`<tr><td>RG</td><td>${p.rg}</td></tr>`:""}
+        <tr><td>Descrição</td><td>${pg.desc||"Serviços odontológicos"}</td></tr>
+        <tr><td>Forma de pagamento</td><td>${pg.forma||"—"}</td></tr>
+      </table>
+      <div class="decl">
+        Declaro ter recebido de <b>${p.name}</b>${p.cpf?", CPF "+p.cpf:",""} a importância de
+        <b>R$ ${valorFmt}</b> (${valorPorExtenso(pg.valor||0)}), referente aos serviços odontológicos
+        acima discriminados. Para maior clareza, firmo o presente recibo.
+      </div>
+      <div style="font-size:11px;color:#aaa;text-align:center;margin-bottom:8px">Itapema/SC, ${hoje}</div>
+      <!-- Aparece só no print, preenchido com as imgs das assinaturas -->
+      <div class="sig-print-row" id="sig-print-row">
+        <div class="sig-print-box">
+          <img id="sig-img-dra" class="sig-print-img" src="" style="display:none"/>
+          <div class="sig-print-line"><b>Dra. Rossana Batista Fucks</b><br/>CRO/SC 21403 · Prestadora de Serviços</div>
+        </div>
+        <div class="sig-print-box">
+          <img id="sig-img-pt" class="sig-print-img" src="" style="display:none"/>
+          <div class="sig-print-line"><b>${p.name}</b><br/>${p.cpf?"CPF "+p.cpf+" · ":""}Contratante</div>
+        </div>
+      </div>
     </div>
-    <div class="recibo-title">
-      <h1>Recibo</h1>
-      <div class="num">Nº ${num}</div>
+
+    <!-- ── ASSINATURAS ── -->
+    <div class="sig-section" id="sig-section">
+      <div class="sig-title">✍️ Assinar antes de imprimir</div>
+      <div class="sig-grid">
+        <div class="sig-pad-wrap">
+          <div class="sig-pad-label">Dra. Rossana</div>
+          <div id="dra-done" style="display:none">
+            <img id="dra-done-img" class="sig-done-img"/>
+            <button onclick="resetPad('dra')" class="btn-clear" style="margin:4px auto;display:block">↺ Refazer</button>
+          </div>
+          <div id="dra-pad">
+            <canvas id="cv-dra" height="70"></canvas>
+            <div class="pad-btns">
+              <button class="btn-clear" onclick="clearPad('dra')">🗑 Limpar</button>
+              <button class="btn-ok" id="ok-dra" onclick="confirmPad('dra')">✅ OK</button>
+            </div>
+          </div>
+        </div>
+        <div class="sig-pad-wrap">
+          <div class="sig-pad-label">${p.name.split(" ")[0]} (Paciente)</div>
+          <div id="pt-done" style="display:none">
+            <img id="pt-done-img" class="sig-done-img"/>
+            <button onclick="resetPad('pt')" class="btn-clear" style="margin:4px auto;display:block">↺ Refazer</button>
+          </div>
+          <div id="pt-pad">
+            <canvas id="cv-pt" height="70"></canvas>
+            <div class="pad-btns">
+              <button class="btn-clear" onclick="clearPad('pt')">🗑 Limpar</button>
+              <button class="btn-ok" id="ok-pt" onclick="confirmPad('pt')">✅ OK</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+
+    <div class="status-hint" id="status-hint">Aguardando as duas assinaturas para imprimir…</div>
+    <button class="btn-print" id="btn-print" disabled onclick="imprimirRecibo()">
+      🖨️ Imprimir / Salvar como PDF
+    </button>
   </div>
-  <div class="valor-box">
-    <div><div class="valor-label">Valor recebido</div><div class="valor-num">R$ ${(pg.valor||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</div></div>
-    <div style="text-align:right"><div style="font-size:10px;color:#aaa;margin-bottom:4px">Data</div><div style="font-weight:700;font-size:14px;color:#555">${fmtDate(pg.date)}</div></div>
-  </div>
-  <table>
-    <tr><td>Paciente</td><td>${p.name}</td></tr>
-    ${p.cpf?`<tr><td>CPF</td><td>${p.cpf}</td></tr>`:""}
-    ${p.rg?`<tr><td>RG</td><td>${p.rg}</td></tr>`:""}
-    <tr><td>Descrição dos serviços</td><td>${pg.desc||"Serviços odontológicos"}</td></tr>
-    <tr><td>Forma de pagamento</td><td>${pg.forma||"—"}</td></tr>
-    <tr><td>Tipo</td><td>${pg.tipo==="entrada"?"Recebimento":"Desconto / Estorno"}</td></tr>
-  </table>
-  <div class="decl">Declaro ter recebido de <b>${p.name}</b> a importância de <b>R$ ${(pg.valor||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</b> (${valorPorExtenso(pg.valor||0)}), referente aos serviços odontológicos acima discriminados. Para maior clareza, firmo o presente recibo.</div>
-  <div class="sig-row">
-    <div class="sig-box"><div class="sig-line"><b>Dra. Rossana Batista Fucks</b><br/>CRO/SC 21403 · Prestadora de Serviços</div></div>
-    <div class="sig-box"><div class="sig-line"><b>${p.name}</b><br/>${p.cpf?"CPF "+p.cpf+" · ":""}Contratante</div></div>
-  </div>
-  <div style="text-align:center;margin-top:28px;font-size:10px;color:#ccc">Itapema/SC · ${new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"})}</div>
-  <div style="text-align:center;margin-top:12px">
-    <button onclick="window.print()" style="padding:10px 24px;background:#8B6914;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:Georgia,serif">🖨️ Imprimir / Salvar PDF</button>
-  </div>
-  <script>window.onload=function(){window.print();}<\/script>
+
+  <script>
+  const sigs={dra:null,pt:null};
+
+  function initPad(id){
+    const cv=document.getElementById("cv-"+id);if(!cv)return;
+    const dpr=window.devicePixelRatio||1;
+    cv.width=cv.offsetWidth*dpr||300;cv.height=70*dpr;
+    cv.style.height="70px";
+    const ctx=cv.getContext("2d");
+    ctx.scale(dpr,dpr);
+    ctx.strokeStyle="#111";ctx.lineWidth=2;ctx.lineJoin="round";ctx.lineCap="round";
+    let dr=false,has=false;
+    const xy=(e,c)=>{const r=c.getBoundingClientRect(),s=e.touches?e.touches[0]:e;
+      return[(s.clientX-r.left)*(c.width/r.width/dpr),(s.clientY-r.top)*(c.height/r.height/dpr)];};
+    const s=e=>{e.preventDefault();dr=true;const[x,y]=xy(e,cv);ctx.beginPath();ctx.moveTo(x,y);};
+    const m=e=>{e.preventDefault();if(!dr)return;const[x,y]=xy(e,cv);ctx.lineTo(x,y);ctx.stroke();
+      has=true;document.getElementById("ok-"+id).style.display="inline-block";};
+    const u=e=>{e.preventDefault();dr=false;ctx.beginPath();};
+    cv.addEventListener("mousedown",s);cv.addEventListener("mousemove",m);cv.addEventListener("mouseup",u);
+    cv.addEventListener("touchstart",s,{passive:false});cv.addEventListener("touchmove",m,{passive:false});cv.addEventListener("touchend",u,{passive:false});
+    cv._getImg=()=>has?cv.toDataURL("image/png"):null;
+    cv._clear=()=>{ctx.clearRect(0,0,cv.width/dpr,cv.height/dpr);has=false;document.getElementById("ok-"+id).style.display="none";};
+  }
+
+  function clearPad(id){document.getElementById("cv-"+id)?._clear();}
+  function resetPad(id){
+    sigs[id]=null;
+    document.getElementById(id+"-done").style.display="none";
+    document.getElementById(id+"-pad").style.display="block";
+    updateBtn();
+  }
+  function confirmPad(id){
+    const cv=document.getElementById("cv-"+id);
+    const img=cv?._getImg();if(!img)return;
+    sigs[id]=img;
+    document.getElementById(id+"-done").style.display="block";
+    document.getElementById(id+"-pad").style.display="none";
+    document.getElementById(id+"-done-img").src=img;
+    updateBtn();
+  }
+  function updateBtn(){
+    const both=sigs.dra&&sigs.pt;
+    document.getElementById("btn-print").disabled=!both;
+    document.getElementById("status-hint").textContent=
+      both?"✅ Ambos assinaram — pronto para imprimir!"
+      :(!sigs.dra&&!sigs.pt)?"Aguardando as duas assinaturas…"
+      :!sigs.dra?"Aguardando assinatura da Dra. Rossana…"
+      :"Aguardando assinatura do paciente…";
+  }
+  function imprimirRecibo(){
+    if(!sigs.dra||!sigs.pt)return;
+    // Injeta imgs no bloco de print
+    const row=document.getElementById("sig-print-row");
+    row.style.display="flex";
+    const iDra=document.getElementById("sig-img-dra");
+    iDra.src=sigs.dra;iDra.style.display="block";
+    const iPt=document.getElementById("sig-img-pt");
+    iPt.src=sigs.pt;iPt.style.display="block";
+    setTimeout(()=>window.print(),200);
+  }
+
+  window.onload=function(){
+    initPad("dra");
+    initPad("pt");
+  };
+  <\/script>
   </body></html>`);
   w.document.close();
 };
