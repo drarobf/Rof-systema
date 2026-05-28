@@ -5336,6 +5336,7 @@ const COND={
   coroa:     {l:"Coroa",       c:"#8b5cf6",b:"#6d28d9"},
   endodontia:{l:"Endodontia",  c:"#f97316",b:"#c2410c"},
   fratura:   {l:"Fratura",     c:"#fb7185",b:"#be123c"},
+  faceta:    {l:"Faceta",       c:"#e879f9",b:"#a21caf"},
   planejado: {l:"Planejado",   c:"#0ea5e9",b:"#0369a1"},
   protese:   {l:"Prótese",     c:"#a78bfa",b:"#7c3aed"},
 };
@@ -5633,6 +5634,10 @@ const SUGEST_PROC_POR_COND={
 
   // RESTAURADO (manutenção/troca) → polimento + nova restauração + ajuste oclusal
   restaurado:[20,21,50,10,11,12,13],
+
+  // FACETA → faceta resina, porcelana, lente de contato, clareamento prévio
+  faceta:[80,81,82,83,84,63],
+  // (80 = faceta resina direta; 81 = faceta porcelana; 82 = lente contato; 83/84 = clareamento; 63 = cimentação faceta)
 
   // HÍGIDO → manutenção preventiva
   higido:[20,21,23,24,25,1],
