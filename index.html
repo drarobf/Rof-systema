@@ -2869,7 +2869,7 @@ window.gerarLinkContrato=async function(ptId,tipo){
   }catch(e){
     console.error("Erro ao gerar link:",e);
     const msg=String((e&&e.message)||"");
-    if(msg.toLowerCase().includes("fetch")||msg.includes("521")||msg.includes("522")||!msg){
+    if(_isSbInfraErr(msg)){
       _mostrarErrSupabasePausado();
     }else{
       toast("Erro ao gerar link: "+msg,"error",6000);
@@ -2998,7 +2998,7 @@ window.gerarLinkTermo=async function(termKey){
     setTimeout(()=>window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`,"_blank"),400);
   }catch(e){
     const msg=String((e&&e.message)||"");
-    if(msg.toLowerCase().includes("fetch")||msg.includes("521")||msg.includes("522")||!msg){
+    if(_isSbInfraErr(msg)){
       _mostrarErrSupabasePausado();
     }else{
       toast("Erro ao gerar link: "+msg,"error",6000);
@@ -7580,47 +7580,61 @@ window.gerarLinkCadastro=function(){
   document.body.appendChild(m);
   setTimeout(()=>document.getElementById("gen-label")?.focus(),100);
 };
-window.confirmGerarLink=async function(){
-  const label=document.getElementById("gen-label").value.trim();
+window.confirmGerarLink=async function(retry){
+  const label=document.getElementById("gen-label")?.value.trim()||window._genLinkLabel||"";
   if(!label){toast("Por favor, coloque uma identificação.","warning");return;}
+  window._genLinkLabel=label; // guarda para retry automático
   document.getElementById("gen-modal")?.remove();
-  toast("Gerando link...","info");
+  toast(retry?"🔄 Tentando novamente...":"Gerando link...","info");
   try{
     const{data,error}=await _sb.from('rof_intake')
       .insert({dr_label:label,status:'pending',data:{}})
       .select('id').single();
     if(error)throw error;
     if(!data||!data.id)throw new Error("ID não retornado pelo servidor");
+    window._genLinkLabel=null;
     const link=CADASTRO_URL_BASE+"?id="+data.id;
     showLinkModal(link,label);
     loadIntakes();
   }catch(e){
     const msg=String((e&&e.message)||"");
-    const isSbDown=msg.toLowerCase().includes("failed to fetch")||msg.includes("521")||msg.includes("522")||msg.includes("network")||msg.includes("fetch");
-    if(isSbDown||!msg){
+    // "schema cache" = PostgREST ainda iniciando → retry automático uma vez após 5s
+    const isSchemaCache=msg.toLowerCase().includes("schema cache")||msg.toLowerCase().includes("retrying");
+    if(isSchemaCache&&!retry){
+      toast("⏳ Banco iniciando, tentando novamente em 5s...","info",5000);
+      setTimeout(()=>window.confirmGerarLink(true),5000);
+    }else if(_isSbInfraErr(msg)){
       _mostrarErrSupabasePausado();
     }else{
       toast("Erro ao gerar link: "+msg,"error",6000);
     }
   }
 };
+// ── Detecta erros de infraestrutura Supabase (pausado, iniciando, rede, schema cache) ──
+function _isSbInfraErr(msg){
+  if(!msg)return true;
+  const m=msg.toLowerCase();
+  return m.includes("schema cache")||m.includes("retrying")||m.includes("failed to fetch")
+    ||m.includes("network")||m.includes("connection")||m.includes("econnrefused")
+    ||msg.includes("521")||msg.includes("522")||msg.includes("503")||msg.includes("502");
+}
 function _mostrarErrSupabasePausado(){
   document.getElementById("rof-sb-paused-modal")?.remove();
   const m=document.createElement("div");m.className="mbg";m.id="rof-sb-paused-modal";
   m.innerHTML=`<div class="mbx" style="max-width:460px">
     <div class="mhd">
-      <div class="mhd-title">⚠️ Banco de dados pausado</div>
+      <div class="mhd-title">⚠️ Banco de dados indisponível</div>
       <button onclick="document.getElementById('rof-sb-paused-modal').remove()" style="background:none;border:none;color:#555;cursor:pointer;font-size:22px">✕</button>
     </div>
     <div class="mbd">
       <p style="color:#aaa;font-size:13px;line-height:1.7;margin-bottom:16px">
-        O projeto Supabase ficou inativo e foi <b style="color:#f59e0b">pausado automaticamente</b> pela plataforma (acontece após ~7 dias sem uso).<br/><br/>
-        É fácil reativar — leva menos de 1 minuto:
+        O banco de dados está <b style="color:#f59e0b">pausado ou inicializando</b>.<br/><br/>
+        Isso acontece após alguns dias sem uso — é fácil resolver:
       </p>
       <ol style="color:#ccc;font-size:13px;line-height:2;padding-left:18px;margin-bottom:16px">
         <li>Clique no botão abaixo para abrir o painel</li>
-        <li>Clique em <b style="color:#E2C99A">Restore project</b></li>
-        <li>Aguarde ~30 segundos e tente de novo aqui</li>
+        <li>Se aparecer <b style="color:#E2C99A">Restore project</b>, clique nele</li>
+        <li>Aguarde ~30 segundos e clique em <b style="color:#E2C99A">Testar conexão</b></li>
       </ol>
       <a href="https://supabase.com/dashboard/project/dhgfoxdxihjkhzmctaea" target="_blank"
         style="display:block;width:100%;text-align:center;padding:13px;background:linear-gradient(135deg,#22c55e,#16a34a);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;text-decoration:none;margin-bottom:10px">
