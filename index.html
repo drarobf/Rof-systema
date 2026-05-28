@@ -1633,11 +1633,12 @@ const _sb=(()=>{
   catch(e){console.warn("Supabase init falhou:",e);return _sbStub;}
 })();
 
-// rof_pt_photos e rof_pt_xrays ficam FORA do sync — imagens base64 grandes demais para o Supabase free tier
-const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_stk','rof_procs','rof_caixa','rof_whats_templates','rof_orientacoes','rof_bloqueios']);
+// rof_pt_xrays fica FORA do sync — RX em base64 são grandes demais para o Supabase free tier
+// rof_pt_photos retornou ao sync — fotos de perfil são comprimidas para ~15-25KB cada (seguro)
+const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_stk','rof_procs','rof_caixa','rof_whats_templates','rof_orientacoes','rof_bloqueios','rof_pt_photos']);
 const _syncQ = (()=>{try{return JSON.parse(localStorage.getItem("rof_sync_q")||"[]");}catch{return[];}})();
-// Remove imediatamente quaisquer syncs de fotos/RX já enfileirados (eram pesados demais)
-(function(){const heavy=new Set(['rof_pt_photos','rof_pt_xrays']);let c=false;for(let i=_syncQ.length-1;i>=0;i--){if(_syncQ[i]&&heavy.has(_syncQ[i].k)){_syncQ.splice(i,1);c=true;}}if(c)try{localStorage.setItem("rof_sync_q",JSON.stringify(_syncQ));}catch{}})();
+// Remove imediatamente quaisquer syncs de RX já enfileirados (xrays são grandes demais)
+(function(){const heavy=new Set(['rof_pt_xrays']);let c=false;for(let i=_syncQ.length-1;i>=0;i--){if(_syncQ[i]&&heavy.has(_syncQ[i].k)){_syncQ.splice(i,1);c=true;}}if(c)try{localStorage.setItem("rof_sync_q",JSON.stringify(_syncQ));}catch{}})();
 const _pendingCloudWrites = new Set();
 const _lastLocalWriteAt = {};
 const SYNC_QUEUE_MAX_AGE_MS = 24*60*60*1000;
@@ -8381,11 +8382,11 @@ window.setPtPhoto=(id,inp)=>{
   const f=inp.files[0];if(!f)return;
   try{inp.value="";}catch(e){}
   const tries=[
-    {px:420,q:0.72,label:""},
-    {px:320,q:0.66,label:" (reduzida)"},
-    {px:240,q:0.58,label:" (reduzida)"},
-    {px:160,q:0.52,label:" (bem reduzida)"},
-    {px:100,q:0.45,label:" (mínima)"}
+    {px:280,q:0.68,label:""},       // ~15-25KB — ideal para sync
+    {px:220,q:0.60,label:" (reduzida)"},
+    {px:160,q:0.55,label:" (reduzida)"},
+    {px:110,q:0.48,label:" (bem reduzida)"},
+    {px:80, q:0.42,label:" (mínima)"}
   ];
   let i=0;
   const attempt=()=>{
