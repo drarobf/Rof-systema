@@ -2580,14 +2580,17 @@ window.importarPlanoTtoParaOrcamento=function(ptId){
   if(itensAtuais.length>0){
     if(!confirm("Orçamento já tem "+itensAtuais.length+" item(ns). Deseja ADICIONAR os "+etapas.length+" procedimento(s) do plano?\n\n(Para substituir, limpe o orçamento antes.)"))return;
   }
-  const novosItens=etapas.map(et=>({
-    procId:Date.now()+"_"+Math.random().toString(36).slice(2,6),
-    name:et.proc,
-    qty:1,
-    price:et.valor||0,
-  }));
+  const novosItens=etapas.map(et=>{
+    const pr=PROCS.find(p=>p.n===et.proc)||null;
+    return{
+      procId:pr?pr.id:(Date.now()+"_"+Math.random().toString(36).slice(2,6)),
+      name:et.proc,
+      qty:1,
+      price:Number(et.valor)||0,
+    };
+  });
   const nps=ST.pts.map(x=>{
-    if(x.id!==ptId)return x;
+    if(!sameId(x.id,ptId))return x;
     return{...x,plano:{...planoAtual,itens:[...itensAtuais,...novosItens]}};
   });
   save("rof_pts",nps);set({pts:nps,ptTab:"plano"});
