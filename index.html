@@ -2306,18 +2306,20 @@ function updateNotifDot(){
 // ══════════════════════════════════════════════════════════════════
 window.renderPlanoTto=function(p){
   const etapas=p.planoTto||[];
+  const pid=jsArg(p.id);
   const STATUS_COLORS={Pendente:"#f59e0b",Em_andamento:"#60a5fa",Concluído:"#22c55e",Cancelado:"#ef4444"};
   return`<div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <div style="color:#E2C99A;font-weight:800;font-size:13px">🗂️ Plano de Tratamento</div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        ${etapas.length>0?`<button onclick='importarPlanoTtoParaOrcamento(${p.id})' class="bp" style="font-size:11px;padding:6px 12px;background:#C6A46D22;color:#C6A46D;border-color:rgba(198,164,109,0.4)">📤 Orçamento</button>`:""}
-        ${(p.planoClinico||[]).length>0?`<button onclick='importarOdontogramaParaPlanoTto(${p.id})' class="bg" style="font-size:11px;padding:6px 12px;color:#60a5fa;border-color:#60a5fa33">🦷 Do Odontograma</button>`:""}
-        <button onclick='abrirAddEtapaModal(${p.id})' class="bp" style="font-size:11px;padding:6px 14px">+ Adicionar</button>
+        ${etapas.length>0?`<button onclick='importarPlanoTtoParaOrcamento(${pid})' class="bp" style="font-size:11px;padding:6px 12px;background:#C6A46D22;color:#C6A46D;border-color:rgba(198,164,109,0.4)">📤 Orçamento</button>`:""}
+        ${(p.planoClinico||[]).length>0?`<button onclick='importarOdontogramaParaPlanoTto(${pid})' class="bg" style="font-size:11px;padding:6px 12px;color:#60a5fa;border-color:#60a5fa33">🦷 Do Odontograma</button>`:""}
+        <button onclick='abrirAddEtapaModal(${pid})' class="bp" style="font-size:11px;padding:6px 14px">+ Adicionar</button>
+        ${etapas.length>0?`<button onclick='clearPlanoTto(${pid})' class="bg" style="font-size:11px;padding:6px 10px;color:#ef4444;border-color:#ef444433">🗑 Limpar</button>`:""}
       </div>
     </div>
     ${etapas.length===0
-      ?`<div style="text-align:center;color:#333;padding:28px 0;font-size:13px">Nenhuma etapa cadastrada.<br/><span style="font-size:11px;color:#222">Clique em "+ Etapa" para começar.</span></div>`
+      ?`<div style="text-align:center;color:#333;padding:28px 0;font-size:13px">Nenhuma etapa cadastrada.<br/><span style="font-size:11px;color:#222">Clique em "+ Adicionar" para começar.</span></div>`
       :`<div style="display:flex;flex-direction:column;gap:8px">
         ${etapas.map((et,i)=>{
           const c=STATUS_COLORS[et.status]||"#888";
@@ -2327,26 +2329,26 @@ window.renderPlanoTto=function(p){
                 <div style="position:relative;margin-bottom:4px">
                   <input value="${(et.proc||"").replace(/"/g,"&quot;")}"
                     id="pl-inp-${p.id}-${i}"
-                    oninput="showProcDrop(${p.id},${i},this.value)"
-                    onfocus="showProcDrop(${p.id},${i},this.value)"
-                    onblur="setTimeout(()=>hideProcDrop(${p.id},${i}),180)"
+                    oninput="showProcDrop(${pid},${i},this.value)"
+                    onfocus="showProcDrop(${pid},${i},this.value)"
+                    onblur="setTimeout(()=>hideProcDrop(${pid},${i}),180)"
                     class="inp" style="font-size:13px;font-weight:700;color:#E2C99A;width:100%;box-sizing:border-box" placeholder="Digite ou selecione..."/>
                 </div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px">
                   ${["Pendente","Em_andamento","Concluído","Cancelado"].map(s=>{
                     const sc=STATUS_COLORS[s]||"#888";
-                    return`<button onclick="updEtapa(${p.id},${i},'status','${s}',true)" class="bg" style="font-size:10px;padding:3px 10px;border-radius:50px;background:${et.status===s?sc+"22":"transparent"};color:${et.status===s?sc:"#555"};border-color:${et.status===s?sc+"55":"rgba(198,164,109,0.1)"}">${s.replace("_"," ")}</button>`;
+                    return`<button onclick="updEtapa(${pid},${i},'status','${s}',true)" class="bg" style="font-size:10px;padding:3px 10px;border-radius:50px;background:${et.status===s?sc+"22":"transparent"};color:${et.status===s?sc:"#555"};border-color:${et.status===s?sc+"55":"rgba(198,164,109,0.1)"}">${s.replace("_"," ")}</button>`;
                   }).join("")}
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:2px">
                   <div><label class="lbl" style="font-size:9px">Data prevista</label>
-                    <input type="date" value="${et.dataPrev||""}" onchange="updEtapa(${p.id},${i},'dataPrev',this.value)" class="inp" style="font-size:11px;padding:5px 8px"/></div>
+                    <input type="date" value="${et.dataPrev||""}" onchange="updEtapa(${pid},${i},'dataPrev',this.value)" class="inp" style="font-size:11px;padding:5px 8px"/></div>
                   <div><label class="lbl" style="font-size:9px">Valor unit. (R$)</label>
-                    <input type="number" value="${et.valor||""}" oninput="updEtapa(${p.id},${i},'valor',parseFloat(this.value)||0)" class="inp" style="font-size:11px;padding:5px 8px" placeholder="0,00"/></div>
+                    <input type="number" value="${et.valor||""}" oninput="updEtapa(${pid},${i},'valor',parseFloat(this.value)||0)" class="inp" style="font-size:11px;padding:5px 8px" placeholder="0,00"/></div>
                 </div>
-                <textarea oninput="updEtapa(${p.id},${i},'obs',this.value)" rows="1" class="inp" style="margin-top:6px;font-size:11px;resize:vertical" placeholder="Observações...">${et.obs||""}</textarea>
+                <textarea oninput="updEtapa(${pid},${i},'obs',this.value)" rows="1" class="inp" style="margin-top:6px;font-size:11px;resize:vertical" placeholder="Observações...">${et.obs||""}</textarea>
               </div>
-              <button onclick="delEtapa(${p.id},${i})" style="background:none;border:none;color:#ef444466;cursor:pointer;font-size:16px;padding:0;flex-shrink:0">✕</button>
+              <button onclick="delEtapa(${pid},${i})" style="background:none;border:none;color:#ef444466;cursor:pointer;font-size:16px;padding:0;flex-shrink:0">✕</button>
             </div>
           </div>`;
         }).join("")}
@@ -2355,14 +2357,14 @@ window.renderPlanoTto=function(p){
       <span style="color:#555;font-size:11px">${etapas.filter(e=>e.status==="Concluído").length}/${etapas.length} concluídas</span>
       <div style="display:flex;align-items:center;gap:10px">
         <span style="color:#C6A46D;font-size:11px;font-weight:700">Total: R$ ${(etapas.reduce((s,e)=>s+(e.valor||0),0)).toLocaleString("pt-BR")}</span>
-        <button onclick="salvarPlanoTto(${p.id})" class="bp" style="font-size:10px;padding:4px 12px">💾 Salvar</button>
+        <button onclick="salvarPlanoTto(${pid})" class="bp" style="font-size:10px;padding:4px 12px">💾 Salvar</button>
       </div>
     </div>`:""}
   </div>`;
 };
 window.addEtapaPlano=function(ptId){
   const pts=ST.pts.map(p=>{
-    if(p.id!==ptId)return p;
+    if(!sameId(p.id,ptId))return p;
     const planoTto=[...(p.planoTto||[]),{proc:"",status:"Pendente",dataPrev:"",valor:0,obs:""}];
     return{...p,planoTto};
   });
@@ -2370,16 +2372,23 @@ window.addEtapaPlano=function(ptId){
 };
 window.updEtapa=function(ptId,idx,field,val,immediate){
   const pts=ST.pts.map(p=>{
-    if(p.id!==ptId)return p;
+    if(!sameId(p.id,ptId))return p;
     const planoTto=(p.planoTto||[]).map((e,i)=>i===idx?{...e,[field]:val}:e);
     return{...p,planoTto};
   });
   ST.pts=pts;save("rof_pts",pts);
   if(immediate)set({pts});
 };
+window.clearPlanoTto=function(ptId){
+  rConfirm("Limpar TODO o plano de tratamento desta paciente?",function(){
+    const pts=ST.pts.map(p=>sameId(p.id,ptId)?{...p,planoTto:[]}:p);
+    save("rof_pts",pts);set({pts});
+    toast("Plano de tratamento limpo.","success");
+  },"Limpar Tudo");
+};
 window.delEtapa=function(ptId,idx){
   const pts=ST.pts.map(p=>{
-    if(p.id!==ptId)return p;
+    if(!sameId(p.id,ptId))return p;
     const planoTto=(p.planoTto||[]).filter((_,i)=>i!==idx);
     return{...p,planoTto};
   });
@@ -2463,7 +2472,7 @@ window.confirmarAddEtapa=function(ptId){
 
 // ── Importar do Odontograma (planoClinico) para Plano de Tratamento ──
 window.importarOdontogramaParaPlanoTto=function(ptId){
-  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p)return;
   const plan=(p.planoClinico||[]).filter(it=>it.status!=="feito");
   if(plan.length===0){toast("Nenhum procedimento a realizar no odontograma.","warning");return;}
   // Mostra modal de confirmação com a lista
@@ -2563,7 +2572,7 @@ window.selectProcDrop=function(ptId,idx,procId){
   ST.pts=pts;save("rof_pts",pts);set({pts});
 };
 window.importarPlanoTtoParaOrcamento=function(ptId){
-  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p)return;
   const etapas=(p.planoTto||[]).filter(e=>e.proc&&e.status!=="Cancelado");
   if(etapas.length===0){toast("Nenhuma etapa válida no plano para importar.","warning");return;}
   const planoAtual=p.plano||{itens:[],obs:"",desconto:0,parcelas:1,validade:""};
