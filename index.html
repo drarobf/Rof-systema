@@ -2306,11 +2306,12 @@ window.renderPlanoTto=function(p){
   const etapas=p.planoTto||[];
   const STATUS_COLORS={Pendente:"#f59e0b",Em_andamento:"#60a5fa",Concluído:"#22c55e",Cancelado:"#ef4444"};
   return`<div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <div style="color:#E2C99A;font-weight:800;font-size:13px">🗂️ Plano de Tratamento</div>
-      <div style="display:flex;gap:6px;align-items:center">
-        ${etapas.length>0?`<button onclick="importarPlanoTtoParaOrcamento(${p.id})" class="bp" style="font-size:11px;padding:6px 12px;background:#C6A46D22;color:#C6A46D;border-color:rgba(198,164,109,0.4)">📥 Enviar p/ Orçamento</button>`:""}
-        <button onclick="addEtapaPlano(${p.id})" class="bp" style="font-size:11px;padding:6px 14px">+ Etapa</button>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        ${etapas.length>0?`<button onclick='importarPlanoTtoParaOrcamento(${p.id})' class="bp" style="font-size:11px;padding:6px 12px;background:#C6A46D22;color:#C6A46D;border-color:rgba(198,164,109,0.4)">📤 Orçamento</button>`:""}
+        ${(p.planoClinico||[]).length>0?`<button onclick='importarOdontogramaParaPlanoTto(${p.id})' class="bg" style="font-size:11px;padding:6px 12px;color:#60a5fa;border-color:#60a5fa33">🦷 Do Odontograma</button>`:""}
+        <button onclick='abrirAddEtapaModal(${p.id})' class="bp" style="font-size:11px;padding:6px 14px">+ Adicionar</button>
       </div>
     </div>
     ${etapas.length===0
@@ -2385,6 +2386,130 @@ window.delEtapa=function(ptId,idx){
 window.salvarPlanoTto=function(ptId){
   save("rof_pts",ST.pts);
   toast("Plano de tratamento salvo ✓","success");
+};
+
+// ── Abre modal para adicionar etapa com quantidade ─────────────
+window.abrirAddEtapaModal=function(ptId){
+  document.getElementById("add-etapa-modal")?.remove();
+  const allProcs=typeof PROCS!=="undefined"?PROCS:[];
+  const procOpts=allProcs.map(pr=>`<option value="${pr.id}" data-price="${pr.p||0}">${pr.n} ${pr.p?'— R$ '+Number(pr.p).toLocaleString("pt-BR"):""}</option>`).join("");
+  const m=document.createElement("div");
+  m.id="add-etapa-modal";
+  m.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px)";
+  m.innerHTML=`<div style="background:#0d0d0d;border:1px solid rgba(198,164,109,0.25);border-radius:14px;padding:20px;max-width:440px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.8)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="color:#E2C99A;font-size:14px;font-weight:900">➕ Adicionar ao Plano</div>
+      <button onclick="document.getElementById('add-etapa-modal').remove()" style="background:none;border:none;color:#666;font-size:22px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <label class="lbl">Procedimento</label>
+    <input id="aem-search" class="inp" placeholder="🔍 Buscar procedimento..." oninput="filtrarAem(this.value)" style="margin-bottom:6px"/>
+    <select id="aem-proc" class="inp" size="6" style="height:140px;margin-bottom:10px" onchange="(function(){var s=document.getElementById('aem-proc');var o=s.options[s.selectedIndex];document.getElementById('aem-val').value=o?o.dataset.price||'':''})()">
+      <option value="">Selecionar...</option>
+      ${procOpts}
+    </select>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div>
+        <label class="lbl">Quantidade</label>
+        <input type="number" id="aem-qty" class="inp" min="1" max="32" value="1" placeholder="1" style="font-size:16px;font-weight:700;text-align:center"/>
+      </div>
+      <div>
+        <label class="lbl">Valor unit. (R$)</label>
+        <input type="number" id="aem-val" class="inp" min="0" placeholder="0,00"/>
+      </div>
+    </div>
+    <div style="margin-bottom:10px">
+      <label class="lbl">Ou digite manualmente</label>
+      <input id="aem-manual" class="inp" placeholder="Ex: Restauração 2 faces — dente 36"/>
+    </div>
+    <button onclick='confirmarAddEtapa(${ptId})' class="bp" style="width:100%;padding:12px;font-size:13px;font-weight:800">✅ Adicionar ao Plano</button>
+  </div>`;
+  document.body.appendChild(m);
+  m.addEventListener("click",e=>{if(e.target===m)m.remove();});
+  document.getElementById("aem-search").focus();
+};
+window.filtrarAem=function(q){
+  const sel=document.getElementById("aem-proc");if(!sel)return;
+  const lq=(q||"").toLowerCase();
+  Array.from(sel.options).forEach(o=>{
+    if(!o.value)return;
+    o.style.display=(!lq||o.text.toLowerCase().includes(lq))?"":"none";
+  });
+};
+window.confirmarAddEtapa=function(ptId){
+  const sel=document.getElementById("aem-proc");
+  const manual=document.getElementById("aem-manual").value.trim();
+  const qty=Math.max(1,Math.min(32,parseInt(document.getElementById("aem-qty").value)||1));
+  const val=parseFloat(document.getElementById("aem-val").value)||0;
+  const selectedOpt=sel&&sel.value?sel.options[sel.selectedIndex]:null;
+  const procName=manual||(selectedOpt?selectedOpt.text.split("—")[0].trim():"");
+  if(!procName){toast("Selecione ou digite um procedimento.","warning");return;}
+  document.getElementById("add-etapa-modal")?.remove();
+  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  const novas=Array.from({length:qty},(_,i)=>({
+    id:Date.now()+i,
+    proc:qty>1?procName+" — dente ?":`${procName}`,
+    status:"Pendente",
+    dataPrev:"",
+    valor:val,
+    obs:""
+  }));
+  const planoTto=[...(p.planoTto||[]),...novas];
+  const pts=ST.pts.map(x=>x.id===ptId?{...x,planoTto}:x);
+  ST.pts=pts;save("rof_pts",pts);set({pts});
+  toast(`✓ ${qty} etapa${qty>1?"s":""} adicionada${qty>1?"s":""}`,"success",2000);
+};
+
+// ── Importar do Odontograma (planoClinico) para Plano de Tratamento ──
+window.importarOdontogramaParaPlanoTto=function(ptId){
+  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  const plan=(p.planoClinico||[]).filter(it=>it.status!=="feito");
+  if(plan.length===0){toast("Nenhum procedimento a realizar no odontograma.","warning");return;}
+  // Mostra modal de confirmação com a lista
+  document.getElementById("import-od-modal")?.remove();
+  const m=document.createElement("div");
+  m.id="import-od-modal";
+  m.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px)";
+  const listaHtml=plan.map((it,i)=>`
+    <label style="display:flex;align-items:center;gap:8px;padding:7px 8px;background:#0a0a0a;border-radius:6px;margin-bottom:4px;cursor:pointer">
+      <input type="checkbox" id="od-imp-${i}" checked style="width:16px;height:16px;accent-color:#C6A46D;flex-shrink:0"/>
+      <div style="flex:1">
+        <div style="color:#ddd;font-size:12px;font-weight:600">${it.name}</div>
+        <div style="color:#666;font-size:10px">🦷 Dente ${it.tooth} · R$ ${Number(it.price||0).toLocaleString("pt-BR")}</div>
+      </div>
+    </label>`).join("");
+  m.innerHTML=`<div style="background:#0d0d0d;border:1px solid rgba(198,164,109,0.25);border-radius:14px;padding:20px;max-width:460px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.8)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="color:#E2C99A;font-size:14px;font-weight:900">🦷 Importar do Odontograma</div>
+      <button onclick="document.getElementById('import-od-modal').remove()" style="background:none;border:none;color:#666;font-size:22px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <p style="color:#888;font-size:12px;margin-bottom:12px">Selecione quais procedimentos do odontograma adicionar ao Plano de Tratamento:</p>
+    <div style="margin-bottom:14px">${listaHtml}</div>
+    <button onclick='confirmarImportOdPlano(${ptId})' class="bp" style="width:100%;padding:12px;font-size:13px;font-weight:800">✅ Importar selecionados</button>
+  </div>`;
+  document.body.appendChild(m);
+  m.addEventListener("click",e=>{if(e.target===m)m.remove();});
+};
+window.confirmarImportOdPlano=function(ptId){
+  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  const plan=(p.planoClinico||[]).filter(it=>it.status!=="feito");
+  const selecionados=plan.filter((_,i)=>{
+    const cb=document.getElementById("od-imp-"+i);
+    return cb&&cb.checked;
+  });
+  if(selecionados.length===0){toast("Nenhum item selecionado.","warning");return;}
+  document.getElementById("import-od-modal")?.remove();
+  const novas=selecionados.map((it,i)=>({
+    id:Date.now()+i,
+    proc:it.name+(it.tooth?" — dente "+it.tooth:""),
+    status:"Pendente",
+    dataPrev:"",
+    valor:Number(it.price||0),
+    obs:""
+  }));
+  const planoTto=[...(p.planoTto||[]),...novas];
+  const pts=ST.pts.map(x=>x.id===ptId?{...x,planoTto}:x);
+  ST.pts=pts;save("rof_pts",pts);set({pts});
+  toast(`✓ ${novas.length} procedimento${novas.length>1?"s":""} importado${novas.length>1?"s":""} do odontograma`,"success",3000);
 };
 window.showProcDrop=function(ptId,idx,val){
   const wrapId="pl-inp-"+ptId+"-"+idx;
@@ -5309,8 +5434,22 @@ function renderOdontogram(od,ptId){
       <div class="lbl">Face do dente:</div>
       <div style="display:flex;gap:4px;flex-wrap:wrap">${faceBtns}</div>
     </div>
+    <!-- Seleção em grupo -->
+    <div style="margin-bottom:12px">
+      <div class="lbl">Marcar grupo de dentes:</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:5px">
+        <button onclick='aplicarCondicaoGrupo(${ptId},[18,17,16,15,14,13,12,11])' style="padding:6px 4px;border-radius:7px;border:1px solid rgba(198,164,109,0.2);background:#111;color:#aaa;cursor:pointer;font-size:10px;font-family:Georgia,serif" title="Dentes 18 a 11">⬆️ Sup Direita</button>
+        <button onclick='aplicarCondicaoGrupo(${ptId},[18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28])' style="padding:6px 4px;border-radius:7px;border:1px solid rgba(198,164,109,0.35);background:#161206;color:#C6A46D;cursor:pointer;font-size:10px;font-family:Georgia,serif;font-weight:700" title="Dentes 11 a 28">⬆️ Arcada Superior</button>
+        <button onclick='aplicarCondicaoGrupo(${ptId},[21,22,23,24,25,26,27,28])' style="padding:6px 4px;border-radius:7px;border:1px solid rgba(198,164,109,0.2);background:#111;color:#aaa;cursor:pointer;font-size:10px;font-family:Georgia,serif" title="Dentes 21 a 28">⬆️ Sup Esquerda</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
+        <button onclick='aplicarCondicaoGrupo(${ptId},[48,47,46,45,44,43,42,41])' style="padding:6px 4px;border-radius:7px;border:1px solid rgba(198,164,109,0.2);background:#111;color:#aaa;cursor:pointer;font-size:10px;font-family:Georgia,serif" title="Dentes 48 a 41">⬇️ Inf Direita</button>
+        <button onclick='aplicarCondicaoGrupo(${ptId},[48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38])' style="padding:6px 4px;border-radius:7px;border:1px solid rgba(198,164,109,0.35);background:#161206;color:#C6A46D;cursor:pointer;font-size:10px;font-family:Georgia,serif;font-weight:700" title="Dentes 31 a 48">⬇️ Arcada Inferior</button>
+        <button onclick='aplicarCondicaoGrupo(${ptId},[31,32,33,34,35,36,37,38])' style="padding:6px 4px;border-radius:7px;border:1px solid rgba(198,164,109,0.2);background:#111;color:#aaa;cursor:pointer;font-size:10px;font-family:Georgia,serif" title="Dentes 31 a 38">⬇️ Inf Esquerda</button>
+      </div>
+    </div>
     <div style="color:#444;font-size:11px;margin-bottom:10px">
-      Clique no dente → marca
+      Clique dente individual ou selecione grupo → marca
       <strong style="color:${COND[sel]?.c}">${COND[sel]?.l}</strong>
       na face <strong style="color:#C6A46D">${face==="todas"?"Todas":FACES_LIST.find(f=>f.k===face)?.l||face}</strong>
     </div>
@@ -5366,6 +5505,21 @@ window.clickTooth=t=>{
   updPt(ST.selPt,"odontogram",od,true);
   // Abre modal pra adicionar procedimento ao plano clínico
   abrirPlanoClinicoModal(t,sel,faces);
+};
+
+// Aplica condição selecionada a um grupo de dentes sem abrir modal individual
+window.aplicarCondicaoGrupo=function(ptId,teeth){
+  const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p)return;
+  const sel=ST.odSel||"carie";
+  const face=ST.odFace||"O";
+  const faces=face==="todas"?["V","O","M","D","L"]:[face];
+  const od={...(p.odontogram||{})};
+  teeth.forEach(t=>{
+    od[t]={...(od[t]||{}),...Object.fromEntries(faces.map(f=>[f,sel]))};
+  });
+  const pts=ST.pts.map(x=>sameId(x.id,ptId)?{...x,odontogram:od}:x);
+  ST.pts=pts;save("rof_pts",pts);set({pts});
+  toast(`✓ ${COND[sel]?.l||sel} marcado em ${teeth.length} dentes`,"success",2000);
 };
 
 // Render da seção "Plano Clínico do Odontograma" — fica abaixo do odontograma
