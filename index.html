@@ -5691,7 +5691,7 @@ window.clickTooth=t=>{
   abrirPlanoClinicoModal(t,sel,faces);
 };
 
-// Aplica condição selecionada a um grupo de dentes sem abrir modal individual
+// Aplica condição selecionada a um grupo de dentes e abre modal para adicionar procedimento
 window.aplicarCondicaoGrupo=function(ptId,teeth){
   const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p)return;
   const sel=ST.odSel||"carie";
@@ -5703,7 +5703,152 @@ window.aplicarCondicaoGrupo=function(ptId,teeth){
   });
   const pts=ST.pts.map(x=>sameId(x.id,ptId)?{...x,odontogram:od}:x);
   ST.pts=pts;save("rof_pts",pts);set({pts});
-  toast(`✓ ${COND[sel]?.l||sel} marcado em ${teeth.length} dentes`,"success",2000);
+  // Abre modal para adicionar procedimento a todo o grupo
+  abrirPlanoGrupoModal(ptId,teeth,sel,faces);
+};
+
+// ── Contexto do modal de grupo ──────────────────────────────────────────
+let _planoGrupoCtx={ptId:null,teeth:[],cond:null,faces:[]};
+let _grupoSug=true;
+
+window.abrirPlanoGrupoModal=function(ptId,teeth,cond,faces){
+  _planoGrupoCtx={ptId,teeth,cond,faces};
+  _grupoSug=true;
+  const condInfo=COND[cond]||{l:cond,c:"#888"};
+  const sugeridos=getProcsSugeridos(cond);
+  const procOpts=procOptionsHTML(sugeridos);
+  document.getElementById("plano-grupo-modal")?.remove();
+  const modal=document.createElement("div");
+  modal.id="plano-grupo-modal";
+  modal.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(4px)";
+  modal.innerHTML=`<div style="background:#0d0d0d;border:1px solid rgba(198,164,109,0.22);border-radius:14px;padding:18px;max-width:480px;width:100%;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.85)">
+    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:14px">
+      <div>
+        <div style="color:#E2C99A;font-size:14px;font-weight:900">🦷 ${teeth.length} dentes selecionados</div>
+        <div style="color:#555;font-size:10px;margin-top:3px;line-height:1.5">${teeth.join(", ")}</div>
+        <div style="margin-top:5px">
+          <span style="background:${condInfo.c}22;color:${condInfo.c};padding:2px 9px;border-radius:8px;font-size:11px;font-weight:700">${condInfo.l}</span>
+          <span style="color:#555;font-size:10px;margin-left:5px">marcado ✓</span>
+        </div>
+      </div>
+      <button onclick="document.getElementById('plano-grupo-modal').remove()" style="background:none;border:none;color:#666;font-size:22px;cursor:pointer;padding:0;line-height:1">×</button>
+    </div>
+
+    <div style="border-top:1px solid rgba(198,164,109,0.12);padding-top:14px">
+      <div style="color:#E2C99A;font-size:12px;font-weight:800;margin-bottom:10px">➕ Adicionar procedimento a todos os ${teeth.length} dentes</div>
+
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button id="gbt-sug" onclick="alternarGrupoProcsSugeridos(true)" class="bp" style="flex:1;padding:6px;font-size:11px">✨ Sugeridos</button>
+        <button id="gbt-todos" onclick="alternarGrupoProcsSugeridos(false)" class="bg" style="flex:1;padding:6px;font-size:11px">📋 Todos os procedimentos</button>
+      </div>
+
+      <label class="lbl">Procedimento</label>
+      <input id="grupo-proc-search" class="inp" inputmode="search" autocomplete="off"
+        oninput="filtrarProcsGrupo(this.value)"
+        onfocus="filtrarProcsGrupo(this.value)"
+        placeholder="🔍 Buscar por nome ou palavra-chave..."
+        style="margin-bottom:6px"/>
+      <div id="grupo-proc-count" style="color:#666;font-size:10px;margin:-1px 0 6px;text-align:right">${sugeridos.length} procedimento(s)</div>
+      <select id="grupo-proc" class="inp" size="7" onchange="syncGrupoProcPrice()" style="margin-bottom:8px;height:168px;overflow-y:auto">
+        <option value="">Selecionar procedimento...</option>
+        ${procOpts}
+      </select>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div>
+          <label class="lbl">Valor unitário (R$)</label>
+          <input type="number" id="grupo-price" class="inp" min="0" placeholder="Padrão do procedimento"/>
+        </div>
+        <div>
+          <label class="lbl">Status</label>
+          <select id="grupo-status" class="inp">
+            <option value="planejado">📋 Planejado</option>
+            <option value="iniciado">▶ Iniciado</option>
+            <option value="feito">✓ Já realizado</option>
+          </select>
+        </div>
+      </div>
+
+      <label class="lbl">Observações (opcional)</label>
+      <textarea id="grupo-obs" rows="2" class="inp" style="resize:vertical;margin-bottom:12px" placeholder="Ex: usar resina A2, enceramento prévio..."></textarea>
+
+      <button onclick="adicionarProcAoPlanoGrupo()" class="bp" style="width:100%;padding:11px;font-size:13px;font-weight:800">+ Adicionar a todos os ${teeth.length} dentes</button>
+    </div>
+
+    <div style="margin-top:12px;text-align:center">
+      <button onclick="document.getElementById('plano-grupo-modal').remove()" style="background:none;border:none;color:#555;font-size:11px;cursor:pointer">Pular — apenas marcar condição no odontograma</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener("click",e=>{if(e.target===modal)modal.remove();});
+};
+
+window.alternarGrupoProcsSugeridos=function(sug){
+  _grupoSug=!!sug;
+  document.getElementById("gbt-sug").className=sug?"bp":"bg";
+  document.getElementById("gbt-todos").className=sug?"bg":"bp";
+  const inp=document.getElementById("grupo-proc-search");
+  filtrarProcsGrupo(inp?inp.value:"");
+};
+
+window.filtrarProcsGrupo=function(q){
+  const base=_grupoSug?getProcsSugeridos(_planoGrupoCtx.cond):PROCS;
+  const lista=filterProcsAlpha(base,q);
+  const sel=document.getElementById("grupo-proc");
+  if(!sel)return;
+  sel.innerHTML='<option value="">Selecionar procedimento...</option>'+procOptionsHTML(lista);
+  const count=document.getElementById("grupo-proc-count");
+  if(count){
+    const letra=String(q||"").trim();
+    count.textContent=lista.length+" procedimento(s)"+(letra?" para \""+letra+"\"":"");
+    count.style.color=lista.length?"#666":"#ef4444";
+  }
+};
+
+window.syncGrupoProcPrice=function(){
+  const sel=document.getElementById("grupo-proc");
+  const pr=PROCS.find(p=>p.id===Number(sel?.value||0));
+  const price=document.getElementById("grupo-price");
+  if(price&&pr){
+    price.value=pr.p||0;
+    price.placeholder="";
+  }else if(price&&!pr){
+    price.value="";
+    price.placeholder="Padrão do procedimento";
+  }
+};
+
+window.adicionarProcAoPlanoGrupo=function(){
+  const selId=document.getElementById("grupo-proc").value;
+  if(!selId){toast("Selecione um procedimento.","warning");return;}
+  const procId=Number(selId);
+  const pr=PROCS.find(p=>p.id===procId);
+  if(!pr)return;
+  const price=Number(document.getElementById("grupo-price").value)||pr.p;
+  const status=document.getElementById("grupo-status").value;
+  const obs=document.getElementById("grupo-obs").value;
+  const {ptId,teeth,cond,faces}=_planoGrupoCtx;
+  const ts=Date.now();
+  const novosItens=teeth.map((t,i)=>({
+    id:ts+i,
+    tooth:t,
+    faces,
+    cond,
+    procId,
+    name:pr.n,
+    price,
+    status,
+    obs,
+    createdAt:new Date().toISOString(),
+  }));
+  const nps=ST.pts.map(p=>{
+    if(!sameId(p.id,ptId))return p;
+    return {...p,planoClinico:[...(p.planoClinico||[]),...novosItens]};
+  });
+  save("rof_pts",nps);set({pts:nps});
+  const total=(price*teeth.length).toLocaleString("pt-BR");
+  toast(`✓ ${pr.n} adicionado a ${teeth.length} dentes · R$ ${total} total`,"success",3500);
+  document.getElementById("plano-grupo-modal").remove();
 };
 
 // Render da seção "Plano Clínico do Odontograma" — fica abaixo do odontograma
@@ -5960,7 +6105,13 @@ window.syncOdontoProcPrice=function(){
   const sel=document.getElementById("modal-proc");
   const pr=PROCS.find(p=>p.id===Number(sel?.value||0));
   const price=document.getElementById("modal-price");
-  if(price&&pr&&!price.value)price.placeholder="Padrão: R$ "+Number(pr.p||0).toLocaleString("pt-BR");
+  if(price&&pr){
+    price.value=pr.p||0;   // sempre preenche o valor real ao trocar procedimento
+    price.placeholder="";
+  }else if(price&&!pr){
+    price.value="";
+    price.placeholder="Padrão do procedimento";
+  }
 };
 
 window.adicionarProcAoPlano=function(){
