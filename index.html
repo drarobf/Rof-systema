@@ -5507,6 +5507,7 @@ const COND={
   endodontia:{l:"Endodontia",  c:"#f97316",b:"#c2410c"},
   fratura:   {l:"Fratura",     c:"#fb7185",b:"#be123c"},
   faceta:    {l:"Faceta",       c:"#e879f9",b:"#a21caf"},
+  clareamento:{l:"Clareamento", c:"#fde047",b:"#ca8a04"},
   planejado: {l:"Planejado",   c:"#0ea5e9",b:"#0369a1"},
   protese:   {l:"Prótese",     c:"#a78bfa",b:"#7c3aed"},
 };
@@ -5817,8 +5818,12 @@ const SUGEST_PROC_POR_COND={
   // RESTAURADO (manutenção/troca) → polimento + nova restauração + ajuste oclusal
   restaurado:[20,21,50,10,11,12,13],
 
+  // CLAREAMENTO → clareamento consultório/caseiro + moldeiras + dessensibilizante
+  clareamento:[31,30,32,33,80,81],
+  // (31 = consultório 3 sessões; 30 = caseiro moldeiras; 32/33 = moldeiras; 80/81 = faceta pós-clareamento)
+
   // FACETA → faceta resina, porcelana, lente de contato, clareamento prévio
-  faceta:[80,81,82,83,84,63],
+  faceta:[80,81,82,31,30,63],
   // (80 = faceta resina direta; 81 = faceta porcelana; 82 = lente contato; 83/84 = clareamento; 63 = cimentação faceta)
 
   // HÍGIDO → manutenção preventiva
