@@ -1634,7 +1634,7 @@ const _sb=(()=>{
 })();
 
 // rof_pt_photos e rof_pt_xrays ficam FORA do sync — imagens base64 grandes demais para o Supabase free tier
-const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_stk','rof_procs','rof_caixa','rof_whats_templates','rof_orientacoes']);
+const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_stk','rof_procs','rof_caixa','rof_whats_templates','rof_orientacoes','rof_bloqueios']);
 const _syncQ = (()=>{try{return JSON.parse(localStorage.getItem("rof_sync_q")||"[]");}catch{return[];}})();
 // Remove imediatamente quaisquer syncs de fotos/RX já enfileirados (eram pesados demais)
 (function(){const heavy=new Set(['rof_pt_photos','rof_pt_xrays']);let c=false;for(let i=_syncQ.length-1;i>=0;i--){if(_syncQ[i]&&heavy.has(_syncQ[i].k)){_syncQ.splice(i,1);c=true;}}if(c)try{localStorage.setItem("rof_sync_q",JSON.stringify(_syncQ));}catch{}})();
@@ -1718,6 +1718,7 @@ function _applyCloudData(k,v){
     localStorage.setItem(k,JSON.stringify(v));
     // ── Atualiza o estado em memória conforme o tipo ──
     if(k==='rof_apts'&&Array.isArray(v))ST.apts=v;
+    else if(k==='rof_bloqueios'&&Array.isArray(v))ST.bloqueios=v;
     else if(k==='rof_stk'&&Array.isArray(v))ST.stk=v;
     else if(k==='rof_procs'&&Array.isArray(v))PROCS=v;
     else if(k==='rof_caixa'&&Array.isArray(v))ST.caixa=v;
@@ -4230,6 +4231,7 @@ const ST={
   pts:load("rof_pts",DEFPTS),
   apts:load("rof_apts",DEFAPTS),
   stk:load("rof_stk",DEFSTK),
+  bloqueios:load("rof_bloqueios",[]),
   selPt:null,ptTab:"info",
   agDate:todayISO(),agCat:"Todos",
   ptSrc:"",odSel:"carie",odFace:"O",
@@ -4581,11 +4583,39 @@ function pageAgenda(){
     }
   });
 
+  // bloqueios do dia
+  const bloqs=(ST.bloqueios||[]).filter(b=>b.date===date);
+  const diaInteiroBloq=bloqs.find(b=>b.diaInteiro);
+  const isBloqueado=slot=>{
+    if(diaInteiroBloq)return diaInteiroBloq;
+    const sm=tMins(slot);
+    return bloqs.find(b=>{
+      const bs=tMins(b.timeStart||"00:00"),be=tMins(b.timeEnd||b.timeStart||"23:30")+30;
+      return sm>=bs&&sm<be;
+    });
+  };
+
   const cats=["Todos",...new Set(PROCS.map(p=>p.c))];
   const fP=aptCat==="Todos"?PROCS:PROCS.filter(p=>p.c===aptCat);
 
   // grade de horários
   const rows=SLOTS.map(slot=>{
+    const blq=isBloqueado(slot);
+    if(blq){
+      const isFirst=!isBloqueado(minsT(tMins(slot)-30));
+      if(!isFirst)return`<div style="display:flex;align-items:center;gap:8px;padding:4px 14px;border-top:1px solid rgba(239,68,68,0.08);background:rgba(239,68,68,0.04)">
+        <div style="width:46px;color:#ef444433;font-size:11px;flex-shrink:0">${slot}</div>
+        <div style="border-left:3px solid #ef444433;padding-left:8px;flex:1"><div style="color:#55222233;font-size:10px;font-style:italic">bloqueado</div></div>
+      </div>`;
+      return`<div style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-top:1px solid rgba(239,68,68,0.2);background:rgba(239,68,68,0.07)">
+        <div style="width:46px;color:#ef4444;font-size:12px;font-weight:700;flex-shrink:0">${slot}</div>
+        <div style="border-left:3px solid #ef4444;padding-left:8px;flex:1">
+          <div style="color:#ef4444;font-size:12px;font-weight:700">🔒 ${blq.label||"Bloqueado"}</div>
+          ${blq.diaInteiro?'<div style="color:#ef444488;font-size:10px">Dia inteiro</div>':''}
+        </div>
+        <button onclick='removerBloqueio("${blq.id}")' style="background:none;border:none;color:#ef444466;cursor:pointer;font-size:14px;padding:4px" title="Remover bloqueio">✕</button>
+      </div>`;
+    }
     const inf=occ[slot];
     if(inf&&inf.cont){
       const a=inf.a;const cor=a.tipo==="convenio"?"#3b82f6":G;
@@ -4644,7 +4674,22 @@ function pageAgenda(){
     <button onclick="set({agDate:'${next}'})" class="bg" style="padding:7px 14px;font-size:18px;line-height:1">›</button>
     <button onclick="set({agDate:todayISO()})" class="bg" style="font-size:11px;padding:6px 12px">Hoje</button>
     <input type="date" value="${date}" onchange="set({agDate:this.value})" class="inp" style="width:148px;flex-shrink:0"/>
+    <button onclick='abrirBloqueioModal("${date}")' class="bg" style="padding:9px 14px;font-size:12px;flex-shrink:0;color:#ef4444;border-color:#ef444433">🔒 Bloquear</button>
     <button onclick="set({showApt:!ST.showApt,aptSlot:null,aptPatId:null,aptPatName:''})" class="bp" style="padding:9px 16px;font-size:12px;flex-shrink:0">+ Nova Consulta</button>
+  </div>
+  <!-- Aviso dia bloqueado -->
+  ${diaInteiroBloq?`<div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">
+    <span style="font-size:20px">🔒</span>
+    <div style="flex:1"><div style="color:#ef4444;font-weight:700;font-size:13px">${diaInteiroBloq.label||"Dia bloqueado"}</div><div style="color:#ef444488;font-size:11px">Agenda bloqueada para este dia inteiro</div></div>
+    <button onclick='removerBloqueio("${diaInteiroBloq.id}")' style="background:none;border:1px solid #ef444444;border-radius:8px;color:#ef4444;cursor:pointer;font-size:12px;padding:6px 12px">Desbloquear</button>
+  </div>`:""}
+  <!-- Notificações -->
+  <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#0a0a0a;border-radius:8px;border:1px solid rgba(198,164,109,0.08);margin-bottom:12px">
+    <span style="font-size:14px">🔔</span>
+    <span style="color:#666;font-size:11px;flex:1">Notificações de consultas</span>
+    <button onclick="toggleNotificacoes()" id="btn-notif" class="bg" style="font-size:11px;padding:5px 12px;${_notifAtivo()?'color:#22c55e;border-color:#22c55e44':'color:#555'}">
+      ${_notifAtivo()?"✅ Ativado":"Ativar"}
+    </button>
   </div>
 
   <!-- FORMULÁRIO NOVA CONSULTA -->
@@ -5314,8 +5359,132 @@ window.saveApt=()=>{
   ST.aptPatName="";
   set({apts:na,showApt:false,aptSlot:null});
   toast("✅ Consulta agendada para "+finalName+"!","success");
+  setTimeout(agendarNotificacoes,300);
 };
 window.delApt=id=>{rConfirm("Excluir esta consulta?",()=>{const na=ST.apts.filter(a=>a.id!==id);save("rof_apts",na);set({apts:na});toast("Consulta excluída.","success");},"Excluir Consulta");};
+
+// ═══════════════════════════════════════════════════════════════════
+// BLOQUEIOS DE AGENDA
+// ═══════════════════════════════════════════════════════════════════
+window.abrirBloqueioModal=function(date){
+  document.getElementById("bloq-modal")?.remove();
+  const m=document.createElement("div");
+  m.id="bloq-modal";
+  m.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px)";
+  m.innerHTML=`<div style="background:#0d0d0d;border:1px solid rgba(239,68,68,0.3);border-radius:14px;padding:20px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.8)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="color:#ef4444;font-size:14px;font-weight:900">🔒 Bloquear Agenda</div>
+      <button onclick="document.getElementById('bloq-modal').remove()" style="background:none;border:none;color:#666;font-size:22px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <label class="lbl">Data</label>
+    <input type="date" id="bloq-date" value="${date}" class="inp" style="margin-bottom:12px"/>
+    <label class="lbl">Motivo / Etiqueta</label>
+    <input id="bloq-label" class="inp" placeholder="Ex: Reunião, Feriado, Folga, Almoço..." style="margin-bottom:12px"/>
+    <div id="bloq-tipo-wrap" style="margin-bottom:14px">
+      <label class="lbl">Período</label>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button id="bloq-btn-dia" onclick="bloqTipo('dia')" class="bg" style="flex:1;padding:8px;font-size:12px;background:rgba(239,68,68,0.15);color:#ef4444;border-color:#ef444444">📅 Dia inteiro</button>
+        <button id="bloq-btn-hr" onclick="bloqTipo('horario')" class="bg" style="flex:1;padding:8px;font-size:12px">🕐 Horário específico</button>
+      </div>
+      <div id="bloq-hr-fields" style="display:none;grid-template-columns:1fr 1fr;gap:8px">
+        <div><label class="lbl">Das</label><select id="bloq-start" class="inp">${SLOTS.map(s=>`<option value="${s}">${s}</option>`).join("")}</select></div>
+        <div><label class="lbl">Até</label><select id="bloq-end" class="inp">${SLOTS.map(s=>`<option value="${s}">${s}</option>`).join("")}</select></div>
+      </div>
+    </div>
+    <button onclick="salvarBloqueio()" class="bp" style="width:100%;padding:12px;font-size:13px;font-weight:800;background:linear-gradient(135deg,rgba(239,68,68,0.2),rgba(239,68,68,0.1));border-color:#ef444466;color:#ef4444">🔒 Bloquear</button>
+  </div>`;
+  document.body.appendChild(m);
+  m.addEventListener("click",e=>{if(e.target===m)m.remove();});
+  window._bloqTipo="dia";
+};
+window.bloqTipo=function(t){
+  window._bloqTipo=t;
+  const dia=document.getElementById("bloq-btn-dia");
+  const hr=document.getElementById("bloq-btn-hr");
+  const fields=document.getElementById("bloq-hr-fields");
+  if(t==="dia"){
+    dia.style.background="rgba(239,68,68,0.15)";dia.style.color="#ef4444";dia.style.borderColor="#ef444444";
+    hr.style.background="transparent";hr.style.color="#555";hr.style.borderColor="rgba(198,164,109,0.15)";
+    fields.style.display="none";
+  }else{
+    hr.style.background="rgba(239,68,68,0.15)";hr.style.color="#ef4444";hr.style.borderColor="#ef444444";
+    dia.style.background="transparent";dia.style.color="#555";dia.style.borderColor="rgba(198,164,109,0.15)";
+    fields.style.display="grid";
+  }
+};
+window.salvarBloqueio=function(){
+  const date=document.getElementById("bloq-date")?.value;
+  const label=document.getElementById("bloq-label")?.value.trim()||"Bloqueado";
+  const diaInteiro=window._bloqTipo!=="horario";
+  const timeStart=diaInteiro?"":document.getElementById("bloq-start")?.value||"08:00";
+  const timeEnd=diaInteiro?"":document.getElementById("bloq-end")?.value||"09:00";
+  if(!date){toast("Selecione uma data.","warning");return;}
+  document.getElementById("bloq-modal")?.remove();
+  const novo={id:String(Date.now()),date,label,diaInteiro,timeStart,timeEnd};
+  const bloqueios=[...(ST.bloqueios||[]),novo];
+  ST.bloqueios=bloqueios;
+  save("rof_bloqueios",bloqueios);
+  set({bloqueios});
+  toast(`🔒 ${diaInteiro?"Dia inteiro bloqueado":"Horário bloqueado"}: ${label}`,"success",3000);
+};
+window.removerBloqueio=function(id){
+  const bloqueios=(ST.bloqueios||[]).filter(b=>b.id!==id);
+  ST.bloqueios=bloqueios;
+  save("rof_bloqueios",bloqueios);
+  set({bloqueios});
+  toast("Bloqueio removido.","success",2000);
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// NOTIFICAÇÕES DE CONSULTAS
+// ═══════════════════════════════════════════════════════════════════
+function _notifAtivo(){return localStorage.getItem("rof_notif_on")==="1"&&Notification.permission==="granted";}
+window.toggleNotificacoes=async function(){
+  if(_notifAtivo()){
+    localStorage.setItem("rof_notif_on","0");
+    set({});// re-render
+    toast("🔕 Notificações desativadas.","info");
+    return;
+  }
+  if(!("Notification"in window)){toast("Seu navegador não suporta notificações.","warning");return;}
+  const perm=await Notification.requestPermission();
+  if(perm==="granted"){
+    localStorage.setItem("rof_notif_on","1");
+    set({});
+    agendarNotificacoes();
+    toast("🔔 Notificações ativadas! Você receberá alertas 30 min antes de cada consulta.","success",4000);
+    // Notificação de teste
+    setTimeout(()=>new Notification("✅ ROF — Notificações ativadas",{body:"Você receberá lembretes 30 min antes de cada consulta.",icon:"/favicon.ico"}),500);
+  }else{
+    toast("Permissão negada. Ative nas configurações do navegador.","warning",5000);
+  }
+};
+// Agenda setTimeout para cada consulta de hoje e amanhã
+function agendarNotificacoes(){
+  if(!_notifAtivo())return;
+  const hoje=todayISO();
+  const amanha=addDays(hoje,1);
+  const prox=(ST.apts||[]).filter(a=>a.date===hoje||a.date===amanha);
+  prox.forEach(a=>{
+    const [h,mn]=(a.time||"").split(":").map(Number);
+    if(isNaN(h))return;
+    const aptMs=new Date(a.date+"T"+String(h).padStart(2,"0")+":"+String(mn||0).padStart(2,"0")+":00").getTime();
+    const avisarMs=aptMs-30*60*1000; // 30 min antes
+    const delta=avisarMs-Date.now();
+    if(delta>0&&delta<48*60*60*1000){
+      setTimeout(()=>{
+        if(!_notifAtivo())return;
+        new Notification("🦷 Consulta em 30 minutos",{
+          body:`${a.patient} — ${a.time}${a.proc?" — "+a.proc:""}`,
+          icon:"/favicon.ico",
+          tag:"rof-apt-"+a.id
+        });
+      },delta);
+    }
+  });
+}
+// Reagenda ao carregar e sempre que salvar consulta
+if(typeof window!=="undefined"){setTimeout(agendarNotificacoes,2000);}
 
 // ═══════════════════════════════════════════════════════════════════
 // ODONTOGRAMA COM FACES E DENTES DECÍDUOS
