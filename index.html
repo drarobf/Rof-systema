@@ -5607,15 +5607,27 @@ function renderOdontogram(od,ptId){
     <!-- Seleção em grupo -->
     <div style="margin-bottom:12px">
       <div class="lbl">Marcar grupo de dentes:</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:5px">
-        <button onclick='aplicarCondicaoGrupo(${ptId},[18,17,16,15,14,13,12,11])' style="padding:6px 4px;border-radius:7px;border:1px solid rgba(198,164,109,0.2);background:#111;color:#aaa;cursor:pointer;font-size:10px;font-family:Georgia,serif" title="Dentes 18 a 11">⬆️ Sup Direita</button>
-        <button onclick='aplicarCondicaoGrupo(${ptId},[18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28])' style="padding:6px 4px;border-radius:7px;border:1px solid rgba(198,164,109,0.35);background:#161206;color:#C6A46D;cursor:pointer;font-size:10px;font-family:Georgia,serif;font-weight:700" title="Dentes 11 a 28">⬆️ Arcada Superior</button>
-        <button onclick='aplicarCondicaoGrupo(${ptId},[21,22,23,24,25,26,27,28])' style="padding:6px 4px;border-radius:7px;border:1px solid rgba(198,164,109,0.2);background:#111;color:#aaa;cursor:pointer;font-size:10px;font-family:Georgia,serif" title="Dentes 21 a 28">⬆️ Sup Esquerda</button>
+      <!-- Arcadas completas e hemi-arcadas -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:4px">
+        <button onclick='aplicarCondicaoGrupo(${ptId},[18,17,16,15,14,13,12,11])' style="padding:5px 3px;border-radius:7px;border:1px solid rgba(198,164,109,0.2);background:#111;color:#aaa;cursor:pointer;font-size:9px;font-family:Georgia,serif" title="Dentes 18 a 11">⬆ Sup Dir</button>
+        <button onclick='aplicarCondicaoGrupo(${ptId},[18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28])' style="padding:5px 3px;border-radius:7px;border:1px solid rgba(198,164,109,0.35);background:#161206;color:#C6A46D;cursor:pointer;font-size:9px;font-family:Georgia,serif;font-weight:700" title="Dentes 11 a 28">⬆ Arcada Sup</button>
+        <button onclick='aplicarCondicaoGrupo(${ptId},[21,22,23,24,25,26,27,28])' style="padding:5px 3px;border-radius:7px;border:1px solid rgba(198,164,109,0.2);background:#111;color:#aaa;cursor:pointer;font-size:9px;font-family:Georgia,serif" title="Dentes 21 a 28">⬆ Sup Esq</button>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
-        <button onclick='aplicarCondicaoGrupo(${ptId},[48,47,46,45,44,43,42,41])' style="padding:6px 4px;border-radius:7px;border:1px solid rgba(198,164,109,0.2);background:#111;color:#aaa;cursor:pointer;font-size:10px;font-family:Georgia,serif" title="Dentes 48 a 41">⬇️ Inf Direita</button>
-        <button onclick='aplicarCondicaoGrupo(${ptId},[48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38])' style="padding:6px 4px;border-radius:7px;border:1px solid rgba(198,164,109,0.35);background:#161206;color:#C6A46D;cursor:pointer;font-size:10px;font-family:Georgia,serif;font-weight:700" title="Dentes 31 a 48">⬇️ Arcada Inferior</button>
-        <button onclick='aplicarCondicaoGrupo(${ptId},[31,32,33,34,35,36,37,38])' style="padding:6px 4px;border-radius:7px;border:1px solid rgba(198,164,109,0.2);background:#111;color:#aaa;cursor:pointer;font-size:10px;font-family:Georgia,serif" title="Dentes 31 a 38">⬇️ Inf Esquerda</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:4px">
+        <button onclick='aplicarCondicaoGrupo(${ptId},[48,47,46,45,44,43,42,41])' style="padding:5px 3px;border-radius:7px;border:1px solid rgba(198,164,109,0.2);background:#111;color:#aaa;cursor:pointer;font-size:9px;font-family:Georgia,serif" title="Dentes 48 a 41">⬇ Inf Dir</button>
+        <button onclick='aplicarCondicaoGrupo(${ptId},[48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38])' style="padding:5px 3px;border-radius:7px;border:1px solid rgba(198,164,109,0.35);background:#161206;color:#C6A46D;cursor:pointer;font-size:9px;font-family:Georgia,serif;font-weight:700" title="Dentes 31 a 48">⬇ Arcada Inf</button>
+        <button onclick='aplicarCondicaoGrupo(${ptId},[31,32,33,34,35,36,37,38])' style="padding:5px 3px;border-radius:7px;border:1px solid rgba(198,164,109,0.2);background:#111;color:#aaa;cursor:pointer;font-size:9px;font-family:Georgia,serif" title="Dentes 31 a 38">⬇ Inf Esq</button>
+      </div>
+      <!-- Anteriores e Posteriores -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px">
+        <button onclick='aplicarCondicaoGrupo(${ptId},[13,12,11,21,22,23,43,42,41,31,32,33])' style="padding:6px 4px;border-radius:7px;border:1px solid rgba(96,165,250,0.35);background:rgba(96,165,250,0.07);color:#60a5fa;cursor:pointer;font-size:9px;font-family:Georgia,serif;font-weight:700" title="Incisivos e caninos — 13 a 23 e 43 a 33">😁 Todos Anteriores</button>
+        <button onclick='aplicarCondicaoGrupo(${ptId},[18,17,16,15,14,24,25,26,27,28,48,47,46,45,44,34,35,36,37,38])' style="padding:6px 4px;border-radius:7px;border:1px solid rgba(168,85,247,0.35);background:rgba(168,85,247,0.07);color:#a855f7;cursor:pointer;font-size:9px;font-family:Georgia,serif;font-weight:700" title="Pré-molares e molares">🦷 Todos Posteriores</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px">
+        <button onclick='aplicarCondicaoGrupo(${ptId},[13,12,11,21,22,23])' style="padding:5px 2px;border-radius:7px;border:1px solid rgba(96,165,250,0.25);background:#0a0e14;color:#60a5fa88;cursor:pointer;font-size:9px;font-family:Georgia,serif" title="13-23">⬆ Ant Sup</button>
+        <button onclick='aplicarCondicaoGrupo(${ptId},[43,42,41,31,32,33])' style="padding:5px 2px;border-radius:7px;border:1px solid rgba(96,165,250,0.25);background:#0a0e14;color:#60a5fa88;cursor:pointer;font-size:9px;font-family:Georgia,serif" title="43-33">⬇ Ant Inf</button>
+        <button onclick='aplicarCondicaoGrupo(${ptId},[18,17,16,15,14,24,25,26,27,28])' style="padding:5px 2px;border-radius:7px;border:1px solid rgba(168,85,247,0.25);background:#0d0a14;color:#a855f788;cursor:pointer;font-size:9px;font-family:Georgia,serif" title="14-18 + 24-28">⬆ Post Sup</button>
+        <button onclick='aplicarCondicaoGrupo(${ptId},[48,47,46,45,44,34,35,36,37,38])' style="padding:5px 2px;border-radius:7px;border:1px solid rgba(168,85,247,0.25);background:#0d0a14;color:#a855f788;cursor:pointer;font-size:9px;font-family:Georgia,serif" title="44-48 + 34-38">⬇ Post Inf</button>
       </div>
     </div>
     <div style="color:#444;font-size:11px;margin-bottom:10px">
