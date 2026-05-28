@@ -2500,14 +2500,18 @@ window.confirmarImportOdPlano=function(ptId){
   });
   if(selecionados.length===0){toast("Nenhum item selecionado.","warning");return;}
   document.getElementById("import-od-modal")?.remove();
-  const novas=selecionados.map((it,i)=>({
-    id:Date.now()+i,
-    proc:it.name+(it.tooth?" — dente "+it.tooth:""),
-    status:"Pendente",
-    dataPrev:"",
-    valor:Number(it.price||0),
-    obs:""
-  }));
+  const novas=selecionados.map((it,i)=>{
+    const pr=PROCS.find(p=>p.id===it.procId);
+    const valor=Number(it.price)||(pr?Number(pr.p):0)||0;
+    return{
+      id:Date.now()+i,
+      proc:it.name+(it.tooth?" — dente "+it.tooth:""),
+      status:"Pendente",
+      dataPrev:"",
+      valor,
+      obs:""
+    };
+  });
   const planoTto=[...(p.planoTto||[]),...novas];
   const pts=ST.pts.map(x=>x.id===ptId?{...x,planoTto}:x);
   ST.pts=pts;save("rof_pts",pts);set({pts});
@@ -6184,12 +6188,14 @@ window.importarPlanoClinicoParaOrcamento=function(ptId){
   const planClin=(p.planoClinico||[]).filter(it=>it.status==="planejado");
   if(planClin.length===0){toast("Nenhum procedimento planejado no odontograma para importar.","warning");return;}
   if(!confirm(`Importar ${planClin.length} procedimento(s) do odontograma para o orçamento?`))return;
-  // Agrupa por procId pra somar quantidades
+  // Agrupa por procId+price, usando pr.p como fallback se price estiver faltando/zerado
   const agrupado={};
   planClin.forEach(it=>{
-    const key=it.procId+"_"+it.price;
+    const pr=PROCS.find(p=>p.id===it.procId);
+    const unitPrice=Number(it.price)||(pr?Number(pr.p):0)||0;
+    const key=it.procId+"_"+unitPrice;
     if(!agrupado[key]){
-      agrupado[key]={procId:it.procId,name:it.name,price:it.price,qty:0,dentes:[]};
+      agrupado[key]={procId:it.procId,name:it.name,price:unitPrice,qty:0,dentes:[]};
     }
     agrupado[key].qty++;
     agrupado[key].dentes.push(it.tooth);
@@ -6198,7 +6204,7 @@ window.importarPlanoClinicoParaOrcamento=function(ptId){
     procId:it.procId,
     name:it.name+" (dentes "+it.dentes.join(", ")+")",
     qty:it.qty,
-    price:it.price,
+    price:it.price,  // sempre número positivo graças ao fallback acima
   }));
   const nps=ST.pts.map(x=>{
     if(x.id!==ptId)return x;
@@ -7251,7 +7257,12 @@ function renderPlano(p){
   var planoId=String(p.id).replace(/[^A-Za-z0-9_-]/g,"_");
   var plano=p.plano||{itens:[],obs:"",desconto:0,parcelas:1,validade:""};
   var itens=plano.itens||[];
-  var total=itens.reduce(function(s,i){return s+(i.qty*(i.price||0));},0);
+  // usa pr.p como fallback se price estiver zerado/ausente — consistente com cada linha da tabela
+  var total=itens.reduce(function(s,i){
+    var pr=PROCS.find(function(x){return x.id===i.procId;})||{p:0};
+    var unit=Number(i.price)||(Number(pr.p)||0);
+    return s+(Number(i.qty)||1)*unit;
+  },0);
   var desc=Number(plano.desconto||0);
   var totalDesc=Math.max(0,total-desc);
   var parcelas=Number(plano.parcelas||1);
@@ -7269,16 +7280,19 @@ function renderPlano(p){
     return "<option value='"+pr.id+"'>"+pr.n+" — R$ "+pr.p.toLocaleString("pt-BR")+"</option>";
   }).join("");
 
+  var pid=jsArg(p.id);
   var itensRows=itens.length===0
     ?"<tr><td colspan='5' style='text-align:center;color:#333;padding:18px 0;font-size:13px'>Nenhum procedimento adicionado ainda.</td></tr>"
     :itens.map(function(it,i){
       var pr=PROCS.find(function(p){return p.id===it.procId;})||{n:it.name||"?",p:it.price||0};
+      var unit=Number(it.price)||(Number(pr.p)||0);
+      var rowTotal=Number(it.qty||1)*unit;
       return "<tr style='background:"+(i%2===0?"transparent":"#0e0e0e44")+"'>"
-        +"<td style='color:#ddd;font-size:12px'>"+pr.n+"</td>"
-        +"<td><input type='number' min='1' max='99' value='"+it.qty+"' onchange='planoQty("+p.id+","+i+",this.value)' style='width:46px;background:#0e0e0e;border:1px solid #2a1f0a;border-radius:6px;padding:4px 6px;color:#ddd;font-size:12px;text-align:center'/></td>"
-        +"<td style='color:#bbb;font-size:12px'>R$ "+(it.price||pr.p).toLocaleString("pt-BR")+"</td>"
-        +"<td style='color:#E2C99A;font-weight:700;font-size:12px'>R$ "+(it.qty*(it.price||pr.p)).toLocaleString("pt-BR")+"</td>"
-        +"<td><button onclick='planoRemove("+p.id+","+i+")' style='background:none;border:none;color:#333;cursor:pointer;font-size:14px'>🗑</button></td>"
+        +"<td style='color:#ddd;font-size:12px'>"+pr.n+(it.name&&it.name!==pr.n?"<br><span style='color:#555;font-size:10px'>"+it.name+"</span>":"")+"</td>"
+        +"<td><input type='number' min='1' max='99' value='"+it.qty+"' onchange='planoQty("+pid+","+i+",this.value)' style='width:46px;background:#0e0e0e;border:1px solid #2a1f0a;border-radius:6px;padding:4px 6px;color:#ddd;font-size:12px;text-align:center'/></td>"
+        +"<td style='color:#bbb;font-size:12px'>R$ "+unit.toLocaleString("pt-BR")+"</td>"
+        +"<td style='color:#E2C99A;font-weight:700;font-size:12px'>R$ "+rowTotal.toLocaleString("pt-BR")+"</td>"
+        +"<td><button onclick='planoRemove("+pid+","+i+")' style='background:none;border:none;color:#333;cursor:pointer;font-size:14px'>🗑</button></td>"
         +"</tr>";
     }).join("");
 
@@ -7288,7 +7302,7 @@ function renderPlano(p){
     +"<div style='font-size:22px'>🦷</div>"
     +"<div style='flex:1'><div style='color:#E2C99A;font-size:12px;font-weight:700'>Plano Clínico do Odontograma</div>"
     +"<div style='color:#666;font-size:10px'>"+((p.planoClinico||[]).filter(it=>it.status==="planejado").length)+" procedimento(s) planejado(s) no odontograma.</div></div>"
-    +"<button onclick='importarPlanoClinicoParaOrcamento("+p.id+")' class='bp' style='padding:8px 12px;font-size:11px;font-weight:700'>📥 Importar</button>"
+    +"<button onclick='importarPlanoClinicoParaOrcamento("+pid+")' class='bp' style='padding:8px 12px;font-size:11px;font-weight:700'>📥 Importar</button>"
     +"</div>"
     // ADICIONAR PROCEDIMENTO
     +"<div class='cg' style='margin-bottom:14px'>"
@@ -7300,7 +7314,7 @@ function renderPlano(p){
     +"<div><label class='lbl'>Quantidade</label><input type='number' id='plano-qty' value='1' min='1' max='99' class='inp'/></div>"
     +"<div><label class='lbl'>Valor unitário (R$)</label><input type='number' id='plano-price' value='' min='0' class='inp' placeholder='Deixe em branco = padrão'/></div>"
     +"</div>"
-    +"<button onclick='planoAdd("+p.id+")' class='bp' style='width:100%;margin-top:10px;padding:10px'>+ Adicionar ao Orçamento</button>"
+    +"<button onclick='planoAdd("+pid+")' class='bp' style='width:100%;margin-top:10px;padding:10px'>+ Adicionar ao Orçamento</button>"
     +"</div>"
     // TABELA DE ITENS
     +"<div class='card' style='padding:0;overflow:hidden;margin-bottom:14px'>"
@@ -7316,13 +7330,13 @@ function renderPlano(p){
     +"<span id='plano-subtotal-"+planoId+"' style='color:#ddd;font-size:14px;font-weight:700'>R$ "+total.toLocaleString("pt-BR")+"</span></div>"
     +"<div class='g2' style='margin-bottom:10px'>"
     +"<div><label class='lbl'>Desconto (R$)</label>"
-    +"<input type='number' min='0' value='"+(plano.desconto||0)+"' oninput='planoDesc("+p.id+",this.value)' class='inp'/></div>"
+    +"<input type='number' min='0' value='"+(plano.desconto||0)+"' oninput='planoDesc("+pid+",this.value)' class='inp'/></div>"
     +"<div><label class='lbl'>Parcelamento</label>"
-    +"<select id='plano-parcelas-"+planoId+"' onchange='planoParcelas("+p.id+",this.value)' class='inp'>"
+    +"<select id='plano-parcelas-"+planoId+"' onchange='planoParcelas("+pid+",this.value)' class='inp'>"
     +[1,2,3,4,5,6,10,12].map(function(n){return "<option value='"+n+"'"+(parcelas===n?" selected":"")+">"+( n===1?"À vista":"Em "+n+"x de R$ "+Math.round(totalDesc/n).toLocaleString("pt-BR"))+"</option>";}).join("")
     +"</select></div>"
     +"<div><label class='lbl'>Validade do orçamento</label>"
-    +"<input type='date' value='"+(plano.validade||"")+"' onchange='planoValidade("+p.id+",this.value)' class='inp'/></div>"
+    +"<input type='date' value='"+(plano.validade||"")+"' onchange='planoValidade("+pid+",this.value)' class='inp'/></div>"
     +"</div>"
     +"<div style='background:linear-gradient(135deg,#8B6914,#E2C99A,#C6A46D);border-radius:10px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center'>"
     +"<span style='color:#000;font-size:13px;font-weight:700'>TOTAL DO TRATAMENTO</span>"
@@ -7331,12 +7345,12 @@ function renderPlano(p){
     +"</div>"
     // OBSERVAÇÕES
     +"<div style='margin-bottom:14px'><label class='lbl'>Observações / condições do orçamento</label>"
-    +"<textarea rows='2' class='inp' style='resize:vertical' oninput='planoObs("+p.id+",this.value)'>"+(plano.obs||"")+"</textarea></div>"
+    +"<textarea rows='2' class='inp' style='resize:vertical' oninput='planoObs("+pid+",this.value)'>"+(plano.obs||"")+"</textarea></div>"
     // BOTÕES
     +"<div style='display:flex;gap:8px;flex-wrap:wrap'>"
-    +"<button onclick='printPlano("+p.id+")' class='bp' style='flex:1;padding:11px'>🖨️ Imprimir / Salvar PDF</button>"
-    +"<button onclick='sendWhats("+p.id+",\"orcamento\",0)' class='bg' style='padding:11px;color:#22c55e;border-color:#22c55e44'>📱 WhatsApp</button>"
-    +"<button onclick='clearPlano("+p.id+")' class='bg' style='border-color:#ef444444;color:#ef4444;padding:11px'>🗑</button>"
+    +"<button onclick='printPlano("+pid+")' class='bp' style='flex:1;padding:11px'>🖨️ Imprimir / Salvar PDF</button>"
+    +"<button onclick='sendWhats("+pid+",\"orcamento\",0)' class='bg' style='padding:11px;color:#22c55e;border-color:#22c55e44'>📱 WhatsApp</button>"
+    +"<button onclick='clearPlano("+pid+")' class='bg' style='border-color:#ef444444;color:#ef4444;padding:11px'>🗑 Limpar Orçamento</button>"
     +"</div>"
     +"</div>";
 }
@@ -7345,7 +7359,11 @@ function defaultPlano(){return{itens:[],obs:"",desconto:0,parcelas:1,validade:""
 function calcPlanoTotals(plano){
   plano=Object.assign(defaultPlano(),plano||{});
   var itens=plano.itens||[];
-  var total=itens.reduce(function(s,i){return s+((Number(i.qty)||0)*(Number(i.price)||0));},0);
+  var total=itens.reduce(function(s,i){
+    var pr=PROCS.find(function(x){return x.id===i.procId;})||{p:0};
+    var unit=Number(i.price)||(Number(pr.p)||0);
+    return s+(Number(i.qty)||1)*unit;
+  },0);
   var desc=Number(plano.desconto||0);
   var totalDesc=Math.max(0,total-desc);
   var parcelas=Math.max(1,Number(plano.parcelas||1));
@@ -7422,7 +7440,11 @@ window.printPlano=function(ptId){
   if(!p)return;
   var plano=p.plano||{itens:[],obs:"",desconto:0,parcelas:1,validade:""};
   var itens=plano.itens||[];
-  var total=itens.reduce(function(s,i){return s+(i.qty*(i.price||0));},0);
+  var total=itens.reduce(function(s,i){
+    var pr=PROCS.find(function(x){return x.id===i.procId;})||{p:0};
+    var unit=Number(i.price)||(Number(pr.p)||0);
+    return s+(Number(i.qty)||1)*unit;
+  },0);
   var desc=Number(plano.desconto||0);
   var totalDesc=Math.max(0,total-desc);
   var parcelas=Number(plano.parcelas||1);
@@ -9901,7 +9923,11 @@ window.sendWhats=function(ptId,tipo,docId){
       toast("Nenhum procedimento no orçamento. Adicione antes de enviar.","warning");
       return;
     }
-    var subtotal=itens.reduce(function(s,i){return s+(i.qty*(i.price||0));},0);
+    var subtotal=itens.reduce(function(s,i){
+      var pr=PROCS.find(function(x){return x.id===i.procId;})||{p:0};
+      var unit=Number(i.price)||(Number(pr.p)||0);
+      return s+(Number(i.qty)||1)*unit;
+    },0);
     var desc=Number(plano.desconto||0);
     var totalDesc=Math.max(0,subtotal-desc);
     var parcelas=Number(plano.parcelas||1);
