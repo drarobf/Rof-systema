@@ -3098,11 +3098,12 @@ window.gerarLinkContrato=async function(ptId,tipo){
     desconto:vals.desconto,
     total:vals.total,
     forma:p.contratoForma||"À vista",
-    parcelas:Number(p.contratoParcelas||1),
-    entrada:Number(p.contratoEntrada||0),
+    parcelas:Number(p.contratoParcelas||p.plano?.parcelas||1),
+    entrada:Number(p.contratoEntrada||p.plano?.entrada||0),
     valorParcela:Number(p.contratoValorParcela||0),
     prazo:p.contratoPrazo||"",
     obs:p.contratoObs||"",
+    termos:p.contratoTermos||[],
     geradoEm:new Date().toISOString()
   };
   try{
@@ -7593,12 +7594,17 @@ function renderPlano(p){
     +"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:10px'>"
     +"<span style='color:#888;font-size:13px'>Subtotal</span>"
     +"<span id='plano-subtotal-"+planoId+"' style='color:#ddd;font-size:14px;font-weight:700'>R$ "+total.toLocaleString("pt-BR")+"</span></div>"
-    +"<div class='g2' style='margin-bottom:10px'>"
+    +"<div style='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px'>"
     +"<div><label class='lbl'>Desconto (R$)</label>"
     +"<input type='number' min='0' value='"+(plano.desconto||0)+"' oninput='planoDesc("+pid+",this.value)' class='inp'/></div>"
-    +"<div><label class='lbl'>Parcelamento</label>"
+    +"<div><label class='lbl'>Entrada (R$) — opcional</label>"
+    +"<input type='number' min='0' value='"+(entrada||"")+"' oninput='planoEntrada("+pid+",this.value)' class='inp' placeholder='0,00'/></div>"
+    +"<div><label class='lbl'>Parcelamento do restante</label>"
     +"<select id='plano-parcelas-"+planoId+"' onchange='planoParcelas("+pid+",this.value)' class='inp'>"
-    +[1,2,3,4,5,6,10,12].map(function(n){return "<option value='"+n+"'"+(parcelas===n?" selected":"")+">"+( n===1?"À vista":"Em "+n+"x de R$ "+Math.round(totalDesc/n).toLocaleString("pt-BR"))+"</option>";}).join("")
+    +[1,2,3,4,5,6,10,12].map(function(n){
+      var vlr=n===1?restante:Math.round(restante/n);
+      return "<option value='"+n+"'"+(parcelas===n?" selected":"")+">"+(n===1?"À vista":"Em "+n+"x de R$ "+vlr.toLocaleString("pt-BR"))+"</option>";
+    }).join("")
     +"</select></div>"
     +"<div><label class='lbl'>Validade do orçamento</label>"
     +"<input type='date' value='"+(plano.validade||"")+"' onchange='planoValidade("+pid+",this.value)' class='inp'/></div>"
@@ -7606,7 +7612,10 @@ function renderPlano(p){
     +"<div style='background:linear-gradient(135deg,#8B6914,#E2C99A,#C6A46D);border-radius:10px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center'>"
     +"<span style='color:#000;font-size:13px;font-weight:700'>TOTAL DO TRATAMENTO</span>"
     +"<span id='plano-total-"+planoId+"' style='color:#000;font-size:20px;font-weight:900'>R$ "+totalDesc.toLocaleString("pt-BR")+"</span></div>"
-    +"<div id='plano-parcela-resumo-"+planoId+"' style='text-align:center;color:#888;font-size:12px;margin-top:6px;display:"+(parcelas>1?"block":"none")+"'>"+(parcelas>1?parcelas+"× de R$ "+Math.round(totalDesc/parcelas).toLocaleString("pt-BR"):"")+"</div>"
+    +"<div id='plano-parcela-resumo-"+planoId+"' style='text-align:center;color:#C6A46D;font-size:12px;margin-top:6px;display:"+(parcelas>1||entrada>0?"block":"none")+"'>"
+    +(entrada>0?"Entrada R$ "+entrada.toLocaleString("pt-BR")+(parcelas>1?" + ":""):"")
+    +(parcelas>1?parcelas+"× de R$ "+vlrParcela.toLocaleString("pt-BR"):"")
+    +"</div>"
     +"</div>"
     // OBSERVAÇÕES
     +"<div style='margin-bottom:14px'><label class='lbl'>Observações / condições do orçamento</label>"
@@ -7620,7 +7629,7 @@ function renderPlano(p){
     +"</div>";
 }
 
-function defaultPlano(){return{itens:[],obs:"",desconto:0,parcelas:1,validade:""};}
+function defaultPlano(){return{itens:[],obs:"",desconto:0,entrada:0,parcelas:1,validade:""};}
 function calcPlanoTotals(plano){
   plano=Object.assign(defaultPlano(),plano||{});
   var itens=plano.itens||[];
@@ -7631,8 +7640,11 @@ function calcPlanoTotals(plano){
   },0);
   var desc=Number(plano.desconto||0);
   var totalDesc=Math.max(0,total-desc);
+  var entrada=Number(plano.entrada||0);
   var parcelas=Math.max(1,Number(plano.parcelas||1));
-  return{total:total,totalDesc:totalDesc,parcelas:parcelas};
+  var restante=Math.max(0,totalDesc-entrada);
+  var vlrParcela=parcelas>1?Math.round(restante/parcelas):restante;
+  return{total:total,totalDesc:totalDesc,entrada:entrada,parcelas:parcelas,restante:restante,vlrParcela:vlrParcela};
 }
 function refreshPlanoResumo(ptId){
   var p=findPtById(ptId);if(!p)return;
@@ -7647,12 +7659,17 @@ function refreshPlanoResumo(ptId){
   if(parcelas){
     Array.from(parcelas.options).forEach(function(opt){
       var n=Number(opt.value||1);
-      opt.textContent=n===1?"À vista":"Em "+n+"x de R$ "+Math.round(t.totalDesc/n).toLocaleString("pt-BR");
+      var vlr=n===1?t.restante:Math.round(t.restante/n);
+      opt.textContent=n===1?"À vista":"Em "+n+"x de R$ "+vlr.toLocaleString("pt-BR");
     });
   }
   if(resumo){
-    resumo.style.display=t.parcelas>1?"block":"none";
-    resumo.textContent=t.parcelas>1?t.parcelas+"× de R$ "+Math.round(t.totalDesc/t.parcelas).toLocaleString("pt-BR"):"";
+    var mostrar=t.parcelas>1||t.entrada>0;
+    resumo.style.display=mostrar?"block":"none";
+    var txt="";
+    if(t.entrada>0) txt+="Entrada R$ "+t.entrada.toLocaleString("pt-BR");
+    if(t.parcelas>1) txt+=(txt?" + ":"")+t.parcelas+"× de R$ "+t.vlrParcela.toLocaleString("pt-BR");
+    resumo.textContent=txt;
   }
 }
 function updPlano(ptId,fn,opts){
@@ -7695,6 +7712,7 @@ window.planoRemove=function(ptId,idx){
   updPlano(ptId,function(pl){return Object.assign({},pl,{itens:pl.itens.filter(function(_,i){return i!==idx;})});});
 };
 window.planoDesc=function(ptId,v){updPlano(ptId,function(pl){return Object.assign({},pl,{desconto:Number(v)||0});},{render:false});};
+window.planoEntrada=function(ptId,v){updPlano(ptId,function(pl){return Object.assign({},pl,{entrada:Number(v)||0});},{render:false});};
 window.planoParcelas=function(ptId,v){updPlano(ptId,function(pl){return Object.assign({},pl,{parcelas:Number(v)||1});});};
 window.planoValidade=function(ptId,v){updPlano(ptId,function(pl){return Object.assign({},pl,{validade:v});});};
 window.planoObs=function(ptId,v){updPlano(ptId,function(pl){return Object.assign({},pl,{obs:v});},{render:false,refresh:false});};
@@ -7712,7 +7730,10 @@ window.printPlano=function(ptId){
   },0);
   var desc=Number(plano.desconto||0);
   var totalDesc=Math.max(0,total-desc);
+  var entradaOrc=Number(plano.entrada||0);
   var parcelas=Number(plano.parcelas||1);
+  var restanteOrc=Math.max(0,totalDesc-entradaOrc);
+  var vlrParcelaOrc=parcelas>1?Math.round(restanteOrc/parcelas):restanteOrc;
 
   var itensRows=itens.map(function(it,i){
     var pr=PROCS.find(function(x){return x.id===it.procId;})||{n:it.name||"?",p:it.price||0};
@@ -7752,7 +7773,10 @@ window.printPlano=function(ptId){
     +"<div style='background:linear-gradient(135deg,#8B6914,#E2C99A,#C6A46D);border-radius:10px;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:20px'>"
     +"<span style='color:#000;font-size:14px;font-weight:700'>TOTAL DO TRATAMENTO</span>"
     +"<span style='color:#000;font-size:22px;font-weight:900'>R$ "+totalDesc.toLocaleString("pt-BR")+"</span></div>"
-    +(parcelas>1?"<div style='text-align:center;color:#8B6914;font-size:13px;margin-bottom:20px'>"+parcelas+"× de R$ "+Math.round(totalDesc/parcelas).toLocaleString("pt-BR")+" (sem juros)</div>":"")
+    +((parcelas>1||entradaOrc>0)?"<div style='text-align:center;color:#8B6914;font-size:13px;margin-bottom:20px'>"
+      +(entradaOrc>0?"Entrada R$ "+entradaOrc.toLocaleString("pt-BR")+(parcelas>1?" + ":""):"")
+      +(parcelas>1?parcelas+"× de R$ "+vlrParcelaOrc.toLocaleString("pt-BR")+" (sem juros)":"")
+      +"</div>":"")
     +(plano.obs?"<div style='background:#f9f9f9;border-radius:8px;padding:12px 14px;font-size:12px;color:#666;line-height:1.7;margin-bottom:20px;border:1px solid #e5e5e5'>"
       +"<strong style='color:#8B6914'>Observações:</strong><br/>"+plano.obs+"</div>":"")
     +"<div style='background:#f9f5e8;border:1px solid #C6A46D44;border-radius:8px;padding:12px;text-align:center;margin-bottom:30px'>"
