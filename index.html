@@ -7603,7 +7603,8 @@ function renderPlano(p){
     +"<select id='plano-parcelas-"+planoId+"' onchange='planoParcelas("+pid+",this.value)' class='inp'>"
     +[1,2,3,4,5,6,10,12].map(function(n){
       var vlr=n===1?restante:Math.round(restante/n);
-      return "<option value='"+n+"'"+(parcelas===n?" selected":"")+">"+(n===1?"À vista":"Em "+n+"x de R$ "+vlr.toLocaleString("pt-BR"))+"</option>";
+      var label=n===1?(entrada>0?"1x de R$ "+vlr.toLocaleString("pt-BR"):"À vista"):"Em "+n+"x de R$ "+vlr.toLocaleString("pt-BR");
+      return "<option value='"+n+"'"+(parcelas===n?" selected":"")+">"+label+"</option>";
     }).join("")
     +"</select></div>"
     +"<div><label class='lbl'>Validade do orçamento</label>"
@@ -7660,7 +7661,8 @@ function refreshPlanoResumo(ptId){
     Array.from(parcelas.options).forEach(function(opt){
       var n=Number(opt.value||1);
       var vlr=n===1?t.restante:Math.round(t.restante/n);
-      opt.textContent=n===1?"À vista":"Em "+n+"x de R$ "+vlr.toLocaleString("pt-BR");
+      var ent=Number((p&&p.plano&&p.plano.entrada)||0);
+      opt.textContent=n===1?(ent>0?"1x de R$ "+vlr.toLocaleString("pt-BR"):"À vista"):"Em "+n+"x de R$ "+vlr.toLocaleString("pt-BR");
     });
   }
   if(resumo){
