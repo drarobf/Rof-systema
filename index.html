@@ -2306,7 +2306,7 @@ function updateNotifDot(){
 // ══════════════════════════════════════════════════════════════════
 window.renderPlanoTto=function(p){
   const etapas=p.planoTto||[];
-  const pid=jsArg(p.id);
+  const pid=jsArg(p.id).replace(/"/g,"&quot;");  // seguro em atributos com aspas duplas
   const STATUS_COLORS={Pendente:"#f59e0b",Em_andamento:"#60a5fa",Concluído:"#22c55e",Cancelado:"#ef4444"};
   return`<div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -2636,7 +2636,7 @@ window.renderContrato=function(p){
     ST.pts=nps;save("rof_pts",nps);
     setTimeout(function(){toast("Procedimentos importados do orçamento ✓","success");},100);
   }
-  var pid=jsArg(p.id);   // ID seguro para onclicks
+  var pid=jsArg(p.id).replace(/"/g,"&quot;");  // seguro em atributos com aspas duplas
   var valoresContrato=calcContratoValores(p,etapas);
   var subtotal=valoresContrato.subtotal;
   var desconto=valoresContrato.desconto;
@@ -5636,7 +5636,8 @@ function renderOdontogram(od,ptId){
   const p=ST.pts.find(x=>sameId(x.id,ptId))||{};
   const plan=p.planoClinico||[];
   const sel=ST.odSel||"carie";const face=ST.odFace||"O";
-  const ptIdStr=jsArg(ptId);
+  const ptIdStr=jsArg(ptId);  // para onclick com aspas simples
+  const ptIdDq=ptIdStr.replace(/"/g,"&quot;");  // para onclick com aspas duplas
 
   // Indicador por dente: pior status vence (planejado < iniciado < feito)
   const statusOrd=["planejado","iniciado","feito"];
@@ -5722,7 +5723,7 @@ function renderOdontogram(od,ptId){
       return`<div style="margin-bottom:10px;padding:8px 10px;background:#0a0a0a;border-radius:8px;border:1px solid rgba(198,164,109,0.1)">
         <div style="color:#555;font-size:10px;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Remover condição de todos os dentes:</div>
         <div style="display:flex;gap:5px;flex-wrap:wrap">
-          ${chips.map(c=>`<button onclick="limparCondicaoOdontograma(${ptIdStr},'${c}')"
+          ${chips.map(c=>`<button onclick="limparCondicaoOdontograma(${ptIdDq},'${c}')"
             style="display:flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;
                    border:1px solid ${COND[c].c}55;background:${COND[c].c}15;
                    color:${COND[c].c};cursor:pointer;font-size:10px;font-family:Georgia,serif">
@@ -6024,14 +6025,31 @@ function renderPlanoClinicoOdontograma(p){
     </div>`;
   };
 
+  // Chips por condição para remoção rápida
+  const _pidPc=jsArg(p.id).replace(/"/g,"&quot;");
+  const condNoPlan=[...new Set(plan.map(it=>it.cond).filter(Boolean))];
+  const condChips=condNoPlan.map(c=>{
+    const ci=COND[c]||{l:c,c:"#888"};
+    const qtd=plan.filter(it=>it.cond===c).length;
+    return `<button onclick="limparPlanoPorCondicao(${_pidPc},'${c}')"
+      style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;
+             border:1px solid ${ci.c}44;background:${ci.c}11;color:${ci.c};
+             cursor:pointer;font-size:10px;font-family:Georgia,serif">
+      <span style="width:6px;height:6px;border-radius:50%;background:${ci.c};flex-shrink:0"></span>
+      ${ci.l} (${qtd}) ✕
+    </button>`;
+  }).join("");
+
   return `<div class="card" style="margin-top:14px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <div style="color:#E2C99A;font-weight:800;font-size:13px">📋 Plano Clínico do Odontograma</div>
       <div style="display:flex;gap:6px">
-        <button onclick="importarPlanoClinicoParaOrcamento(${jsArg(p.id)})" class="bp" style="padding:6px 10px;font-size:11px">📥 Enviar p/ Orçamento</button>
-        <button onclick="clearPlanoClinico(${jsArg(p.id)})" class="bg" style="padding:6px 10px;font-size:11px;color:#ef4444;border-color:#ef444444">🗑</button>
+        <button onclick="importarPlanoClinicoParaOrcamento(${_pidPc})" class="bp" style="padding:6px 10px;font-size:11px">📥 Enviar p/ Orçamento</button>
+        <button onclick="clearPlanoClinico(${_pidPc})" class="bg" style="padding:6px 10px;font-size:11px;color:#ef4444;border-color:#ef444444">🗑 Tudo</button>
       </div>
     </div>
+    ${condChips?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(198,164,109,0.08)">${condChips}</div>`:""}
+
 
     ${planejados.length>0?`
       <div style="color:#0ea5e9;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin:8px 0 4px">🔵 A Realizar (${planejados.length}) — R$ ${totalPlanejado.toLocaleString("pt-BR")}</div>
@@ -6279,22 +6297,42 @@ window.adicionarProcAoPlano=function(){
   document.getElementById("plano-clinico-modal").remove();
 };
 
-// Remove uma condição específica de todos os dentes do odontograma
+// Remove condição do odontograma E do plano clínico
 window.limparCondicaoOdontograma=function(ptId,cond){
-  rConfirm(`Remover "${COND[cond]?.l||cond}" de todos os dentes?`,function(){
-    const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p)return;
-    const od={...(p.odontogram||{})};
-    Object.keys(od).forEach(t=>{
-      const td={...od[t]};
-      if(OVERLAY_CONDS.has(cond)){
-        if(td._overlays) td._overlays=td._overlays.filter(k=>k!==cond);
-      }else{
-        ["V","O","M","D","L"].forEach(f=>{if(td[f]===cond) td[f]="higido";});
-      }
-      od[t]=td;
+  const nome=COND[cond]?.l||cond;
+  rConfirm(`Remover "${nome}" do odontograma e do plano clínico?`,function(){
+    const nps=ST.pts.map(p=>{
+      if(!sameId(p.id,ptId))return p;
+      // Remove do odontograma (visual)
+      const od={...(p.odontogram||{})};
+      Object.keys(od).forEach(t=>{
+        const td={...od[t]};
+        if(typeof OVERLAY_CONDS!=="undefined"&&OVERLAY_CONDS.has(cond)){
+          if(td._overlays) td._overlays=td._overlays.filter(k=>k!==cond);
+        }else{
+          ["V","O","M","D","L"].forEach(f=>{if(td[f]===cond) td[f]="higido";});
+        }
+        od[t]=td;
+      });
+      // Remove do plano clínico (itens)
+      const planoClinico=(p.planoClinico||[]).filter(it=>it.cond!==cond);
+      return {...p,odontogram:od,planoClinico};
     });
-    updPt(ptId,"odontogram",od,true);
-    toast(`${COND[cond]?.l||cond} removido de todos os dentes ✓`,"success");
+    save("rof_pts",nps);set({pts:nps});
+    toast(`${nome} removido do odontograma e plano clínico ✓`,"success");
+  },"Remover");
+};
+
+// Remove apenas do plano clínico (sem mexer no odontograma visual)
+window.limparPlanoPorCondicao=function(ptId,cond){
+  const nome=COND[cond]?.l||cond;
+  rConfirm(`Remover todos os itens de "${nome}" do plano clínico?`,function(){
+    const nps=ST.pts.map(p=>{
+      if(!sameId(p.id,ptId))return p;
+      return {...p,planoClinico:(p.planoClinico||[]).filter(it=>it.cond!==cond)};
+    });
+    save("rof_pts",nps);set({pts:nps});
+    toast(`${nome} removido do plano clínico ✓`,"success");
   },"Remover");
 };
 window.clearPlanoClinico=function(ptId){
