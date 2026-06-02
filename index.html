@@ -7597,8 +7597,8 @@ function renderPlano(p){
     +"<div style='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px'>"
     +"<div><label class='lbl'>Desconto (R$)</label>"
     +"<input type='number' min='0' value='"+(plano.desconto||0)+"' oninput='planoDesc("+pid+",this.value)' class='inp'/></div>"
-    +"<div><label class='lbl'>Entrada (R$) — opcional</label>"
-    +"<input type='number' min='0' value='"+(entrada||"")+"' oninput='planoEntrada("+pid+",this.value)' class='inp' placeholder='0,00'/></div>"
+    +"<div><label class='lbl' style='color:#C6A46D'>💰 Entrada (R$)</label>"
+    +"<input type='number' min='0' value='"+(entrada>0?entrada:"")+"' oninput='planoEntrada("+pid+",this.value)' class='inp' style='border-color:rgba(198,164,109,0.4)' placeholder='Ex: 650,00'/></div>"
     +"<div><label class='lbl'>Parcelamento do restante</label>"
     +"<select id='plano-parcelas-"+planoId+"' onchange='planoParcelas("+pid+",this.value)' class='inp'>"
     +[1,2,3,4,5,6,10,12].map(function(n){
