@@ -263,6 +263,98 @@ function buildTermo(d, readOnly){
   ${sigSection}`;
 }
 
+// ── Termos de Consentimento condicionais ────────────────────────
+function buildTermos(termos){
+  // Se d.termos não veio (link antigo), mostra implante+prótese por padrão
+  var t=Array.isArray(termos)?termos:["implante","protese"];
+  var html="";
+  if(t.includes("implante")){
+    html+='<hr class="section-divider"/>'
+      +'<div class="section-title">⚙️ Termo de Consentimento — Implante Osseointegrado</div>'
+      +'<h3>O Procedimento</h3>'
+      +'<p>O implante dentário osseointegrado é um dispositivo de titânio inserido cirurgicamente no osso alveolar, servindo de raiz artificial. A osseointegração leva de 3 a 6 meses.</p>'
+      +'<h3>Riscos e Intercorrências</h3><ul>'
+      +'<li><b>Falha na osseointegração</b> (5–10% dos casos): pode exigir remoção e novo implante após cicatrização.</li>'
+      +'<li>Dor, edema e hematoma pós-operatórios (esperados e transitórios).</li>'
+      +'<li>Infecção local (peri-implantite) se higiene inadequada.</li>'
+      +'<li>Sensibilidade ou alteração temporária de sensibilidade na região.</li>'
+      +'<li>Possível necessidade de enxerto ósseo prévio se volume ósseo insuficiente.</li>'
+      +'</ul>'
+      +'<h3>Fatores de Risco</h3><ul>'
+      +'<li>Tabagismo — reduz significativamente a taxa de sucesso.</li>'
+      +'<li>Diabetes não controlada, osteoporose e uso de bifosfonatos.</li>'
+      +'<li>Higiene bucal inadequada e ausência às consultas de acompanhamento.</li>'
+      +'</ul>'
+      +'<h3>Cuidados Pós-operatórios</h3><ul>'
+      +'<li>Repouso nas primeiras 24h; evitar esforço físico por 72h.</li>'
+      +'<li>Dieta líquida/pastosa fria nos primeiros dias. Não fumar por no mínimo 30 dias.</li>'
+      +'<li>Tomar os medicamentos prescritos rigorosamente e no horário.</li>'
+      +'</ul>'
+      +'<h3>Responsabilidade em Caso de Falha</h3>'
+      +'<p>A falha na osseointegração, quando comprovada, poderá ser corrigida com novo implante mediante novo orçamento. A Contratada emprega todos os recursos disponíveis, mas não pode garantir resultados absolutos em razão da resposta biológica individual.</p>';
+  }
+  if(t.includes("protese")){
+    html+='<hr class="section-divider"/>'
+      +'<div class="section-title">🦷 Termo de Consentimento — Prótese Dentária</div>'
+      +'<h3>O Procedimento</h3>'
+      +'<p>Próteses dentárias (coroas, facetas, pontes, próteses sobre implante, próteses removíveis) visam restaurar função mastigatória, estética e fonação. O resultado estético é personalizado e pode exigir ajustes até a adaptação ideal.</p>'
+      +'<h3>Limitações e Expectativas</h3><ul>'
+      +'<li>Pode haver variação entre a cor aprovada e o resultado final em boca conforme iluminação e tecidos adjacentes.</li>'
+      +'<li>Ajustes de oclusão (mordida) são comuns e esperados nas consultas iniciais.</li>'
+      +'<li>Facetas de porcelana podem apresentar trincas ou lascamento em traumas ou bruxismo.</li>'
+      +'<li>Próteses removíveis requerem período de adaptação de semanas a meses.</li>'
+      +'</ul>'
+      +'<h3>Riscos</h3><ul>'
+      +'<li>Sensibilidade dentinária temporária após preparo dos dentes (esperado e transitório).</li>'
+      +'<li>Possível necessidade de tratamento endodôntico caso o dente não suporte o preparo.</li>'
+      +'<li>Descimentação da prótese — recimentação sem custo adicional no período de garantia.</li>'
+      +'<li>Fratura da peça por trauma ou bruxismo — avaliação individual de cobertura.</li>'
+      +'</ul>'
+      +'<h3>Cuidados e Garantia</h3><ul>'
+      +'<li>Higiene cuidadosa com escova macia e fio dental.</li>'
+      +'<li>Evitar morder objetos duros (unhas, canetas, gelo, embalagens).</li>'
+      +'<li>Retornos de manutenção semestrais obrigatórios.</li>'
+      +'</ul>'
+      +'<p>A prótese tem garantia de reajuste e recimentação por 12 meses a partir da entrega, desde que os cuidados acima sejam seguidos e o paciente compareça às consultas de manutenção.</p>';
+  }
+  if(t.includes("clareamento")){
+    html+='<hr class="section-divider"/>'
+      +'<div class="section-title">✨ Termo de Consentimento — Clareamento Dental</div>'
+      +'<h3>O Procedimento</h3>'
+      +'<p>O clareamento dental utiliza agentes oxidantes (peróxido de hidrogênio ou carbamida) para reduzir pigmentação dos dentes, tornando-os mais claros e uniformes.</p>'
+      +'<h3>Limitações</h3><ul>'
+      +'<li>O resultado depende da cor natural, tipo de manchamento e características individuais.</li>'
+      +'<li>Restaurações, coroas e facetas existentes <b>NÃO clareiam</b> — podem ser necessárias trocas após o clareamento.</li>'
+      +'<li>O resultado pode reduzir com o tempo com consumo de alimentos pigmentados e tabaco.</li>'
+      +'</ul>'
+      +'<h3>Efeitos Colaterais</h3><ul>'
+      +'<li><b>Sensibilidade dentária temporária</b> — comum durante e após o tratamento; cede em 24–48h.</li>'
+      +'<li>Irritação gengival leve e transitória, especialmente no clareamento caseiro.</li>'
+      +'</ul>'
+      +'<h3>Contraindicações</h3><ul>'
+      +'<li>Gestantes e lactantes; menores de 16 anos sem autorização responsável.</li>'
+      +'<li>Dentes com cárie ativa ou sensibilidade excessiva não tratada.</li>'
+      +'</ul>'
+      +'<p>O Contratante declara ter sido informado sobre todas as limitações e possíveis efeitos colaterais e consente com o procedimento.</p>';
+  }
+  if(t.includes("ortodontia")){
+    html+='<hr class="section-divider"/>'
+      +'<div class="section-title">😁 Termo de Consentimento — Tratamento Ortodôntico</div>'
+      +'<h3>O Procedimento</h3>'
+      +'<p>O tratamento ortodôntico visa corrigir a posição dos dentes e das bases ósseas, melhorando função mastigatória, fonética e estética do sorriso.</p>'
+      +'<h3>Comprometimento do Paciente</h3><ul>'
+      +'<li>O prazo é estimativa e pode variar conforme resposta biológica e cooperação.</li>'
+      +'<li>Higienização rigorosa é indispensável para evitar cáries e doença periodontal.</li>'
+      +'<li>O não uso de contenção após o término pode resultar em recidiva.</li>'
+      +'</ul>'
+      +'<h3>Riscos</h3><ul>'
+      +'<li>Reabsorção radicular leve — monitorada por radiografias periódicas.</li>'
+      +'<li>Descalcificação (manchas brancas) em caso de higiene inadequada.</li>'
+      +'</ul>';
+  }
+  return html;
+}
+
 // ── Build full unified contract HTML ───────────────────────────
 function buildContract(d, readOnly){
   const etapas=d.etapas||[];
@@ -274,8 +366,15 @@ function buildContract(d, readOnly){
         :"")
     :`<div style="color:#aaa;font-size:12px;padding:8px 0">A definir</div>`;
 
+  const _entrada=Number(d.entrada||0);
+  const _parcelas=Number(d.parcelas||1);
+  const _vlrParcelaManual=Number(d.valorParcela||0);
+  const _vlrParcelaAuto=_parcelas>1?Math.round((d.total-_entrada)/_parcelas):0;
+  const _vlrParcela=_vlrParcelaManual||_vlrParcelaAuto;
   const pgtoDesc=d.forma==="Parcelado"&&d.total>0
-    ?`${d.parcelas}x de R$ ${fmt(d.total/d.parcelas)} (total R$ ${fmt(d.total)})`
+    ?(_entrada>0
+      ?`Entrada de R$ ${fmt(_entrada)} + ${_parcelas}x de R$ ${fmt(_vlrParcela)} (total R$ ${fmt(d.total)})`
+      :`${_parcelas}x de R$ ${fmt(_vlrParcela)} (total R$ ${fmt(d.total)})`)
     :`${d.forma||"À vista"} — R$ ${fmt(d.total)}`;
 
   const hoje=new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"});
@@ -353,79 +452,7 @@ function buildContract(d, readOnly){
     <h3>Cláusula 9ª — Rescisão</h3>
     <p>Qualquer das partes pode rescindir mediante aviso de 15 dias. Rescisão pelo Contratante após início dos procedimentos: remuneração proporcional ao já realizado.</p>
 
-    <!-- ══ IMPLANTE ══════════════════════════════════════════════ -->
-    <hr class="section-divider"/>
-    <div class="section-title">🦷 Termo de Consentimento — Cirurgia de Implante Osseointegrado</div>
-
-    <h3>O Procedimento</h3>
-    <p>O implante dentário osseointegrado é um dispositivo de titânio inserido cirurgicamente no osso alveolar, servindo de raiz artificial para suporte de coroa, prótese parcial ou total. A osseointegração (fusão implante/osso) leva de 3 a 6 meses.</p>
-
-    <h3>Riscos e Possíveis Intercorrências</h3>
-    <ul>
-      <li><b>Falha na osseointegração</b> (5–10% dos casos): pode exigir remoção e novo implante após cicatrização.</li>
-      <li>Dor, edema e hematoma pós-operatórios (esperados e transitórios).</li>
-      <li>Infecção local (peri-implantite) se higiene inadequada.</li>
-      <li>Sensibilidade ou alteração temporária de sensibilidade na região.</li>
-      <li>Reabsorção óssea marginal ao redor do implante ao longo do tempo.</li>
-      <li>Possível necessidade de enxerto ósseo prévio se volume ósseo insuficiente.</li>
-      <li>Em casos raros: comunicação com seio maxilar (implantes superiores posteriores).</li>
-    </ul>
-
-    <h3>Fatores que Aumentam o Risco de Falha</h3>
-    <ul>
-      <li>Tabagismo — reduz significativamente a taxa de sucesso.</li>
-      <li>Diabetes não controlada e osteoporose.</li>
-      <li>Uso de bifosfonatos ou medicamentos que afetam o metabolismo ósseo.</li>
-      <li>Higiene bucal inadequada e ausência às consultas de acompanhamento.</li>
-    </ul>
-
-    <h3>Cuidados Pós-operatórios Obrigatórios</h3>
-    <ul>
-      <li>Repouso nas primeiras 24h; evitar esforço físico por 72h.</li>
-      <li>Compressas frias nas primeiras 24h (gelo protegido com pano).</li>
-      <li>Dieta líquida/pastosa fria nos primeiros dias.</li>
-      <li>Não fumar por no mínimo 30 dias.</li>
-      <li>Tomar os medicamentos prescritos rigorosamente e no horário.</li>
-      <li>Higiene suave na região cirúrgica conforme orientação recebida.</li>
-    </ul>
-
-    <h3>Responsabilidade em Caso de Falha</h3>
-    <p>A falha na osseointegração, quando comprovada, poderá ser corrigida com novo implante mediante novo orçamento. A Contratada emprega todos os recursos disponíveis, mas não pode garantir resultados absolutos em razão da resposta biológica individual.</p>
-
-    <!-- ══ PRÓTESE ════════════════════════════════════════════════ -->
-    <hr class="section-divider"/>
-    <div class="section-title">💎 Termo de Consentimento — Prótese Dentária</div>
-
-    <h3>O Procedimento</h3>
-    <p>Próteses dentárias (coroas, facetas, pontes, próteses sobre implante, próteses removíveis) visam restaurar função mastigatória, estética e fonação. O resultado estético é personalizado e pode exigir ajustes até a adaptação ideal.</p>
-
-    <h3>Limitações e Expectativas</h3>
-    <ul>
-      <li>A seleção de cor é realizada com guias padronizados; pode haver variação entre a cor aprovada e o resultado final em boca conforme iluminação e tecidos adjacentes.</li>
-      <li>Ajustes de oclusão (mordida) são comuns e esperados nas consultas iniciais.</li>
-      <li>Facetas de porcelana podem apresentar trincas ou lascamento em traumas ou bruxismo.</li>
-      <li>Próteses removíveis requerem período de adaptação de semanas a meses.</li>
-      <li>Reabsorção óssea progressiva pode alterar o assentamento de próteses totais ao longo dos anos.</li>
-    </ul>
-
-    <h3>Riscos</h3>
-    <ul>
-      <li>Sensibilidade dentinária temporária após preparo dos dentes (esperado e transitório).</li>
-      <li>Necessidade de tratamento endodôntico (canal) caso o dente não suporte o preparo — situação incomum mas possível.</li>
-      <li>Descimentação da prótese — recimentação sem custo adicional no período de garantia.</li>
-      <li>Fratura da peça por trauma ou bruxismo — avaliação individual de cobertura.</li>
-    </ul>
-
-    <h3>Cuidados e Manutenção</h3>
-    <ul>
-      <li>Higiene cuidadosa com escova macia e fio dental.</li>
-      <li>Uso de placa de bruxismo se indicado.</li>
-      <li>Evitar morder objetos duros (unhas, canetas, gelo, embalagens).</li>
-      <li>Retornos de manutenção semestrais obrigatórios.</li>
-    </ul>
-
-    <h3>Garantia</h3>
-    <p>A prótese tem garantia de reajuste e recimentação (se aplicável) por 12 meses a partir da entrega, desde que os cuidados acima sejam seguidos e o paciente compareça às consultas de manutenção.</p>
+    ${buildTermos(d.termos)}
 
     <!-- ══ DISPOSIÇÕES FINAIS ════════════════════════════════════ -->
     <hr class="section-divider"/>
