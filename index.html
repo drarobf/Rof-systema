@@ -2184,7 +2184,7 @@ function compilarAlertaSaude(p){
 
 // ── Adicionar item rápido ao alerta de saúde ──
 window.addAlertaQuick=function(ptId,tag){
-  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p)return;
   let atual=(p.alertaSaude||"").trim();
   if(!atual)atual=compilarAlertaSaude(p);
   const prompts={
@@ -2207,7 +2207,7 @@ window.addAlertaQuick=function(ptId,tag){
 
 window.toggleTag=function(ptId,tag){
   const pts=ST.pts.map(p=>{
-    if(p.id!==ptId)return p;
+    if(!sameId(p.id,ptId))return p;
     const tags=[...(p.tags||[])];
     const i=tags.indexOf(tag);
     if(i>=0)tags.splice(i,1);else tags.push(tag);
@@ -2432,7 +2432,7 @@ window.abrirAddEtapaModal=function(ptId){
       <label class="lbl">Ou digite manualmente</label>
       <input id="aem-manual" class="inp" placeholder="Ex: Restauração 2 faces — dente 36"/>
     </div>
-    <button onclick='confirmarAddEtapa(${ptId})' class="bp" style="width:100%;padding:12px;font-size:13px;font-weight:800">✅ Adicionar ao Plano</button>
+    <button onclick='confirmarAddEtapa(${jsArg(ptId)})' class="bp" style="width:100%;padding:12px;font-size:13px;font-weight:800">✅ Adicionar ao Plano</button>
   </div>`;
   document.body.appendChild(m);
   m.addEventListener("click",e=>{if(e.target===m)m.remove();});
@@ -2455,7 +2455,7 @@ window.confirmarAddEtapa=function(ptId){
   const procName=manual||(selectedOpt?selectedOpt.text.split("—")[0].trim():"");
   if(!procName){toast("Selecione ou digite um procedimento.","warning");return;}
   document.getElementById("add-etapa-modal")?.remove();
-  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p)return;
   const novas=Array.from({length:qty},(_,i)=>({
     id:Date.now()+i,
     proc:qty>1?procName+" — dente ?":`${procName}`,
@@ -2465,7 +2465,7 @@ window.confirmarAddEtapa=function(ptId){
     obs:""
   }));
   const planoTto=[...(p.planoTto||[]),...novas];
-  const pts=ST.pts.map(x=>x.id===ptId?{...x,planoTto}:x);
+  const pts=ST.pts.map(x=>sameId(x.id,ptId)?{...x,planoTto}:x);
   ST.pts=pts;save("rof_pts",pts);set({pts});
   toast(`✓ ${qty} etapa${qty>1?"s":""} adicionada${qty>1?"s":""}`,"success",2000);
 };
@@ -2501,7 +2501,7 @@ window.importarOdontogramaParaPlanoTto=function(ptId){
   m.addEventListener("click",e=>{if(e.target===m)m.remove();});
 };
 window.confirmarImportOdPlano=function(ptId){
-  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p)return;
   const plan=(p.planoClinico||[]).filter(it=>it.status!=="feito");
   const selecionados=plan.filter((_,i)=>{
     const cb=document.getElementById("od-imp-"+i);
@@ -2522,7 +2522,7 @@ window.confirmarImportOdPlano=function(ptId){
     };
   });
   const planoTto=[...(p.planoTto||[]),...novas];
-  const pts=ST.pts.map(x=>x.id===ptId?{...x,planoTto}:x);
+  const pts=ST.pts.map(x=>sameId(x.id,ptId)?{...x,planoTto}:x);
   ST.pts=pts;save("rof_pts",pts);set({pts});
   toast(`✓ ${novas.length} procedimento${novas.length>1?"s":""} importado${novas.length>1?"s":""} do odontograma`,"success",3000);
 };
@@ -2565,7 +2565,7 @@ window.hideProcDrop=function(ptId,idx){
 window.selectProcDrop=function(ptId,idx,procId){
   const pr=PROCS.find(x=>x.id===procId);if(!pr)return;
   const pts=ST.pts.map(p=>{
-    if(p.id!==ptId)return p;
+    if(!sameId(p.id,ptId))return p;
     const planoTto=(p.planoTto||[]).map((e,i)=>i===idx?{...e,proc:pr.n,valor:pr.p}:e);
     return{...p,planoTto};
   });
@@ -2629,19 +2629,24 @@ window.renderContrato=function(p){
     var descontoImportado=Math.min(subtotalImportado,Math.max(0,Number(planoOrc.desconto||0)));
     // Salva no paciente
     var nps=ST.pts.map(function(x){
-      if(x.id!==p.id)return x;
+      if(!sameId(x.id,p.id))return x;
       return Object.assign({},x,{planoTto:etapas,contratoDesconto:descontoImportado});
     });
     p=Object.assign({},p,{planoTto:etapas,contratoDesconto:descontoImportado});
     ST.pts=nps;save("rof_pts",nps);
     setTimeout(function(){toast("Procedimentos importados do orçamento ✓","success");},100);
   }
+  var pid=jsArg(p.id);   // ID seguro para onclicks
   var valoresContrato=calcContratoValores(p,etapas);
   var subtotal=valoresContrato.subtotal;
   var desconto=valoresContrato.desconto;
   var total=valoresContrato.total;
   var forma=p.contratoForma||"À vista";
-  var parcelas=p.contratoParcelas||1;
+  var parcelas=Number(p.contratoParcelas||1);
+  var entrada=Number(p.contratoEntrada||0);
+  var valorParcelaManual=Number(p.contratoValorParcela||0);
+  var valorParcelaAuto=parcelas>1?Math.round((total-entrada)/parcelas):0;
+  var vlrParcela=valorParcelaManual||valorParcelaAuto;
   var prazo=p.contratoPrazo||"";
   var sigPt=p.contratoSig||null;
   var sigDra=p.contratoDraSig||null;
@@ -2653,7 +2658,7 @@ window.renderContrato=function(p){
     ?`<div style="background:#071407;border:1px solid #22c55e44;border-radius:10px;padding:12px;margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <span style="color:#22c55e;font-size:11px;font-weight:700">✅ Assinado pelo Paciente em ${p.contratoSigDate||""}</span>
-          <button onclick="updPt(${p.id},'contratoSig',null,true)" class="bg" style="font-size:10px;padding:3px 8px;color:#555">↺ Refazer</button>
+          <button onclick="updPt(${pid},'contratoSig',null,true)" class="bg" style="font-size:10px;padding:3px 8px;color:#555">↺ Refazer</button>
         </div>
         <div style="text-align:center;padding:10px 0;border-top:1px solid rgba(198,164,109,0.12)">
           ${sigPt.type==="canvas"
@@ -2672,17 +2677,17 @@ window.renderContrato=function(p){
           ?`<canvas id="sc-ct" width="400" height="90" style="border:2px dashed rgba(198,164,109,0.4);border-radius:10px;background:#0a0a0a;cursor:crosshair;display:block;touch-action:none;width:100%;max-width:100%"></canvas>
             <div style="display:flex;gap:8px;margin-top:8px">
               <button onclick="clearSigCt()" class="bg" style="font-size:11px;padding:5px 12px">🗑 Limpar</button>
-              <button id="scb-ct" onclick="confirmSigCt(${p.id})" class="bp" style="font-size:11px;padding:5px 16px;display:none">✅ Confirmar assinatura</button>
+              <button id="scb-ct" onclick="confirmSigCt(${pid})" class="bp" style="font-size:11px;padding:5px 16px;display:none">✅ Confirmar assinatura</button>
             </div>`
           :`<input id="sti-ct" placeholder="Digite o nome completo do paciente" class="inp" style="font-family:cursive;font-size:18px;color:#E2C99A;letter-spacing:1px;margin-bottom:10px"/>
-            <button onclick="confirmSigCtText(${p.id})" class="bp" style="width:100%;font-size:12px;padding:10px">✅ Confirmar Assinatura</button>`}
+            <button onclick="confirmSigCtText(${pid})" class="bp" style="width:100%;font-size:12px;padding:10px">✅ Confirmar Assinatura</button>`}
       </div>`;
 
   var sigDraHtml=sigDra
     ?`<div style="background:#071407;border:1px solid #22c55e44;border-radius:10px;padding:12px;margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <span style="color:#22c55e;font-size:11px;font-weight:700">✅ Assinado pela Dra. Rossana em ${p.contratoDraSigDate||""}</span>
-          <button onclick="updPt(${p.id},'contratoDraSig',null,true)" class="bg" style="font-size:10px;padding:3px 8px;color:#555">↺ Refazer</button>
+          <button onclick="updPt(${pid},'contratoDraSig',null,true)" class="bg" style="font-size:10px;padding:3px 8px;color:#555">↺ Refazer</button>
         </div>
         <div style="text-align:center;padding:10px 0;border-top:1px solid rgba(198,164,109,0.12)">
           ${sigDra.type==="canvas"
@@ -2783,14 +2788,29 @@ window.renderContrato=function(p){
         Valor total dos serviços: <b style="color:#E2C99A;font-size:15px">R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})}</b>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-        ${["À vista","Parcelado","Convênio","Permuta"].map(f=>`<button onclick="updPt(${p.id},'contratoForma','${f}',true)" class="bg" style="font-size:11px;padding:5px 14px;border-radius:50px;background:${forma===f?"#C6A46D22":"transparent"};color:${forma===f?"#C6A46D":"#555"};border-color:${forma===f?"rgba(198,164,109,0.4)":"rgba(198,164,109,0.1)"}">${f}</button>`).join("")}
+        ${["À vista","Parcelado","Convênio","Permuta"].map(f=>`<button onclick="updPt(${pid},'contratoForma','${f}',true)" class="bg" style="font-size:11px;padding:5px 14px;border-radius:50px;background:${forma===f?"#C6A46D22":"transparent"};color:${forma===f?"#C6A46D":"#555"};border-color:${forma===f?"rgba(198,164,109,0.4)":"rgba(198,164,109,0.1)"}">${f}</button>`).join("")}
       </div>
-      ${forma==="Parcelado"?`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-        <span style="color:#666;font-size:12px">Nº de parcelas:</span>
-        <input type="number" min="1" max="48" value="${parcelas}" oninput="updPt(${p.id},'contratoParcelas',parseInt(this.value)||1)" class="inp" style="width:70px;font-size:12px;padding:5px 8px"/>
-        <span style="color:#C6A46D;font-size:13px;font-weight:700">${total>0?"R$ "+(total/parcelas).toLocaleString("pt-BR",{minimumFractionDigits:2})+" × "+parcelas+"x":""}</span>
+      ${forma==="Parcelado"?`<div style="background:#0a0a0a;border-radius:8px;padding:10px;margin-bottom:10px;border:1px solid rgba(198,164,109,0.1)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div>
+            <label class="lbl" style="font-size:9px">Nº de parcelas</label>
+            <input type="number" min="1" max="48" value="${parcelas}" oninput="updPt(${pid},'contratoParcelas',parseInt(this.value)||1)" class="inp" style="font-size:13px;font-weight:700;text-align:center"/>
+          </div>
+          <div>
+            <label class="lbl" style="font-size:9px">Entrada (R$) — opcional</label>
+            <input type="number" min="0" value="${entrada||""}" oninput="updPt(${pid},'contratoEntrada',parseFloat(this.value)||0)" class="inp" placeholder="0,00"/>
+          </div>
+        </div>
+        <div>
+          <label class="lbl" style="font-size:9px">Valor por parcela (R$) — deixe em branco para calcular automaticamente</label>
+          <input type="number" min="0" value="${valorParcelaManual||""}" oninput="updPt(${pid},'contratoValorParcela',parseFloat(this.value)||0)" class="inp" placeholder="Auto: R$ ${vlrParcela.toLocaleString("pt-BR",{minimumFractionDigits:2})}"/>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;flex-wrap:wrap;gap:6px">
+          <span style="color:#C6A46D;font-size:13px;font-weight:700">${entrada>0?`Entrada R$ ${entrada.toLocaleString("pt-BR",{minimumFractionDigits:2})} + `:""}${parcelas}× R$ ${vlrParcela.toLocaleString("pt-BR",{minimumFractionDigits:2})}</span>
+          <button onclick="copiarParcelasOrcamento(${pid})" class="bg" style="font-size:10px;padding:5px 10px;color:#C6A46D;border-color:rgba(198,164,109,0.3)">📋 Copiar do orçamento</button>
+        </div>
       </div>`:""}
-      <textarea oninput="updPt(${p.id},'contratoObs',this.value)" rows="2" class="inp" style="resize:vertical;margin-top:4px" placeholder="Detalhes do pagamento: datas, vencimentos, conta bancária...">${p.contratoObs||""}</textarea>
+      <textarea oninput="updPt(${pid},'contratoObs',this.value)" rows="2" class="inp" style="resize:vertical;margin-top:4px" placeholder="Detalhes do pagamento: datas, vencimentos, conta bancária...">${p.contratoObs||""}</textarea>
       <div style="color:#444;font-size:10px;margin-top:8px;line-height:1.6">Pagamentos vencidos sujeitos a atualização monetária, multa moratória de 2% e juros de 0,1% ao dia. No parcelamento, juros legais de 1% ao mês já inclusos nas parcelas.</div>
     </div>
 
@@ -2809,8 +2829,8 @@ window.renderContrato=function(p){
     ${sigDraHtml}
 
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
-      <button onclick="printContrato(${p.id})" class="bp" style="flex:1;font-size:12px;padding:10px">🖨️ Imprimir / PDF</button>
-      <button onclick="whatsContrato(${p.id})" class="bg" style="flex:1;font-size:12px;padding:10px;color:#22c55e;border-color:#22c55e44">📱 WhatsApp</button>
+      <button onclick="printContrato(${pid})" class="bp" style="flex:1;font-size:12px;padding:10px">🖨️ Imprimir / PDF</button>
+      <button onclick="whatsContrato(${pid})" class="bg" style="flex:1;font-size:12px;padding:10px;color:#22c55e;border-color:#22c55e44">📱 WhatsApp</button>
     </div>
     ${p.contratoLinkId
       ?`<div style="background:#060b14;border:1px solid rgba(96,165,250,0.22);border-radius:10px;padding:12px;margin-top:8px">
@@ -2823,15 +2843,15 @@ window.renderContrato=function(p){
             }">${p.contratoLinkStatus==='submitted'?'✅ Paciente assinou!':p.contratoLinkStatus==='approved'?'✅ Aprovado':'⏳ Aguard. assinatura'}</span>
           </div>
           ${p.contratoLinkStatus==='submitted'||p.contratoLinkStatus==='approved'
-            ?`<button onclick="aplicarAssinaturaOnline(${p.id})" class="bp" style="width:100%;font-size:12px;padding:9px;margin-bottom:7px">✅ Importar assinatura do paciente</button>`
-            :`<button onclick="checkContratoOnline(${p.id})" class="bg" style="width:100%;font-size:12px;padding:8px;margin-bottom:7px;color:#60a5fa;border-color:#60a5fa33">🔄 Verificar se assinou</button>`}
+            ?`<button onclick="aplicarAssinaturaOnline(${pid})" class="bp" style="width:100%;font-size:12px;padding:9px;margin-bottom:7px">✅ Importar assinatura do paciente</button>`
+            :`<button onclick="checkContratoOnline(${pid})" class="bg" style="width:100%;font-size:12px;padding:8px;margin-bottom:7px;color:#60a5fa;border-color:#60a5fa33">🔄 Verificar se assinou</button>`}
           <div style="display:flex;gap:5px">
-            <button onclick="enviarLinkWhats(${p.id})" class="bg" style="flex:1;font-size:10px;padding:6px;color:#22c55e;border-color:#22c55e22">📱 Reenviar</button>
-            <button onclick="copiarLinkContrato(${p.id})" class="bg" style="flex:1;font-size:10px;padding:6px;color:#60a5fa;border-color:#60a5fa22">📋 Copiar link</button>
-            <button onclick="novoContratoLink(${p.id})" class="bg" style="font-size:10px;padding:6px;color:#444" title="Gerar novo link">↺ Novo</button>
+            <button onclick="enviarLinkWhats(${pid})" class="bg" style="flex:1;font-size:10px;padding:6px;color:#22c55e;border-color:#22c55e22">📱 Reenviar</button>
+            <button onclick="copiarLinkContrato(${pid})" class="bg" style="flex:1;font-size:10px;padding:6px;color:#60a5fa;border-color:#60a5fa22">📋 Copiar link</button>
+            <button onclick="novoContratoLink(${pid})" class="bg" style="font-size:10px;padding:6px;color:#444" title="Gerar novo link">↺ Novo</button>
           </div>
         </div>`
-      :`<button onclick="abrirModalContratoLink(${p.id})" style="margin-top:8px;width:100%;padding:13px;background:linear-gradient(135deg,rgba(96,165,250,0.1),rgba(96,165,250,0.05));border:1px solid rgba(96,165,250,0.28);border-radius:10px;color:#60a5fa;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;transition:background 0.2s">🔗 Enviar Link para Assinar Online</button>`}
+      :`<button onclick="abrirModalContratoLink(${pid})" style="margin-top:8px;width:100%;padding:13px;background:linear-gradient(135deg,rgba(96,165,250,0.1),rgba(96,165,250,0.05));border:1px solid rgba(96,165,250,0.28);border-radius:10px;color:#60a5fa;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;transition:background 0.2s">🔗 Enviar Link para Assinar Online</button>`}
   </div>`;
 };
 
@@ -2844,14 +2864,14 @@ window.clearSigCt=function(){
 window.confirmSigCt=function(ptId){
   const c=document.getElementById("sc-ct");if(!c)return;
   const sigVal=c.toDataURL();
-  const pts=ST.pts.map(p=>p.id!==ptId?p:{...p,contratoSig:{type:"canvas",value:sigVal},contratoSigDate:todayFmt()});
+  const pts=ST.pts.map(p=>!sameId(p.id,ptId)?p:{...p,contratoSig:{type:"canvas",value:sigVal},contratoSigDate:todayFmt()});
   set({pts});save("rof_pts",pts);
   toast("✅ Contrato assinado digitalmente!","success");
 };
 window.confirmSigCtText=function(ptId){
   const v=(document.getElementById("sti-ct")?.value||"").trim();
   if(!v){toast("Digite o nome para confirmar","error");return;}
-  const pts=ST.pts.map(p=>p.id!==ptId?p:{...p,contratoSig:{type:"typed",value:v},contratoSigDate:todayFmt()});
+  const pts=ST.pts.map(p=>!sameId(p.id,ptId)?p:{...p,contratoSig:{type:"typed",value:v},contratoSigDate:todayFmt()});
   set({pts});save("rof_pts",pts);
   toast("✅ Contrato assinado!","success");
 };
@@ -2865,14 +2885,14 @@ window.clearSigDra=function(){
 window.confirmSigDra=function(ptId){
   const c=document.getElementById("sc-dra");if(!c)return;
   const sigVal=c.toDataURL();
-  const pts=ST.pts.map(p=>p.id!==ptId?p:{...p,contratoDraSig:{type:"canvas",value:sigVal},contratoDraSigDate:todayFmt()});
+  const pts=ST.pts.map(p=>!sameId(p.id,ptId)?p:{...p,contratoDraSig:{type:"canvas",value:sigVal},contratoDraSigDate:todayFmt()});
   set({pts});save("rof_pts",pts);
   toast("✅ Assinatura da Dra. Rossana confirmada!","success");
 };
 window.confirmSigDraText=function(ptId){
   const v=(document.getElementById("sti-dra")?.value||"").trim();
   if(!v){toast("Digite o nome para confirmar","error");return;}
-  const pts=ST.pts.map(p=>p.id!==ptId?p:{...p,contratoDraSig:{type:"typed",value:v},contratoDraSigDate:todayFmt()});
+  const pts=ST.pts.map(p=>!sameId(p.id,ptId)?p:{...p,contratoDraSig:{type:"typed",value:v},contratoDraSigDate:todayFmt()});
   set({pts});save("rof_pts",pts);
   toast("✅ Assinatura da Dra. Rossana confirmada!","success");
 };
@@ -2884,25 +2904,48 @@ window.addContratoProc=function(ptId){
   const nome=(nomeEl?.value||"").trim();
   const val=parseFloat(valEl?.value||0)||0;
   if(!nome){toast("Digite o nome do procedimento","error");return;}
-  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p)return;
   const novaEtapa={id:Date.now(),proc:nome,valor:val,status:"Pendente",dataPrev:"",obs:""};
   const planoTto=[...(p.planoTto||[]),novaEtapa];
-  const pts=ST.pts.map(x=>x.id===ptId?{...x,planoTto}:x);
+  const pts=ST.pts.map(x=>sameId(x.id,ptId)?{...x,planoTto}:x);
   ST.pts=pts;save("rof_pts",pts);
   if(nomeEl)nomeEl.value="";
   if(valEl)valEl.value="";
   set({pts});
 };
 window.delContratoProc=function(ptId,idx){
-  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p)return;
   const planoTto=(p.planoTto||[]).filter((_,i)=>i!==idx);
-  const pts=ST.pts.map(x=>x.id===ptId?{...x,planoTto}:x);
+  const pts=ST.pts.map(x=>sameId(x.id,ptId)?{...x,planoTto}:x);
   ST.pts=pts;save("rof_pts",pts);set({pts});
 };
 
 // ── Importar Orçamento → Contrato (reimportação manual) ─────────
+// Copia parcelamento do orçamento para o contrato
+window.copiarParcelasOrcamento=function(ptId){
+  const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p)return;
+  const plano=p.plano||{};
+  const parcelas=Number(plano.parcelas||1);
+  const desc=Number(plano.desconto||0);
+  const itens=plano.itens||[];
+  const subtotal=itens.reduce(function(s,i){
+    var pr=PROCS.find(function(x){return x.id===i.procId;})||{p:0};
+    var unit=Number(i.price)||(Number(pr.p)||0);
+    return s+(Number(i.qty)||1)*unit;
+  },0);
+  const totalDesc=Math.max(0,subtotal-desc);
+  const vlrParcela=parcelas>1?Math.round(totalDesc/parcelas):0;
+  const pts=ST.pts.map(x=>sameId(x.id,ptId)?{...x,
+    contratoParcelas:parcelas,
+    contratoEntrada:0,
+    contratoValorParcela:vlrParcela,
+    contratoForma:parcelas>1?"Parcelado":"À vista"
+  }:x);
+  save("rof_pts",pts);set({pts});
+  toast(`Parcelamento copiado do orçamento: ${parcelas>1?parcelas+"× R$ "+vlrParcela.toLocaleString("pt-BR"):"À vista"}  ✓`,"success");
+};
 window.importarOrcamentoContrato=function(ptId){
-  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p)return;
   const itensOrc=(p.plano||{}).itens||[];
   if(itensOrc.length===0){toast("Orçamento vazio. Adicione procedimentos na aba Orçamento primeiro.","warning");return;}
   // Se já tem etapas no contrato, confirmar substituição
@@ -2921,14 +2964,14 @@ window.importarOrcamentoContrato=function(ptId){
   });
   const subtotal=novasEtapas.reduce((s,e)=>s+(Number(e.valor)||0),0);
   const desconto=Math.min(subtotal,Math.max(0,Number((p.plano||{}).desconto||0)));
-  const pts=ST.pts.map(x=>x.id===ptId?{...x,planoTto:novasEtapas,contratoDesconto:desconto,contratoSkipAutoImport:false}:x);
+  const pts=ST.pts.map(x=>sameId(x.id,ptId)?{...x,planoTto:novasEtapas,contratoDesconto:desconto,contratoSkipAutoImport:false}:x);
   ST.pts=pts;save("rof_pts",pts);set({pts});
   toast(itensOrc.length+" procedimento(s) importado(s) do orçamento"+(desconto>0?" com desconto ✓":" ✓"),"success");
 };
 
 // ── WhatsApp do contrato ───────────────────────────────────────
 window.whatsContrato=function(ptId){
-  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p)return;
   const etapas=p.planoTto||[];
   const valores=calcContratoValores(p,etapas);
   const subtotal=valores.subtotal;
@@ -2970,7 +3013,7 @@ window.abrirModalContratoLink=function(ptId){
 window.gerarLinkContrato=async function(ptId,tipo){
   const modal=document.getElementById("rof-ct-link-modal");
   if(modal)modal.remove();
-  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p)return;
   if(!_sbEnabled){toast("Supabase não configurado. Não é possível gerar link online.","error");return;}
   // Monta dados do contrato
   const etapas=p.planoTto||[];
@@ -3005,7 +3048,7 @@ window.gerarLinkContrato=async function(ptId,tipo){
     if(error)throw error;
     const uuid=rows.id;
     // Salva ID no paciente
-    const pts=ST.pts.map(x=>x.id===ptId?{...x,contratoLinkId:uuid,contratoLinkTipo:tipo,contratoLinkStatus:"pending"}:x);
+    const pts=ST.pts.map(x=>sameId(x.id,ptId)?{...x,contratoLinkId:uuid,contratoLinkTipo:tipo,contratoLinkStatus:"pending"}:x);
     ST.pts=pts;save("rof_pts",pts);set({pts});
     toast("Link gerado! Abrindo WhatsApp...","success");
     setTimeout(()=>enviarLinkWhats(ptId),400);
@@ -3021,7 +3064,7 @@ window.gerarLinkContrato=async function(ptId,tipo){
 };
 
 window.enviarLinkWhats=function(ptId){
-  const p=ST.pts.find(x=>x.id===ptId);if(!p||!p.contratoLinkId)return;
+  const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p||!p.contratoLinkId)return;
   const phone=(p.phone||"").replace(/\D/g,"");
   const fullPhone=phone.startsWith("55")?phone:"55"+phone;
   const link=`${_CONTRATO_BASE_URL}?id=${p.contratoLinkId}`;
@@ -3039,7 +3082,7 @@ window.enviarLinkWhats=function(ptId){
 };
 
 window.copiarLinkContrato=function(ptId){
-  const p=ST.pts.find(x=>x.id===ptId);if(!p||!p.contratoLinkId)return;
+  const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p||!p.contratoLinkId)return;
   const link=`${_CONTRATO_BASE_URL}?id=${p.contratoLinkId}`;
   if(navigator.clipboard){
     navigator.clipboard.writeText(link).then(()=>toast("Link copiado!","success")).catch(()=>{
@@ -3051,20 +3094,20 @@ window.copiarLinkContrato=function(ptId){
 };
 
 window.novoContratoLink=function(ptId){
-  const pts=ST.pts.map(x=>x.id===ptId?{...x,contratoLinkId:null,contratoLinkTipo:null,contratoLinkStatus:null}:x);
+  const pts=ST.pts.map(x=>sameId(x.id,ptId)?{...x,contratoLinkId:null,contratoLinkTipo:null,contratoLinkStatus:null}:x);
   ST.pts=pts;save("rof_pts",pts);set({pts});
   setTimeout(()=>abrirModalContratoLink(ptId),200);
 };
 
 window.checkContratoOnline=async function(ptId){
-  const p=ST.pts.find(x=>x.id===ptId);if(!p||!p.contratoLinkId)return;
+  const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p||!p.contratoLinkId)return;
   if(!_sbEnabled){toast("Supabase não configurado","error");return;}
   toast("Verificando...","info");
   try{
     const {data:row,error}=await _sb.from("rof_intake").select("status,data,submitted_at").eq("id",p.contratoLinkId).single();
     if(error)throw error;
     if(row.status==="submitted"||row.status==="approved"){
-      const pts=ST.pts.map(x=>x.id===ptId?{...x,contratoLinkStatus:row.status,contratoLinkData:row.data}:x);
+      const pts=ST.pts.map(x=>sameId(x.id,ptId)?{...x,contratoLinkStatus:row.status,contratoLinkData:row.data}:x);
       ST.pts=pts;save("rof_pts",pts);set({pts});
       toast("✅ Paciente assinou! Clique em 'Importar assinatura'.","success");
     }else{
@@ -3076,7 +3119,7 @@ window.checkContratoOnline=async function(ptId){
 };
 
 window.aplicarAssinaturaOnline=async function(ptId){
-  const p=ST.pts.find(x=>x.id===ptId);if(!p||!p.contratoLinkId)return;
+  const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p||!p.contratoLinkId)return;
   let ld=p.contratoLinkData;
   if(!ld&&_sbEnabled){
     try{
@@ -3088,7 +3131,7 @@ window.aplicarAssinaturaOnline=async function(ptId){
   const sigCanvas=ld.sigCanvas||null;
   const sigNome=ld.sigNome||"";
   const assinadoEm=ld.assinadoEm?new Date(ld.assinadoEm).toLocaleDateString("pt-BR"):"";
-  const pts=ST.pts.map(x=>x.id===ptId?{
+  const pts=ST.pts.map(x=>sameId(x.id,ptId)?{
     ...x,
     contratoSig:sigCanvas?{type:"canvas",value:sigCanvas}:{type:"typed",value:sigNome},
     contratoSigDate:assinadoEm,
@@ -3151,7 +3194,7 @@ window.gerarLinkTermo=async function(termKey){
 
 // ── Imprimir / Salvar PDF ──────────────────────────────────────
 window.printContrato=function(ptId){
-  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p)return;
   const etapas=p.planoTto||[];
   const valores=calcContratoValores(p,etapas);
   const subtotal=valores.subtotal;
@@ -3256,7 +3299,7 @@ window.printContrato=function(ptId){
 // RECIBO DE PAGAMENTO — modal na própria página (sem popup)
 // ══════════════════════════════════════════════════════════════════
 window.printRecibo=function(ptId,pgIdx){
-  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p)return;
   const pg=(p.pagamentos||[])[pgIdx];if(!pg)return;
   const num=String(pgIdx+1).padStart(4,"0");
   const valorFmt=(pg.valor||0).toLocaleString("pt-BR",{minimumFractionDigits:2});
@@ -3470,7 +3513,7 @@ function valorPorExtenso(v){
 
 // Botão WhatsApp do recibo
 window.whatsRecibo=function(ptId,pgIdx){
-  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p)return;
   const pg=(p.pagamentos||[])[pgIdx];if(!pg)return;
   const phone=(p.phone||"").replace(/\D/g,"");
   if(!phone){toast("Telefone não cadastrado","warning");return;}
@@ -3746,7 +3789,7 @@ window.resetarTodosTemplates=function(){
 
 // Atalho rápido para WhatsApp a partir de um paciente
 window.whatsPatient=function(ptId){
-  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p)return;
   let phone=(p.phone||"").replace(/\D/g,"");
   if(!phone){toast("Paciente sem telefone cadastrado.","warning");return;}
   if(phone.length===10||phone.length===11)phone="55"+phone;
@@ -5542,6 +5585,9 @@ const PLANO_STATUS={
   feito:    {l:"Concluído", c:"#22c55e",next:"planejado",btn:"↺ Reabrir"},
 };
 
+// Condições que ficam como anel/borda no dente — não sobrescrevem as faces clínicas
+const OVERLAY_CONDS=new Set(["clareamento","faceta"]);
+
 function toothSVG(num,od,isDec,swapMD=false,isUpper=true,statusDot=""){
   const td=od[num]||{};
   const M=swapMD?"D":"M", D=swapMD?"M":"D";
@@ -5554,10 +5600,19 @@ function toothSVG(num,od,isDec,swapMD=false,isUpper=true,statusDot=""){
   const w=isDec?26:32,h=isDec?36:44;
   const mx=w/2,my=h/2,pad=5;
   const ttFaces=faces.filter(f=>td[f]&&td[f]!=="higido").map(f=>f+":"+(COND[td[f]]?.l||td[f])).join(" ");
+  // Overlays (clareamento, faceta) — anéis coloridos sem alterar faces
+  const overlays=(td._overlays||[]).filter(Boolean);
+  const ttOverlays=overlays.map(k=>COND[k]?.l||k).join("+");
+  const overlayRings=overlays.map((k,i)=>{
+    const c=COND[k]?.c||"#888";
+    const ins=1.2+i*2.8;
+    return`<rect x="${ins}" y="${ins}" width="${w-ins*2}" height="${h-ins*2}" fill="none" stroke="${c}" stroke-width="2.2" rx="2.5" pointer-events="none" opacity="0.9"/>`;
+  }).join("");
   const dot=statusDot?`<circle cx="${w-5}" cy="5" r="4" fill="${statusDot}" stroke="#111" stroke-width="1.5" pointer-events="none"/>`:"";
+  const fullTitle=`Dente ${num}${ttFaces?" — "+ttFaces:""}${ttOverlays?" + "+ttOverlays:""}`;
   return`<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"
     onclick="clickTooth(${num})" style="cursor:pointer;flex-shrink:0"
-    title="Dente ${num}${ttFaces?" — "+ttFaces:""}">
+    title="${fullTitle}">
     <polygon points="${pad},0 ${w-pad},0 ${w},${pad} ${w},${h-pad} ${w-pad},${h} ${pad},${h} 0,${h-pad} 0,${pad}"
       fill="#111" stroke="rgba(198,164,109,.12)" stroke-width="1"/>
     <polygon points="${pad},0 ${w-pad},0 ${w-pad-2},${pad+2} ${pad+2},${pad+2}" fill="${fc(TOP)}"/>
@@ -5565,12 +5620,14 @@ function toothSVG(num,od,isDec,swapMD=false,isUpper=true,statusDot=""){
     <polygon points="0,${pad} ${pad+2},${pad+2} ${pad+2},${h-pad-2} 0,${h-pad}" fill="${fc(M)}"/>
     <polygon points="${w-pad-2},${pad+2} ${w},${pad} ${w},${h-pad} ${w-pad-2},${h-pad-2}" fill="${fc(D)}"/>
     <rect x="${pad+2}" y="${pad+2}" width="${w-pad*2-4}" height="${h-pad*2-4}" fill="${fc("O")}"/>
-    <text x="${mx}" y="${my+3}" text-anchor="middle"
-      font-size="${isDec?6:8}" fill="rgba(255,255,255,.65)"
+    <text x="${mx}" y="${my+4}" text-anchor="middle"
+      font-size="${isDec?7:9}" font-weight="900"
+      fill="#fff" stroke="#000" stroke-width="2.5" paint-order="stroke"
       pointer-events="none" font-family="Arial,sans-serif">${num}</text>
     ${isAusente?`<line x1="2" y1="2" x2="${w-2}" y2="${h-2}" stroke="#ef4444" stroke-width="2.8" stroke-linecap="round"/>
     <line x1="${w-2}" y1="2" x2="2" y2="${h-2}" stroke="#ef4444" stroke-width="2.8" stroke-linecap="round"/>`:""}
     ${isExtrair?`<line x1="3" y1="${h-3}" x2="${w-3}" y2="3" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="3,2"/>`:""}
+    ${overlayRings}
     ${dot}
   </svg>`;
 }
@@ -5579,6 +5636,7 @@ function renderOdontogram(od,ptId){
   const p=ST.pts.find(x=>sameId(x.id,ptId))||{};
   const plan=p.planoClinico||[];
   const sel=ST.odSel||"carie";const face=ST.odFace||"O";
+  const ptIdStr=jsArg(ptId);
 
   // Indicador por dente: pior status vence (planejado < iniciado < feito)
   const statusOrd=["planejado","iniciado","feito"];
@@ -5627,32 +5685,53 @@ function renderOdontogram(od,ptId){
       <div class="lbl">Marcar grupo de dentes:</div>
       <!-- Arcadas completas e hemi-arcadas -->
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:4px">
-        <button onclick='aplicarCondicaoGrupo(${ptId},[18,17,16,15,14,13,12,11])' style="padding:5px 3px;border-radius:7px;border:1px solid rgba(198,164,109,0.2);background:#111;color:#aaa;cursor:pointer;font-size:9px;font-family:Georgia,serif" title="Dentes 18 a 11">⬆ Sup Dir</button>
-        <button onclick='aplicarCondicaoGrupo(${ptId},[18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28])' style="padding:5px 3px;border-radius:7px;border:1px solid rgba(198,164,109,0.35);background:#161206;color:#C6A46D;cursor:pointer;font-size:9px;font-family:Georgia,serif;font-weight:700" title="Dentes 11 a 28">⬆ Arcada Sup</button>
-        <button onclick='aplicarCondicaoGrupo(${ptId},[21,22,23,24,25,26,27,28])' style="padding:5px 3px;border-radius:7px;border:1px solid rgba(198,164,109,0.2);background:#111;color:#aaa;cursor:pointer;font-size:9px;font-family:Georgia,serif" title="Dentes 21 a 28">⬆ Sup Esq</button>
+        <button onclick='aplicarCondicaoGrupo(${ptIdStr},[18,17,16,15,14,13,12,11])'style="padding:5px 3px;border-radius:7px;border:1px solid rgba(198,164,109,0.2);background:#111;color:#aaa;cursor:pointer;font-size:9px;font-family:Georgia,serif" title="Dentes 18 a 11">⬆ Sup Dir</button>
+        <button onclick='aplicarCondicaoGrupo(${ptIdStr},[18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28])' style="padding:5px 3px;border-radius:7px;border:1px solid rgba(198,164,109,0.35);background:#161206;color:#C6A46D;cursor:pointer;font-size:9px;font-family:Georgia,serif;font-weight:700" title="Dentes 11 a 28">⬆ Arcada Sup</button>
+        <button onclick='aplicarCondicaoGrupo(${ptIdStr},[21,22,23,24,25,26,27,28])' style="padding:5px 3px;border-radius:7px;border:1px solid rgba(198,164,109,0.2);background:#111;color:#aaa;cursor:pointer;font-size:9px;font-family:Georgia,serif" title="Dentes 21 a 28">⬆ Sup Esq</button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:4px">
-        <button onclick='aplicarCondicaoGrupo(${ptId},[48,47,46,45,44,43,42,41])' style="padding:5px 3px;border-radius:7px;border:1px solid rgba(198,164,109,0.2);background:#111;color:#aaa;cursor:pointer;font-size:9px;font-family:Georgia,serif" title="Dentes 48 a 41">⬇ Inf Dir</button>
-        <button onclick='aplicarCondicaoGrupo(${ptId},[48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38])' style="padding:5px 3px;border-radius:7px;border:1px solid rgba(198,164,109,0.35);background:#161206;color:#C6A46D;cursor:pointer;font-size:9px;font-family:Georgia,serif;font-weight:700" title="Dentes 31 a 48">⬇ Arcada Inf</button>
-        <button onclick='aplicarCondicaoGrupo(${ptId},[31,32,33,34,35,36,37,38])' style="padding:5px 3px;border-radius:7px;border:1px solid rgba(198,164,109,0.2);background:#111;color:#aaa;cursor:pointer;font-size:9px;font-family:Georgia,serif" title="Dentes 31 a 38">⬇ Inf Esq</button>
+        <button onclick='aplicarCondicaoGrupo(${ptIdStr},[48,47,46,45,44,43,42,41])' style="padding:5px 3px;border-radius:7px;border:1px solid rgba(198,164,109,0.2);background:#111;color:#aaa;cursor:pointer;font-size:9px;font-family:Georgia,serif" title="Dentes 48 a 41">⬇ Inf Dir</button>
+        <button onclick='aplicarCondicaoGrupo(${ptIdStr},[48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38])' style="padding:5px 3px;border-radius:7px;border:1px solid rgba(198,164,109,0.35);background:#161206;color:#C6A46D;cursor:pointer;font-size:9px;font-family:Georgia,serif;font-weight:700" title="Dentes 31 a 48">⬇ Arcada Inf</button>
+        <button onclick='aplicarCondicaoGrupo(${ptIdStr},[31,32,33,34,35,36,37,38])' style="padding:5px 3px;border-radius:7px;border:1px solid rgba(198,164,109,0.2);background:#111;color:#aaa;cursor:pointer;font-size:9px;font-family:Georgia,serif" title="Dentes 31 a 38">⬇ Inf Esq</button>
       </div>
       <!-- Anteriores e Posteriores -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px">
-        <button onclick='aplicarCondicaoGrupo(${ptId},[13,12,11,21,22,23,43,42,41,31,32,33])' style="padding:6px 4px;border-radius:7px;border:1px solid rgba(96,165,250,0.35);background:rgba(96,165,250,0.07);color:#60a5fa;cursor:pointer;font-size:9px;font-family:Georgia,serif;font-weight:700" title="Incisivos e caninos — 13 a 23 e 43 a 33">😁 Todos Anteriores</button>
-        <button onclick='aplicarCondicaoGrupo(${ptId},[18,17,16,15,14,24,25,26,27,28,48,47,46,45,44,34,35,36,37,38])' style="padding:6px 4px;border-radius:7px;border:1px solid rgba(168,85,247,0.35);background:rgba(168,85,247,0.07);color:#a855f7;cursor:pointer;font-size:9px;font-family:Georgia,serif;font-weight:700" title="Pré-molares e molares">🦷 Todos Posteriores</button>
+        <button onclick='aplicarCondicaoGrupo(${ptIdStr},[13,12,11,21,22,23,43,42,41,31,32,33])' style="padding:6px 4px;border-radius:7px;border:1px solid rgba(96,165,250,0.35);background:rgba(96,165,250,0.07);color:#60a5fa;cursor:pointer;font-size:9px;font-family:Georgia,serif;font-weight:700" title="Incisivos e caninos — 13 a 23 e 43 a 33">😁 Todos Anteriores</button>
+        <button onclick='aplicarCondicaoGrupo(${ptIdStr},[18,17,16,15,14,24,25,26,27,28,48,47,46,45,44,34,35,36,37,38])' style="padding:6px 4px;border-radius:7px;border:1px solid rgba(168,85,247,0.35);background:rgba(168,85,247,0.07);color:#a855f7;cursor:pointer;font-size:9px;font-family:Georgia,serif;font-weight:700" title="Pré-molares e molares">🦷 Todos Posteriores</button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px">
-        <button onclick='aplicarCondicaoGrupo(${ptId},[13,12,11,21,22,23])' style="padding:5px 2px;border-radius:7px;border:1px solid rgba(96,165,250,0.25);background:#0a0e14;color:#60a5fa88;cursor:pointer;font-size:9px;font-family:Georgia,serif" title="13-23">⬆ Ant Sup</button>
-        <button onclick='aplicarCondicaoGrupo(${ptId},[43,42,41,31,32,33])' style="padding:5px 2px;border-radius:7px;border:1px solid rgba(96,165,250,0.25);background:#0a0e14;color:#60a5fa88;cursor:pointer;font-size:9px;font-family:Georgia,serif" title="43-33">⬇ Ant Inf</button>
-        <button onclick='aplicarCondicaoGrupo(${ptId},[18,17,16,15,14,24,25,26,27,28])' style="padding:5px 2px;border-radius:7px;border:1px solid rgba(168,85,247,0.25);background:#0d0a14;color:#a855f788;cursor:pointer;font-size:9px;font-family:Georgia,serif" title="14-18 + 24-28">⬆ Post Sup</button>
-        <button onclick='aplicarCondicaoGrupo(${ptId},[48,47,46,45,44,34,35,36,37,38])' style="padding:5px 2px;border-radius:7px;border:1px solid rgba(168,85,247,0.25);background:#0d0a14;color:#a855f788;cursor:pointer;font-size:9px;font-family:Georgia,serif" title="44-48 + 34-38">⬇ Post Inf</button>
+        <button onclick='aplicarCondicaoGrupo(${ptIdStr},[13,12,11,21,22,23])' style="padding:5px 2px;border-radius:7px;border:1px solid rgba(96,165,250,0.25);background:#0a0e14;color:#60a5fa88;cursor:pointer;font-size:9px;font-family:Georgia,serif" title="13-23">⬆ Ant Sup</button>
+        <button onclick='aplicarCondicaoGrupo(${ptIdStr},[43,42,41,31,32,33])' style="padding:5px 2px;border-radius:7px;border:1px solid rgba(96,165,250,0.25);background:#0a0e14;color:#60a5fa88;cursor:pointer;font-size:9px;font-family:Georgia,serif" title="43-33">⬇ Ant Inf</button>
+        <button onclick='aplicarCondicaoGrupo(${ptIdStr},[18,17,16,15,14,24,25,26,27,28])' style="padding:5px 2px;border-radius:7px;border:1px solid rgba(168,85,247,0.25);background:#0d0a14;color:#a855f788;cursor:pointer;font-size:9px;font-family:Georgia,serif" title="14-18 + 24-28">⬆ Post Sup</button>
+        <button onclick='aplicarCondicaoGrupo(${ptIdStr},[48,47,46,45,44,34,35,36,37,38])' style="padding:5px 2px;border-radius:7px;border:1px solid rgba(168,85,247,0.25);background:#0d0a14;color:#a855f788;cursor:pointer;font-size:9px;font-family:Georgia,serif" title="44-48 + 34-38">⬇ Post Inf</button>
       </div>
     </div>
     <div style="color:#444;font-size:11px;margin-bottom:10px">
       Clique dente individual ou selecione grupo → marca
       <strong style="color:${COND[sel]?.c}">${COND[sel]?.l}</strong>
-      na face <strong style="color:#C6A46D">${face==="todas"?"Todas":FACES_LIST.find(f=>f.k===face)?.l||face}</strong>
+      ${OVERLAY_CONDS.has(sel)?`<span style="color:#666">como <b style="color:${COND[sel]?.c}">anel colorido</b> (não altera condições das faces)</span>`:`na face <strong style="color:#C6A46D">${face==="todas"?"Todas":FACES_LIST.find(f=>f.k===face)?.l||face}</strong>`}
     </div>
+    ${(()=>{
+      const allConds=new Set();
+      Object.values(od).forEach(td=>{
+        ["V","O","M","D","L"].forEach(f=>{if(td[f]&&td[f]!=="higido")allConds.add(td[f]);});
+        (td._overlays||[]).forEach(k=>allConds.add(k));
+      });
+      const chips=[...allConds].filter(c=>COND[c]);
+      if(!chips.length)return "";
+      return`<div style="margin-bottom:10px;padding:8px 10px;background:#0a0a0a;border-radius:8px;border:1px solid rgba(198,164,109,0.1)">
+        <div style="color:#555;font-size:10px;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Remover condição de todos os dentes:</div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          ${chips.map(c=>`<button onclick="limparCondicaoOdontograma(${ptIdStr},'${c}')"
+            style="display:flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;
+                   border:1px solid ${COND[c].c}55;background:${COND[c].c}15;
+                   color:${COND[c].c};cursor:pointer;font-size:10px;font-family:Georgia,serif">
+            <span style="width:7px;height:7px;border-radius:50%;background:${COND[c].c};flex-shrink:0"></span>
+            ${COND[c].l} ✕
+          </button>`).join("")}
+        </div>
+      </div>`;
+    })()}
     <div style="text-align:center;margin-bottom:4px">
       <div style="color:#666;font-size:8px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Permanentes — Superior</div>
       <div style="display:flex;justify-content:center;gap:2px;flex-wrap:wrap">${PERM_U.map((t,i)=>toothSVG(t,od,false,i<8,true,dot(t))).join("")}</div>
@@ -5696,13 +5775,25 @@ window.limparOdontograma=function(ptId){
 };
 
 window.clickTooth=t=>{
-  const p=ST.pts.find(x=>x.id===ST.selPt);if(!p)return;
+  const p=ST.pts.find(x=>sameId(x.id,ST.selPt));if(!p)return;
   const od={...(p.odontogram||{})};
   const sel=ST.odSel||"carie";
   const face=ST.odFace||"O";
   const faces=face==="todas"?["V","O","M","D","L"]:[face];
-  od[t]={...(od[t]||{}),...Object.fromEntries(faces.map(f=>[f,sel]))};
-  updPt(ST.selPt,"odontogram",od,true);
+  const isOverlay=typeof OVERLAY_CONDS!=="undefined"&&OVERLAY_CONDS.has(sel);
+  if(isOverlay){
+    // Overlay: marca como anel colorido sem sobrescrever faces clínicas
+    const cur=(od[t]?._overlays||[]);
+    if(!cur.includes(sel)) od[t]={...(od[t]||{}),_overlays:[...cur,sel]};
+  }else{
+    // Marca a(s) face(s) selecionada(s) no dente
+    od[t]={...(od[t]||{}),...Object.fromEntries(faces.map(f=>[f,sel]))};
+  }
+  // Salva odontograma e re-renderiza
+  const nps=ST.pts.map(x=>sameId(x.id,ST.selPt)?{...x,odontogram:od}:x);
+  ST.pts=nps;
+  save("rof_pts",nps);
+  set({pts:nps});
   // Abre modal pra adicionar procedimento ao plano clínico
   abrirPlanoClinicoModal(t,sel,faces);
 };
@@ -5714,9 +5805,17 @@ window.aplicarCondicaoGrupo=function(ptId,teeth){
   const face=ST.odFace||"O";
   const faces=face==="todas"?["V","O","M","D","L"]:[face];
   const od={...(p.odontogram||{})};
-  teeth.forEach(t=>{
-    od[t]={...(od[t]||{}),...Object.fromEntries(faces.map(f=>[f,sel]))};
-  });
+  if(OVERLAY_CONDS.has(sel)){
+    // Overlay: marca como anel colorido sem sobrescrever faces clínicas
+    teeth.forEach(t=>{
+      const cur=(od[t]?._overlays||[]);
+      if(!cur.includes(sel)) od[t]={...(od[t]||{}),_overlays:[...cur,sel]};
+    });
+  }else{
+    teeth.forEach(t=>{
+      od[t]={...(od[t]||{}),...Object.fromEntries(faces.map(f=>[f,sel]))};
+    });
+  }
   const pts=ST.pts.map(x=>sameId(x.id,ptId)?{...x,odontogram:od}:x);
   ST.pts=pts;save("rof_pts",pts);set({pts});
   // Abre modal para adicionar procedimento a todo o grupo
@@ -5772,7 +5871,7 @@ window.abrirPlanoGrupoModal=function(ptId,teeth,cond,faces){
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
         <div>
-          <label class="lbl">Valor unitário (R$)</label>
+          <label class="lbl">${OVERLAY_CONDS.has(cond)?"Valor total (arcada) (R$)":"Valor unitário por dente (R$)"}</label>
           <input type="number" id="grupo-price" class="inp" min="0" placeholder="Padrão do procedimento"/>
         </div>
         <div>
@@ -5845,25 +5944,45 @@ window.adicionarProcAoPlanoGrupo=function(){
   const obs=document.getElementById("grupo-obs").value;
   const {ptId,teeth,cond,faces}=_planoGrupoCtx;
   const ts=Date.now();
-  const novosItens=teeth.map((t,i)=>({
-    id:ts+i,
-    tooth:t,
-    faces,
-    cond,
-    procId,
-    name:pr.n,
-    price,
-    status,
-    obs,
-    createdAt:new Date().toISOString(),
-  }));
+  let novosItens,toastMsg;
+  if(OVERLAY_CONDS.has(cond)){
+    // Overlay (clareamento, faceta): UM item com preço TOTAL da arcada/tratamento
+    novosItens=[{
+      id:ts,
+      tooth:null,
+      _teeth:teeth,  // referência visual
+      faces:[],
+      cond,
+      procId,
+      name:pr.n+" ("+teeth.length+" dentes: "+teeth.join(", ")+")",
+      price,         // preço TOTAL — não por dente
+      status,
+      obs,
+      createdAt:new Date().toISOString(),
+    }];
+    toastMsg=`✓ ${pr.n} — R$ ${price.toLocaleString("pt-BR")} total (${teeth.length} dentes)`;
+  }else{
+    // Procedimento normal: um item por dente
+    novosItens=teeth.map((t,i)=>({
+      id:ts+i,
+      tooth:t,
+      faces,
+      cond,
+      procId,
+      name:pr.n,
+      price,
+      status,
+      obs,
+      createdAt:new Date().toISOString(),
+    }));
+    toastMsg=`✓ ${pr.n} adicionado a ${teeth.length} dentes · R$ ${(price*teeth.length).toLocaleString("pt-BR")} total`;
+  }
   const nps=ST.pts.map(p=>{
     if(!sameId(p.id,ptId))return p;
     return {...p,planoClinico:[...(p.planoClinico||[]),...novosItens]};
   });
   save("rof_pts",nps);set({pts:nps});
-  const total=(price*teeth.length).toLocaleString("pt-BR");
-  toast(`✓ ${pr.n} adicionado a ${teeth.length} dentes · R$ ${total} total`,"success",3500);
+  toast(toastMsg,"success",3500);
   document.getElementById("plano-grupo-modal").remove();
 };
 
@@ -5909,8 +6028,8 @@ function renderPlanoClinicoOdontograma(p){
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <div style="color:#E2C99A;font-weight:800;font-size:13px">📋 Plano Clínico do Odontograma</div>
       <div style="display:flex;gap:6px">
-        <button onclick="importarPlanoClinicoParaOrcamento(${p.id})" class="bp" style="padding:6px 10px;font-size:11px">📥 Enviar p/ Orçamento</button>
-        <button onclick="rConfirm('Limpar TODO o plano clínico deste paciente?',()=>{const nps=ST.pts.map(x=>x.id===${p.id}?{...x,planoClinico:[]}:x);save('rof_pts',nps);set({pts:nps});toast('Plano clínico limpo.','success');},'Limpar')" class="bg" style="padding:6px 10px;font-size:11px;color:#ef4444;border-color:#ef444444">🗑</button>
+        <button onclick="importarPlanoClinicoParaOrcamento(${jsArg(p.id)})" class="bp" style="padding:6px 10px;font-size:11px">📥 Enviar p/ Orçamento</button>
+        <button onclick="clearPlanoClinico(${jsArg(p.id)})" class="bg" style="padding:6px 10px;font-size:11px;color:#ef4444;border-color:#ef444444">🗑</button>
       </div>
     </div>
 
@@ -6004,7 +6123,7 @@ let _modalProcSug=true;
 
 window.abrirPlanoClinicoModal=function(tooth,cond,faces){
   _planoCtx={tooth,cond,faces};
-  const p=ST.pts.find(x=>x.id===ST.selPt);if(!p)return;
+  const p=ST.pts.find(x=>sameId(x.id,ST.selPt));if(!p)return;
   const condInfo=COND[cond]||{l:cond,c:"#888"};
   const facesLbl=faces.length===5?"todas as faces":faces.map(f=>FACES_LIST.find(x=>x.k===f)?.l||f).join(", ");
   const sugeridos=getProcsSugeridos(cond);
@@ -6152,7 +6271,7 @@ window.adicionarProcAoPlano=function(){
     createdAt:new Date().toISOString(),
   };
   const nps=ST.pts.map(p=>{
-    if(p.id!==ST.selPt)return p;
+    if(!sameId(p.id,ST.selPt))return p;
     return {...p,planoClinico:[...(p.planoClinico||[]),item]};
   });
   save("rof_pts",nps);set({pts:nps});
@@ -6160,9 +6279,34 @@ window.adicionarProcAoPlano=function(){
   document.getElementById("plano-clinico-modal").remove();
 };
 
+// Remove uma condição específica de todos os dentes do odontograma
+window.limparCondicaoOdontograma=function(ptId,cond){
+  rConfirm(`Remover "${COND[cond]?.l||cond}" de todos os dentes?`,function(){
+    const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p)return;
+    const od={...(p.odontogram||{})};
+    Object.keys(od).forEach(t=>{
+      const td={...od[t]};
+      if(OVERLAY_CONDS.has(cond)){
+        if(td._overlays) td._overlays=td._overlays.filter(k=>k!==cond);
+      }else{
+        ["V","O","M","D","L"].forEach(f=>{if(td[f]===cond) td[f]="higido";});
+      }
+      od[t]=td;
+    });
+    updPt(ptId,"odontogram",od,true);
+    toast(`${COND[cond]?.l||cond} removido de todos os dentes ✓`,"success");
+  },"Remover");
+};
+window.clearPlanoClinico=function(ptId){
+  rConfirm("Limpar TODO o plano clínico deste paciente?",function(){
+    const nps=ST.pts.map(x=>sameId(x.id,ptId)?{...x,planoClinico:[]}:x);
+    save("rof_pts",nps);set({pts:nps});
+    toast("Plano clínico limpo.","success");
+  },"Limpar");
+};
 window.removerProcDoPlano=function(itemId){
   const nps=ST.pts.map(p=>{
-    if(p.id!==ST.selPt)return p;
+    if(!sameId(p.id,ST.selPt))return p;
     return {...p,planoClinico:(p.planoClinico||[]).filter(it=>it.id!==itemId)};
   });
   save("rof_pts",nps);set({pts:nps});
@@ -6177,7 +6321,7 @@ window.removerProcDoPlano=function(itemId){
 
 window.marcarProcFeito=function(itemId,feito){
   const nps=ST.pts.map(p=>{
-    if(p.id!==ST.selPt)return p;
+    if(!sameId(p.id,ST.selPt))return p;
     return {...p,planoClinico:(p.planoClinico||[]).map(it=>it.id===itemId?{...it,status:feito?"feito":"planejado",doneAt:feito?new Date().toISOString():null}:it)};
   });
   save("rof_pts",nps);set({pts:nps});
@@ -6185,7 +6329,7 @@ window.marcarProcFeito=function(itemId,feito){
 window.ciclarStatusProc=function(itemId){
   const cycle={planejado:"iniciado",iniciado:"feito",feito:"planejado"};
   const nps=ST.pts.map(p=>{
-    if(p.id!==ST.selPt)return p;
+    if(!sameId(p.id,ST.selPt))return p;
     return {...p,planoClinico:(p.planoClinico||[]).map(it=>{
       if(it.id!==itemId)return it;
       const ns=cycle[it.status]||"planejado";
@@ -6196,7 +6340,7 @@ window.ciclarStatusProc=function(itemId){
 };
 
 window.importarPlanoClinicoParaOrcamento=function(ptId){
-  const p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p)return;
   const planClin=(p.planoClinico||[]).filter(it=>it.status==="planejado");
   if(planClin.length===0){toast("Nenhum procedimento planejado no odontograma para importar.","warning");return;}
   if(!confirm(`Importar ${planClin.length} procedimento(s) do odontograma para o orçamento?`))return;
@@ -6219,7 +6363,7 @@ window.importarPlanoClinicoParaOrcamento=function(ptId){
     price:it.price,  // sempre número positivo graças ao fallback acima
   }));
   const nps=ST.pts.map(x=>{
-    if(x.id!==ptId)return x;
+    if(!sameId(x.id,ptId))return x;
     const plano=x.plano||{itens:[],obs:"",desconto:0,parcelas:1,validade:""};
     return {...x,plano:{...plano,itens:[...(plano.itens||[]),...novosItens]}};
   });
@@ -6509,7 +6653,7 @@ function renderPerio(p){
 // Atualizar valor de PD ou RE de um sítio
 window.updPerio=function(ptId,toothNum,key,val){
   const nps=ST.pts.map(p=>{
-    if(p.id!==ptId)return p;
+    if(!sameId(p.id,ptId))return p;
     const perio={...(p.perio||{})};
     perio[toothNum]={...(perio[toothNum]||{}),[key]:val};
     return {...p,perio};
@@ -6521,7 +6665,7 @@ window.updPerio=function(ptId,toothNum,key,val){
 // Toggle de sangramento ou placa em um sítio
 window.togglePerioFlag=function(ptId,toothNum,metric,sitio){
   const nps=ST.pts.map(p=>{
-    if(p.id!==ptId)return p;
+    if(!sameId(p.id,ptId))return p;
     const perio={...(p.perio||{})};
     const td={...(perio[toothNum]||{})};
     const flags={...(td[metric]||{})};
@@ -6540,7 +6684,7 @@ window.setPerioMob=function(ptId,mob){
   const toothNum=Number(sel?.value);
   if(!toothNum){toast("Selecione um dente primeiro.","warning");return;}
   const nps=ST.pts.map(p=>{
-    if(p.id!==ptId)return p;
+    if(!sameId(p.id,ptId))return p;
     const perio={...(p.perio||{})};
     perio[toothNum]={...(perio[toothNum]||{}),mob};
     return {...p,perio};
@@ -6555,7 +6699,7 @@ window.setPerioFurca=function(ptId,furca){
   const toothNum=Number(sel?.value);
   if(!toothNum){toast("Selecione um dente primeiro.","warning");return;}
   const nps=ST.pts.map(p=>{
-    if(p.id!==ptId)return p;
+    if(!sameId(p.id,ptId))return p;
     const perio={...(p.perio||{})};
     perio[toothNum]={...(perio[toothNum]||{}),furca};
     return {...p,perio};
@@ -6566,7 +6710,7 @@ window.setPerioFurca=function(ptId,furca){
 
 // Imprimir periograma
 window.printPerio=function(ptId){
-  const p=ST.pts.find(x=>x.id===ptId);
+  const p=ST.pts.find(x=>sameId(x.id,ptId));
   if(!p)return;
   const perioData=p.perio||{};
   let totalSitios=0,sangrantes=0,placa=0,bolsa4=0,bolsa6=0,somaPD=0,sitiosComPD=0;
@@ -7247,7 +7391,7 @@ window.saveHOF=function(ptId){
   if(!fd.date){toast("Informe a data do procedimento.","warning");return;}
   var rec={id:Date.now(),type:ST.hofType,date:fd.date,data:Object.assign({},fd)};
   var nps=ST.pts.map(function(p){
-    if(p.id!==ptId)return p;
+    if(!sameId(p.id,ptId))return p;
     return Object.assign({},p,{hofRecords:(p.hofRecords||[]).concat([rec])});
   });
   save("rof_pts",nps);set({pts:nps,hofForm:false,hofData:{},hofType:"botox"});
@@ -7255,7 +7399,7 @@ window.saveHOF=function(ptId){
 window.delHOF=function(ptId,recId){
   rConfirm("Excluir esta ficha de harmonização?",function(){
     var nps=ST.pts.map(function(p){
-      if(p.id!==ptId)return p;
+      if(!sameId(p.id,ptId))return p;
       return Object.assign({},p,{hofRecords:(p.hofRecords||[]).filter(function(r){return r.id!==recId;})});
     });
     save("rof_pts",nps);set({pts:nps});toast("Ficha excluída.","success");
@@ -7448,7 +7592,7 @@ window.planoObs=function(ptId,v){updPlano(ptId,function(pl){return Object.assign
 window.clearPlano=function(ptId){rConfirm("Limpar todo o orçamento?",function(){updPlano(ptId,function(){return{itens:[],obs:"",desconto:0,parcelas:1,validade:""};});toast("Orçamento limpo.","success");},"Limpar Orçamento");};
 
 window.printPlano=function(ptId){
-  var p=ST.pts.find(function(x){return x.id===ptId;});
+  var p=ST.pts.find(function(x){return sameId(x.id,ptId);});
   if(!p)return;
   var plano=p.plano||{itens:[],obs:"",desconto:0,parcelas:1,validade:""};
   var itens=plano.itens||[];
@@ -7841,7 +7985,7 @@ window.saveFotoEdit=function(ptId,fotoId){
 };
 
 window.openCompare=function(ptId){
-  var p=ST.pts.find(function(x){return x.id===ptId;});
+  var p=ST.pts.find(function(x){return sameId(x.id,ptId);});
   var fotos=(p.fotos||[]).filter(function(f){return f.data.startsWith("data:image");});
   if(fotos.length<2){toast("Precisa de ao menos 2 fotos para comparar.","warning");return;}
   var opts=fotos.map(function(f,i){
@@ -7889,7 +8033,7 @@ window.updateCompare=function(ptId){
 
 window.printCompare=function(ptId){
   var fotos=ST._cmpFotos;if(!fotos)return;
-  var p=ST.pts.find(function(x){return x.id===ptId;});
+  var p=ST.pts.find(function(x){return sameId(x.id,ptId);});
   var idxA=Number(document.getElementById("cmp-a")?.value||0);
   var idxB=Number(document.getElementById("cmp-b")?.value||0);
   var fa=fotos[idxA],fb=fotos[idxB];
@@ -9457,12 +9601,12 @@ window.savePagamento=function(ptId){
   var tipo=ST._pagTipo||"entrada";
   if(!desc||!val||!date){toast("Preencha descrição, valor e data.","warning");return;}
   var pg={id:Date.now(),desc,valor:val,date,forma,tipo};
-  var nps=ST.pts.map(function(p){if(p.id!==ptId)return p;return Object.assign({},p,{pagamentos:(p.pagamentos||[]).concat([pg])});});
+  var nps=ST.pts.map(function(p){if(!sameId(p.id,ptId))return p;return Object.assign({},p,{pagamentos:(p.pagamentos||[]).concat([pg])});});
   save("rof_pts",nps);document.getElementById("pag-modal")?.remove();set({pts:nps});
 };
 window.delPagamento=function(ptId,pgId){
   rConfirm("Excluir este pagamento?",function(){
-    var nps=ST.pts.map(function(p){if(p.id!==ptId)return p;return Object.assign({},p,{pagamentos:(p.pagamentos||[]).filter(function(x){return x.id!==pgId;})});});
+    var nps=ST.pts.map(function(p){if(!sameId(p.id,ptId))return p;return Object.assign({},p,{pagamentos:(p.pagamentos||[]).filter(function(x){return x.id!==pgId;})});});
     save("rof_pts",nps);set({pts:nps});toast("Pagamento excluído.","success");
   },"Excluir Pagamento");
 };
@@ -9587,7 +9731,7 @@ function renderReceita(p){
 }
 
 window.openReceita=function(ptId){
-  var p=ST.pts.find(function(x){return x.id===ptId;});
+  var p=ST.pts.find(function(x){return sameId(x.id,ptId);});
   var cats=[...new Set(MED_DB.map(function(m){return m.cat;}))];
   var catBtns=cats.map(function(c){
     return "<button onclick='rcFilterCat(\""+c+"\")' id='rccat-"+c.replace(/\s/g,"_")+"' style='padding:4px 9px;border-radius:6px;border:1px solid #2a1f0a;background:#161616;color:#555;cursor:pointer;font-size:10px;font-family:Georgia,serif;margin:2px'>"+c+"</button>";
@@ -9679,13 +9823,13 @@ window.saveReceita=function(ptId){
   var controlado=ST._rcTipo==="controlado";
   if(!texto){toast("Preencha os medicamentos.","warning");return;}
   var rc={id:Date.now(),date:todayISO(),hora:new Date().toTimeString().slice(0,5),texto,obs,controlado};
-  var nps=ST.pts.map(function(p){if(p.id!==ptId)return p;return Object.assign({},p,{receitas:(p.receitas||[]).concat([rc])});});
+  var nps=ST.pts.map(function(p){if(!sameId(p.id,ptId))return p;return Object.assign({},p,{receitas:(p.receitas||[]).concat([rc])});});
   save("rof_pts",nps);document.getElementById("rc-modal")?.remove();set({pts:nps});
 };
 
 window.delReceita=function(ptId,rcId){
   rConfirm("Excluir esta receita?",function(){
-    var nps=ST.pts.map(function(p){if(p.id!==ptId)return p;return Object.assign({},p,{receitas:(p.receitas||[]).filter(function(r){return r.id!==rcId;})});});
+    var nps=ST.pts.map(function(p){if(!sameId(p.id,ptId))return p;return Object.assign({},p,{receitas:(p.receitas||[]).filter(function(r){return r.id!==rcId;})});});
     save("rof_pts",nps);set({pts:nps});toast("Receita excluída.","success");
   },"Excluir Receita");
 };
@@ -9737,7 +9881,7 @@ function buildReceitaHTML(p,rc,via){
 }
 
 window.viewReceita=function(ptId,rcId){
-  var p=ST.pts.find(function(x){return x.id===ptId;});
+  var p=ST.pts.find(function(x){return sameId(x.id,ptId);});
   var rc=(p.receitas||[]).find(function(x){return x.id===rcId;});
   if(!p||!rc)return;
   if(rc.controlado){
@@ -9788,7 +9932,7 @@ function renderAtestado(p){
 }
 
 window.openAtestado=function(ptId){
-  var p=ST.pts.find(function(x){return x.id===ptId;});
+  var p=ST.pts.find(function(x){return sameId(x.id,ptId);});
   var finsOpts=["Trabalho","Escola","Acompanhante","Outros fins"];
   var finsHtml=finsOpts.map(function(f){
     return "<button type='button' id='at-fin-"+f.replace(/\s/g,"_")+"' onclick='atToggleFin(this)' data-val='"+f+"' style='padding:5px 12px;border-radius:50px;border:1px solid rgba(198,164,109,0.2);background:transparent;color:#555;cursor:pointer;font-size:11px;font-family:Georgia,serif;transition:all 0.15s'>"+f+"</button>";
@@ -9849,13 +9993,13 @@ window.saveAtestado=function(ptId){
   });
   if(!date){toast("Informe a data.","warning");return;}
   var at={id:Date.now(),date,hora,motivo,obs,fins:fins.join(", "),afastamento,qtd,unidade};
-  var nps=ST.pts.map(function(p){if(p.id!==ptId)return p;return Object.assign({},p,{atestados:(p.atestados||[]).concat([at])});});
+  var nps=ST.pts.map(function(p){if(!sameId(p.id,ptId))return p;return Object.assign({},p,{atestados:(p.atestados||[]).concat([at])});});
   save("rof_pts",nps);document.getElementById("at-modal")?.remove();set({pts:nps});
 };
 
 window.delAtestado=function(ptId,atId){
   rConfirm("Excluir este atestado?",function(){
-    var nps=ST.pts.map(function(p){if(p.id!==ptId)return p;return Object.assign({},p,{atestados:(p.atestados||[]).filter(function(a){return a.id!==atId;})});});
+    var nps=ST.pts.map(function(p){if(!sameId(p.id,ptId))return p;return Object.assign({},p,{atestados:(p.atestados||[]).filter(function(a){return a.id!==atId;})});});
     save("rof_pts",nps);set({pts:nps});toast("Atestado excluído.","success");
   },"Excluir Atestado");
 };
@@ -9898,7 +10042,7 @@ function buildAtestadoHTML(p,at){
 }
 
 window.viewAtestado=function(ptId,atId){
-  var p=ST.pts.find(function(x){return x.id===ptId;});
+  var p=ST.pts.find(function(x){return sameId(x.id,ptId);});
   var at=(p.atestados||[]).find(function(x){return x.id===atId;});
   if(!p||!at)return;
   var doc=buildAtestadoHTML(p,at);
@@ -9911,7 +10055,7 @@ window.printAtestado=window.viewAtestado;
 
 // ─── ENVIO VIA WHATSAPP ────────────────────────────────────────
 window.sendWhats=function(ptId,tipo,docId){
-  var p=ST.pts.find(function(x){return x.id===ptId;});
+  var p=ST.pts.find(function(x){return sameId(x.id,ptId);});
   if(!p){toast("Paciente não encontrado.","error");return;}
   var phone=(p.phone||"").replace(/\D/g,"");
   if(!phone){toast("Paciente sem telefone cadastrado. Adicione o WhatsApp na aba Dados.","warning");return;}
@@ -11038,7 +11182,7 @@ window.filtrarPtsOrient=function(termo,orientId){
 };
 
 window.enviarOrientacaoParaPt=function(ptId,orientId){
-  const p=ST.pts.find(x=>x.id===ptId);
+  const p=ST.pts.find(x=>sameId(x.id,ptId));
   if(!p)return;
   const orients=getOrientacoes();
   const o=orients.find(x=>x.id===orientId);
