@@ -2306,7 +2306,7 @@ function updateNotifDot(){
 // ══════════════════════════════════════════════════════════════════
 window.renderPlanoTto=function(p){
   const etapas=p.planoTto||[];
-  const pid=jsArg(p.id).replace(/"/g,"&quot;");  // seguro em atributos com aspas duplas
+  const pid=typeof p.id==="number"?p.id:"'"+String(p.id).replace(/'/g,"\\'")+"'";
   const STATUS_COLORS={Pendente:"#f59e0b",Em_andamento:"#60a5fa",Concluído:"#22c55e",Cancelado:"#ef4444"};
   return`<div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -2636,7 +2636,9 @@ window.renderContrato=function(p){
     ST.pts=nps;save("rof_pts",nps);
     setTimeout(function(){toast("Procedimentos importados do orçamento ✓","success");},100);
   }
-  var pid=jsArg(p.id).replace(/"/g,"&quot;");  // seguro em atributos com aspas duplas
+  // pid: número fica sem aspas; string fica entre aspas simples (funciona em attrs com aspas duplas OU simples)
+  var pid=typeof p.id==="number"?p.id:"'"+String(p.id).replace(/'/g,"\\'")+"'";
+  var termosAtivos=p.contratoTermos||[];
   var valoresContrato=calcContratoValores(p,etapas);
   var subtotal=valoresContrato.subtotal;
   var desconto=valoresContrato.desconto;
@@ -2825,6 +2827,23 @@ window.renderContrato=function(p){
       </div>
     </div>
 
+    <div class="card" style="margin-bottom:10px">
+      <div style="color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px">📋 Termos de Consentimento — Incluir no Contrato</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+        ${Object.entries(TERMOS_CONSENT).map(([k,t])=>{
+          var ativo=termosAtivos.includes(k);
+          return`<button onclick="toggleContratoTermo(${pid},'${k}')" class="${ativo?"bp":"bg"}" style="font-size:11px;padding:6px 12px;border-radius:50px;${ativo?"":"opacity:0.6"}">${t.icon} ${t.label} ${ativo?"✓":""}</button>`;
+        }).join("")}
+      </div>
+      ${termosAtivos.length>0?termosAtivos.map(k=>{
+        var t=TERMOS_CONSENT[k];if(!t)return"";
+        return`<div style="background:#0a0a0a;border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid rgba(198,164,109,0.35)">
+          <div style="color:#E2C99A;font-size:10px;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">${t.icon} ${t.titulo}</div>
+          <div style="color:#555;font-size:11px;line-height:1.7">${t.texto}</div>
+        </div>`;
+      }).join(""):"<div style='color:#333;font-size:11px'>Nenhum termo adicionado. Clique nos botões acima para incluir termos específicos no contrato.</div>"}
+    </div>
+
     ${sigPtHtml}
     ${sigDraHtml}
 
@@ -2918,6 +2937,50 @@ window.delContratoProc=function(ptId,idx){
   const planoTto=(p.planoTto||[]).filter((_,i)=>i!==idx);
   const pts=ST.pts.map(x=>sameId(x.id,ptId)?{...x,planoTto}:x);
   ST.pts=pts;save("rof_pts",pts);set({pts});
+};
+
+// ── Termos de Consentimento opcionais no Contrato ─────────────
+const TERMOS_CONSENT={
+  protese:{
+    label:"Prótese",
+    icon:"🦷",
+    titulo:"Termo de Consentimento — Prótese Dentária",
+    texto:`O(a) Contratante declara ter sido informado(a) sobre o plano de tratamento protético, incluindo benefícios, riscos, alternativas e possíveis complicações.<br/>
+Entende que: (1) o período de adaptação varia por paciente e podem ser necessários ajustes após a instalação; (2) o não cumprimento das instruções de higiene e uso pode comprometer o resultado; (3) peças protéticas sofrem desgaste natural ao longo do tempo; (4) situações não previstas podem exigir intervenções adicionais não inclusas neste contrato.<br/>
+Declara que todas as suas dúvidas foram esclarecidas e que concorda com o tratamento proposto.`
+  },
+  implante:{
+    label:"Implante",
+    icon:"⚙️",
+    titulo:"Termo de Consentimento — Implante Osseointegrado",
+    texto:`O(a) Contratante declara ter sido informado(a) sobre o procedimento de implantodontia, incluindo benefícios, riscos cirúrgicos e possibilidade de não osseointegração.<br/>
+Foi esclarecido(a) sobre a necessidade de: exames pré-operatórios, abstinência de tabaco e álcool no período pós-operatório, seguimento rigoroso das orientações pós-operatórias e comparecimento às manutenções periódicas.<br/>
+Está ciente de que o sucesso do implante depende da qualidade e quantidade óssea, higiene oral, condição sistêmica de saúde e fatores individuais não controláveis pela CONTRATADA. Complicações como infecção, sangramento, parestesia temporária ou falha de integração são possíveis, ainda que incomuns. Em caso de falha, o replanejamento será acordado entre as partes.`
+  },
+  clareamento:{
+    label:"Clareamento",
+    icon:"✨",
+    titulo:"Termo de Consentimento — Clareamento Dental",
+    texto:`O(a) Contratante declara ter sido informado(a) sobre o procedimento de clareamento dental, seus benefícios, limitações e possíveis efeitos colaterais.<br/>
+Está ciente de que: (1) sensibilidade dentária temporária é comum durante e após o tratamento; (2) o resultado depende da cor natural dos dentes, do tipo de manchamento e de características individuais; (3) restaurações, coroas e facetas existentes NÃO clareiam junto aos dentes naturais; (4) o resultado pode reduzir com o tempo, especialmente com consumo de alimentos e bebidas pigmentadas e tabaco; (5) manutenções periódicas podem ser necessárias para conservar o resultado.`
+  },
+  ortodontia:{
+    label:"Ortodontia",
+    icon:"😁",
+    titulo:"Termo de Consentimento — Tratamento Ortodôntico",
+    texto:`O(a) Contratante declara ter sido informado(a) sobre o tratamento ortodôntico, seus objetivos, duração estimada e cuidados necessários.<br/>
+Está ciente de que: (1) o prazo de tratamento é uma estimativa e pode variar conforme a resposta biológica; (2) é indispensável a higienização rigorosa durante todo o tratamento; (3) o não uso de contenção após o término pode resultar em recidiva; (4) o não comparecimento às consultas compromete o andamento do tratamento e pode resultar em cobrança adicional; (5) podem ocorrer reabsorção radicular, descalcificação ou outros efeitos decorrentes do tratamento, que serão minimizados com cooperação do paciente.`
+  }
+};
+
+window.toggleContratoTermo=function(ptId,termo){
+  const nps=ST.pts.map(p=>{
+    if(!sameId(p.id,ptId))return p;
+    const termos=p.contratoTermos||[];
+    const novos=termos.includes(termo)?termos.filter(t=>t!==termo):[...termos,termo];
+    return{...p,contratoTermos:novos};
+  });
+  save("rof_pts",nps);set({pts:nps});
 };
 
 // ── Importar Orçamento → Contrato (reimportação manual) ─────────
@@ -3035,7 +3098,9 @@ window.gerarLinkContrato=async function(ptId,tipo){
     desconto:vals.desconto,
     total:vals.total,
     forma:p.contratoForma||"À vista",
-    parcelas:p.contratoParcelas||1,
+    parcelas:Number(p.contratoParcelas||1),
+    entrada:Number(p.contratoEntrada||0),
+    valorParcela:Number(p.contratoValorParcela||0),
     prazo:p.contratoPrazo||"",
     obs:p.contratoObs||"",
     geradoEm:new Date().toISOString()
@@ -3281,6 +3346,11 @@ window.printContrato=function(ptId){
   <p><b>5.2</b> Comparecer pontualmente às consultas previamente agendadas. A ausência sem aviso prévio de 24 (vinte e quatro) horas acarretará cobrança de uma consulta pelo valor vigente.</p>
   <p><b>5.3</b> Seguir rigorosamente as prescrições, encaminhamentos e orientações fornecidas pelo(a) CONTRATADO(A), sob pena de o tratamento ser declarado como interrompido.</p>
   <p><b>5.4</b> Informar ao(à) CONTRATADO(A) qualquer alteração decorrente do tratamento, insatisfações ou dúvidas sobre o tratamento em execução, bem como manter seus dados cadastrais sempre atualizados.</p>
+
+  ${(p.contratoTermos||[]).map(k=>{
+    const t=TERMOS_CONSENT[k];if(!t)return"";
+    return`<h2>${t.titulo}</h2><p style="font-size:11.5px;text-align:justify">${t.texto}</p>`;
+  }).join("")}
 
   <p style="margin-top:28px">Itapema/SC, ${hoje}.</p>
 
@@ -5637,7 +5707,7 @@ function renderOdontogram(od,ptId){
   const plan=p.planoClinico||[];
   const sel=ST.odSel||"carie";const face=ST.odFace||"O";
   const ptIdStr=jsArg(ptId);  // para onclick com aspas simples
-  const ptIdDq=ptIdStr.replace(/"/g,"&quot;");  // para onclick com aspas duplas
+  const ptIdDq=typeof ptId==="number"?ptId:"'"+String(ptId).replace(/'/g,"\\'")+"'";  // para onclick com aspas duplas
 
   // Indicador por dente: pior status vence (planejado < iniciado < feito)
   const statusOrd=["planejado","iniciado","feito"];
@@ -6026,7 +6096,7 @@ function renderPlanoClinicoOdontograma(p){
   };
 
   // Chips por condição para remoção rápida
-  const _pidPc=jsArg(p.id).replace(/"/g,"&quot;");
+  const _pidPc=typeof p.id==="number"?p.id:"'"+String(p.id).replace(/'/g,"\\'")+"'";
   const condNoPlan=[...new Set(plan.map(it=>it.cond).filter(Boolean))];
   const condChips=condNoPlan.map(c=>{
     const ci=COND[c]||{l:c,c:"#888"};
@@ -6307,11 +6377,10 @@ window.limparCondicaoOdontograma=function(ptId,cond){
       const od={...(p.odontogram||{})};
       Object.keys(od).forEach(t=>{
         const td={...od[t]};
-        if(typeof OVERLAY_CONDS!=="undefined"&&OVERLAY_CONDS.has(cond)){
-          if(td._overlays) td._overlays=td._overlays.filter(k=>k!==cond);
-        }else{
-          ["V","O","M","D","L"].forEach(f=>{if(td[f]===cond) td[f]="higido";});
-        }
+        // Remove das faces (dados antigos ou condições normais)
+        ["V","O","M","D","L"].forEach(f=>{if(td[f]===cond) td[f]="higido";});
+        // Remove dos overlays (dados novos de clareamento/faceta)
+        if(td._overlays) td._overlays=td._overlays.filter(k=>k!==cond);
         od[t]=td;
       });
       // Remove do plano clínico (itens)
@@ -6854,7 +6923,7 @@ function pagePts(){
     const matchSrc=name.toLowerCase().includes(src)||(p.cpf||"").includes(src)||(p.phone||"").includes(src);
     const matchTag=ptTagFilter==="Todos"||(p.tags||[]).includes(ptTagFilter);
     return matchSrc&&matchTag;
-  });
+  }).sort((a,b)=>(a.name||"").localeCompare(b.name||"","pt-BR",{sensitivity:"base"}));
   const p=findPtById(selPt);
 
   if(p){
@@ -7459,8 +7528,10 @@ function renderPlano(p){
   },0);
   var desc=Number(plano.desconto||0);
   var totalDesc=Math.max(0,total-desc);
+  var entrada=Number(plano.entrada||0);
   var parcelas=Number(plano.parcelas||1);
-  var vlrParcela=parcelas>1?(totalDesc/parcelas):0;
+  var restante=Math.max(0,totalDesc-entrada);
+  var vlrParcela=parcelas>1?Math.round(restante/parcelas):0;
 
   var procCats=["Todos"].concat([...new Set(PROCS.map(function(p){return p.c;}))]);
   var catSel=ST.planoCat||"Todos";
@@ -7474,7 +7545,7 @@ function renderPlano(p){
     return "<option value='"+pr.id+"'>"+pr.n+" — R$ "+pr.p.toLocaleString("pt-BR")+"</option>";
   }).join("");
 
-  var pid=jsArg(p.id);
+  var pid=typeof p.id==="number"?p.id:"'"+String(p.id).replace(/'/g,"\\'")+"'";
   var itensRows=itens.length===0
     ?"<tr><td colspan='5' style='text-align:center;color:#333;padding:18px 0;font-size:13px'>Nenhum procedimento adicionado ainda.</td></tr>"
     :itens.map(function(it,i){
