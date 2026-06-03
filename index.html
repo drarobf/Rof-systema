@@ -2997,15 +2997,21 @@ window.copiarParcelasOrcamento=function(ptId){
     return s+(Number(i.qty)||1)*unit;
   },0);
   const totalDesc=Math.max(0,subtotal-desc);
-  const vlrParcela=parcelas>1?Math.round(totalDesc/parcelas):0;
+  const entrada=Number(plano.entrada||0);
+  const restante=Math.max(0,totalDesc-entrada);
+  const vlrParcela=parcelas>1?Math.round(restante/parcelas):restante;
+  const forma=(parcelas>1||entrada>0)?"Parcelado":"À vista";
   const pts=ST.pts.map(x=>sameId(x.id,ptId)?{...x,
     contratoParcelas:parcelas,
-    contratoEntrada:0,
+    contratoEntrada:entrada,
     contratoValorParcela:vlrParcela,
-    contratoForma:parcelas>1?"Parcelado":"À vista"
+    contratoForma:forma
   }:x);
   save("rof_pts",pts);set({pts});
-  toast(`Parcelamento copiado do orçamento: ${parcelas>1?parcelas+"× R$ "+vlrParcela.toLocaleString("pt-BR"):"À vista"}  ✓`,"success");
+  const resumo=entrada>0
+    ?"Entrada R$ "+entrada.toLocaleString("pt-BR")+" + "+parcelas+"× R$ "+vlrParcela.toLocaleString("pt-BR")
+    :(parcelas>1?parcelas+"× R$ "+vlrParcela.toLocaleString("pt-BR"):"À vista");
+  toast("Copiado do orçamento: "+resumo+" ✓","success");
 };
 window.importarOrcamentoContrato=function(ptId){
   const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p)return;
