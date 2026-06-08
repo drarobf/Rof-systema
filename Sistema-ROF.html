@@ -8,6 +8,12 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="theme-color" content="#C6A46D"/>
 <title>Sistema ROF™</title>
+<script>
+// GitHub Pages serves index.html as the current app. Keep legacy direct links working.
+if (location.protocol !== "file:" && /\/Sistema-ROF\.html$/i.test(location.pathname)) {
+  location.replace(location.pathname.replace(/Sistema-ROF\.html$/i, "index.html") + location.search + location.hash);
+}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -620,15 +626,17 @@ const CIDADE="Itapema/SC";
 const LOGO_B64="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";
 
 // ── LOGIN ──────────────────────────────────────────────────────
-window.doLogin=function(){
+window.doLogin=async function(){
   const p=document.getElementById("ls-pwd")?.value||"";
   if(p==="rof2024"||localStorage.getItem("rof_auth")==="ok"){
     localStorage.setItem("rof_auth","ok");
+    if(p)await cloudAuth(p);
     const ls=document.getElementById("ls");
     const app=document.getElementById("layout");
     if(ls){ls.classList.add("out");setTimeout(()=>ls.remove(),500);}
     if(app)setTimeout(()=>app.classList.add("show"),200);
     sbOpen=!isMob();applySB();render();
+    cloudPull();
   }else{
     const inp=document.getElementById("ls-pwd");
     if(inp){
@@ -638,7 +646,7 @@ window.doLogin=function(){
     }
   }
 };
-window.doLogout=function(){localStorage.removeItem("rof_auth");location.reload();};
+window.doLogout=function(){localStorage.removeItem("rof_auth");localStorage.removeItem("rof_token");location.reload();};
 // Auto-login
 (function(){
   if(localStorage.getItem("rof_auth")==="ok"){
@@ -646,6 +654,7 @@ window.doLogout=function(){localStorage.removeItem("rof_auth");location.reload()
     const app=document.getElementById("layout");
     if(ls)ls.remove();
     if(app){setTimeout(()=>app.classList.add("show"),100);}
+    cloudPull();
   }
 })();
 
@@ -655,7 +664,36 @@ const todayISO=()=>new Date().toISOString().slice(0,10);
 const todayFmt=()=>new Date().toLocaleDateString("pt-BR");
 const fmtDate=s=>{if(!s||s==="—")return"—";if(s.includes("/"))return s;const[y,m,d]=s.split("-");return`${d}/${m}/${y}`;};
 const load=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}};
-const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
+const SYNC_KEYS=['rof_pts','rof_apts','rof_stk','rof_procs','rof_caixa'];
+function cloudPush(k,v){
+  const t=localStorage.getItem('rof_token');if(!t)return;
+  fetch('/api/store/'+k,{method:'PUT',headers:{'Content-Type':'application/json','Authorization':'Bearer '+t},body:JSON.stringify(v)}).catch(()=>{});
+}
+async function cloudAuth(pwd){
+  try{
+    const r=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pwd})});
+    if(!r.ok)return;
+    const{token}=await r.json();
+    localStorage.setItem('rof_token',token);
+  }catch{}
+}
+async function cloudPull(){
+  const t=localStorage.getItem('rof_token');if(!t)return;
+  try{
+    const r=await fetch('/api/data',{headers:{'Authorization':'Bearer '+t}});
+    if(r.status===401){localStorage.removeItem('rof_token');return;}
+    if(!r.ok)return;
+    const d=await r.json();
+    const up={};
+    if(Array.isArray(d.patients)&&d.patients.length){localStorage.setItem('rof_pts',JSON.stringify(d.patients));up.pts=d.patients;}
+    if(Array.isArray(d.appointments)){localStorage.setItem('rof_apts',JSON.stringify(d.appointments));up.apts=d.appointments;}
+    if(Array.isArray(d.inventory)&&d.inventory.length){localStorage.setItem('rof_stk',JSON.stringify(d.inventory));up.stk=d.inventory;}
+    if(Array.isArray(d.procedures)&&d.procedures.length){localStorage.setItem('rof_procs',JSON.stringify(d.procedures));PROCS=d.procedures;}
+    if(Array.isArray(d.finance)){localStorage.setItem('rof_caixa',JSON.stringify(d.finance));}
+    if(typeof ST!=='undefined'&&Object.keys(up).length){Object.assign(ST,up);render();}
+  }catch{}
+}
+const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}if(SYNC_KEYS.includes(k))cloudPush(k,v);};
 const isMob=()=>window.innerWidth<=768;
 const DIAS=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
 const MESES=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
@@ -1017,9 +1055,14 @@ function pageAgenda(){
       <input id="ap-conv" value="${aptConv}" oninput="set({aptConv:this.value})" placeholder="Ou digite outro convênio..." class="inp" style="font-size:12px"/>`:""}
     </div>
     <div style="margin-bottom:8px">
-      <label class="lbl">Categoria do procedimento</label>
+      <label class="lbl">Procedimento</label>
       <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">${catBtns}</div>
-      <select id="ap-proc" class="inp"><option value="">Selecionar procedimento...</option>${fP.map(p=>`<option value="${p.id}">${p.n} — ${fmt(p.p)}</option>`).join("")}</select>
+      <div style="position:relative">
+        <input id="ap-proc-inp" class="inp" placeholder="🔍 Buscar procedimento..."
+          oninput="procSearch(this.value)" autocomplete="off"/>
+        <input type="hidden" id="ap-proc" value=""/>
+        <div id="ap-proc-drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:#0F0F0F;border:1px solid rgba(198,164,109,0.3);border-radius:0 0 10px 10px;z-index:999;max-height:210px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.8)"></div>
+      </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:12px">
       <button onclick="saveApt()" class="bp" style="flex:1">✅ Salvar Consulta</button>
@@ -1488,37 +1531,50 @@ const FACES_LIST=[
   {k:"L",l:"Lingual / Palatino"},
 ];
 
-function toothSVG(num,od,isDec,swapMD=false){
+const ODONTO_STATUS={
+  planejado:{l:"A Realizar",c:"#0ea5e9"},
+  andamento:{l:"Iniciado",  c:"#f59e0b"},
+  concluido:{l:"Concluído", c:"#22c55e"},
+};
+
+function toothSVG(num,od,isDec,swapMD=false,statusDot=""){
   const td=od[num]||{};
-  // swapMD=true para dentes do lado direito (18-11, 48-41, 55-51, 85-81)
-  // onde Mesial fica à DIREITA e Distal à ESQUERDA na tela
   const M=swapMD?"D":"M", D=swapMD?"M":"D";
   const fc=f=>COND[td[f]||"higido"]?.c||"#2a2a2a";
   const w=isDec?26:32,h=isDec?36:44;
   const mx=w/2,my=h/2,pad=5;
+  const dot=statusDot?`<circle cx="${w-4}" cy="4" r="3.5" fill="${statusDot}" stroke="#111" stroke-width="1" pointer-events="none"/>`:"";
   return`<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"
     onclick="clickTooth(${num})" style="cursor:pointer;flex-shrink:0"
     title="Dente ${num}${td.V?` V:${td.V}`:""}${td.O?` O:${td.O}`:""}">
     <polygon points="${pad},0 ${w-pad},0 ${w},${pad} ${w},${h-pad} ${w-pad},${h} ${pad},${h} 0,${h-pad} 0,${pad}"
       fill="#111" stroke="rgba(198,164,109,.12)" stroke-width="1"/>
-    <!-- V topo -->
     <polygon points="${pad},0 ${w-pad},0 ${w-pad-2},${pad+2} ${pad+2},${pad+2}" fill="${fc("V")}"/>
-    <!-- L base -->
     <polygon points="${pad+2},${h-pad-2} ${w-pad-2},${h-pad-2} ${w-pad},${h} ${pad},${h}" fill="${fc("L")}"/>
-    <!-- M esq (ou D se swapMD) -->
     <polygon points="0,${pad} ${pad+2},${pad+2} ${pad+2},${h-pad-2} 0,${h-pad}" fill="${fc(M)}"/>
-    <!-- D dir (ou M se swapMD) -->
     <polygon points="${w-pad-2},${pad+2} ${w},${pad} ${w},${h-pad} ${w-pad-2},${h-pad-2}" fill="${fc(D)}"/>
-    <!-- O centro -->
     <rect x="${pad+2}" y="${pad+2}" width="${w-pad*2-4}" height="${h-pad*2-4}" fill="${fc("O")}"/>
     <text x="${mx}" y="${my+3}" text-anchor="middle"
       font-size="${isDec?6:8}" fill="rgba(255,255,255,.65)"
       pointer-events="none" font-family="Arial,sans-serif">${num}</text>
+    ${dot}
   </svg>`;
 }
 
 function renderOdontogram(od,ptId){
+  const p=ST.pts.find(x=>x.id===ptId)||{};
+  const procs=p.odontoProcedures||[];
   const sel=ST.odSel||"carie";const face=ST.odFace||"O";
+
+  // build per-tooth status dot color (worst status wins: planejado < andamento < concluido)
+  const toothDot={};
+  const order=["planejado","andamento","concluido"];
+  procs.forEach(pr=>{
+    const cur=toothDot[pr.tooth];
+    if(!cur||order.indexOf(pr.status)>order.indexOf(cur))toothDot[pr.tooth]=pr.status;
+  });
+  const dot=t=>ODONTO_STATUS[toothDot[t]]?.c||"";
+
   const condBtns=Object.entries(COND).map(([k,v])=>`
     <button onclick="set({odSel:'${k}'})" style="display:flex;align-items:center;gap:4px;padding:4px 8px;
       border-radius:6px;border:1px solid ${sel===k?v.b:BD};
@@ -1533,9 +1589,48 @@ function renderOdontogram(od,ptId){
       background:${face===f.k?"#C6A46D22":"transparent"};
       cursor:pointer;font-family:Georgia,serif;font-size:10px;
       color:${face===f.k?GL:"#555"}">${f.l}</button>`).join("");
+
+  // procedure table rows
+  const statusOrder=["planejado","andamento","concluido"];
+  const sortedProcs=[...procs].sort((a,b)=>statusOrder.indexOf(a.status)-statusOrder.indexOf(b.status));
+  const procRows=sortedProcs.map(pr=>{
+    const sc=ODONTO_STATUS[pr.status]||ODONTO_STATUS.planejado;
+    const facesLabel=(pr.faces||[]).join(", ")||"—";
+    const nextStatus={planejado:"andamento",andamento:"concluido",concluido:"planejado"};
+    const nextLabel={planejado:"▶ Iniciar",andamento:"✓ Concluir",concluido:"↺ Reabrir"};
+    return`<tr style="border-bottom:1px solid rgba(198,164,109,0.06)">
+      <td style="padding:7px 8px;color:#ddd;font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${pr.procName}</td>
+      <td style="padding:7px 6px;color:#555;font-size:10px;white-space:nowrap">${pr.date||"—"}</td>
+      <td style="padding:7px 6px;color:#666;font-size:10px;white-space:nowrap">${pr.isRegional?(pr.teeth&&pr.teeth.length?"Região: "+pr.teeth.map(function(t){return"D"+t;}).join(", "):"Procedimento geral"):"D"+pr.tooth+(pr.faces?.length?" · "+facesLabel:"")}</td>
+      <td style="padding:7px 6px">
+        <span style="background:${sc.c}22;color:${sc.c};border:1px solid ${sc.c}44;border-radius:4px;padding:2px 7px;font-size:9px;white-space:nowrap">${sc.l}</span>
+      </td>
+      <td style="padding:7px 6px;color:#C6A46D;font-size:11px;text-align:right;white-space:nowrap">${fmt(pr.valor||0)}</td>
+      <td style="padding:7px 4px;white-space:nowrap">
+        <button onclick="cycleOdontoProcStatus(${ptId},${pr.id},'${nextStatus[pr.status]}')"
+          style="background:${sc.c}22;border:1px solid ${sc.c}44;border-radius:4px;padding:2px 7px;color:${sc.c};cursor:pointer;font-size:9px;font-family:Georgia,serif;margin-right:4px">${nextLabel[pr.status]}</button>
+        <button onclick="delOdontoProc(${ptId},${pr.id})"
+          style="background:none;border:1px solid rgba(198,164,109,0.12);border-radius:4px;padding:2px 6px;color:#444;cursor:pointer;font-size:9px;font-family:Georgia,serif">✕</button>
+      </td>
+    </tr>`;
+  }).join("");
+
+  const totalProcs=procs.reduce((s,pr)=>s+(pr.valor||0),0);
+  const totalConcluidos=procs.filter(pr=>pr.status==="concluido").reduce((s,pr)=>s+(pr.valor||0),0);
+
   return`<div>
+    <!-- Legenda de status -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;padding:8px;background:#0a0a0a;border-radius:6px;border:1px solid rgba(198,164,109,0.08)">
+      <span style="color:#555;font-size:10px;align-self:center">Legenda:</span>
+      ${Object.entries(ODONTO_STATUS).map(([k,v])=>`
+        <span style="display:flex;align-items:center;gap:4px">
+          <span style="width:10px;height:10px;border-radius:50%;background:${v.c};flex-shrink:0"></span>
+          <span style="color:${v.c};font-size:10px">${v.l}</span>
+        </span>`).join("")}
+    </div>
+
     <div style="margin-bottom:10px">
-      <div class="lbl">Condição a marcar:</div>
+      <div class="lbl">Condição a marcar nas faces:</div>
       <div style="display:flex;gap:4px;flex-wrap:wrap">${condBtns}</div>
     </div>
     <div style="margin-bottom:10px">
@@ -1547,27 +1642,247 @@ function renderOdontogram(od,ptId){
       <strong style="color:${COND[sel]?.c}">${COND[sel]?.l}</strong>
       na face <strong style="color:#C6A46D">${face==="todas"?"Todas":FACES_LIST.find(f=>f.k===face)?.l||face}</strong>
     </div>
+
     <div style="text-align:center;margin-bottom:4px">
       <div style="color:#666;font-size:8px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Permanentes — Superior</div>
-      <div style="display:flex;justify-content:center;gap:2px;flex-wrap:wrap">${PERM_U.map((t,i)=>toothSVG(t,od,false,i<8)).join("")}</div>
+      <div style="display:flex;justify-content:center;gap:2px;flex-wrap:wrap">${PERM_U.map((t,i)=>toothSVG(t,od,false,i<8,dot(t))).join("")}</div>
     </div>
     <div style="text-align:center;margin-bottom:14px">
-      <div style="display:flex;justify-content:center;gap:2px;flex-wrap:wrap">${PERM_L.map((t,i)=>toothSVG(t,od,false,i<8)).join("")}</div>
+      <div style="display:flex;justify-content:center;gap:2px;flex-wrap:wrap">${PERM_L.map((t,i)=>toothSVG(t,od,false,i<8,dot(t))).join("")}</div>
       <div style="color:#666;font-size:8px;text-transform:uppercase;letter-spacing:1px;margin-top:4px">Permanentes — Inferior</div>
     </div>
     <div style="border-top:1px dashed rgba(198,164,109,0.12);padding-top:12px;text-align:center;margin-bottom:4px">
       <div style="color:#555;font-size:8px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">🍼 Decíduos — Superior</div>
-      <div style="display:flex;justify-content:center;gap:2px;flex-wrap:wrap">${DEC_U.map((t,i)=>toothSVG(t,od,true,i<5)).join("")}</div>
+      <div style="display:flex;justify-content:center;gap:2px;flex-wrap:wrap">${DEC_U.map((t,i)=>toothSVG(t,od,true,i<5,dot(t))).join("")}</div>
     </div>
     <div style="text-align:center;margin-bottom:10px">
-      <div style="display:flex;justify-content:center;gap:2px;flex-wrap:wrap">${DEC_L.map((t,i)=>toothSVG(t,od,true,i<5)).join("")}</div>
+      <div style="display:flex;justify-content:center;gap:2px;flex-wrap:wrap">${DEC_L.map((t,i)=>toothSVG(t,od,true,i<5,dot(t))).join("")}</div>
       <div style="color:#555;font-size:8px;text-transform:uppercase;letter-spacing:1px;margin-top:4px">🍼 Decíduos — Inferior</div>
     </div>
-    <div style="display:flex;justify-content:flex-end;margin-top:8px">
-      <button onclick="updPt(${ptId},'odontogram',{})" style="background:none;border:1px solid rgba(198,164,109,0.12);border-radius:6px;padding:5px 10px;color:#444;cursor:pointer;font-size:11px;font-family:Georgia,serif">🗑 Limpar odontograma</button>
+
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;margin-bottom:16px">
+      <button onclick="updPt(${ptId},'odontogram',{})" style="background:none;border:1px solid rgba(198,164,109,0.12);border-radius:6px;padding:5px 10px;color:#444;cursor:pointer;font-size:11px;font-family:Georgia,serif">🗑 Limpar condições</button>
+    </div>
+
+    <!-- Tabela de procedimentos planejados -->
+    <div style="border-top:1px solid rgba(198,164,109,0.12);padding-top:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+        <div style="color:#E2C99A;font-weight:800;font-size:13px">📋 Procedimentos por Dente</div>
+        <button onclick="openAddOdontoProc(${ptId})" class="bp" style="padding:6px 12px;font-size:11px">+ Adicionar Procedimento</button>
+      </div>
+      ${procs.length===0
+        ?`<div style="text-align:center;padding:20px;color:#333;font-size:12px;border:1px dashed rgba(198,164,109,0.12);border-radius:8px">
+            Nenhum procedimento associado a dentes ainda.<br>
+            <span style="font-size:10px;color:#2a2a2a">Use "+ Adicionar Procedimento" para planejar tratamentos por dente.</span>
+          </div>`
+        :`<div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-family:Georgia,serif">
+            <thead>
+              <tr style="background:#0a0a0a;border-bottom:1px solid rgba(198,164,109,0.15)">
+                <th style="padding:7px 8px;color:#666;font-size:9px;text-transform:uppercase;text-align:left;font-weight:600">Procedimento</th>
+                <th style="padding:7px 6px;color:#666;font-size:9px;text-transform:uppercase;text-align:left;font-weight:600">Data</th>
+                <th style="padding:7px 6px;color:#666;font-size:9px;text-transform:uppercase;text-align:left;font-weight:600">Dente / Face</th>
+                <th style="padding:7px 6px;color:#666;font-size:9px;text-transform:uppercase;text-align:left;font-weight:600">Status</th>
+                <th style="padding:7px 6px;color:#666;font-size:9px;text-transform:uppercase;text-align:right;font-weight:600">Valor</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>${procRows}</tbody>
+            <tfoot>
+              <tr style="border-top:1px solid rgba(198,164,109,0.12)">
+                <td colspan="4" style="padding:7px 8px;color:#555;font-size:10px">
+                  ${procs.filter(pr=>pr.status==="concluido").length} concluído(s) · ${procs.filter(pr=>pr.status==="planejado").length} a realizar
+                </td>
+                <td style="padding:7px 6px;color:#C6A46D;font-weight:700;font-size:12px;text-align:right">${fmt(totalProcs)}</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>`}
     </div>
   </div>`;
 }
+
+// Categorias cujo valor é cobrado por procedimento (não por dente)
+var CATS_REGIONAIS=["Prevenção","Clareamento","Harmonização","Protocolos ROF","Oclusão / ATM","Ortodontia"];
+
+function isProcRegional(procId){
+  var pr=PROCS.find(function(p){return p.id===Number(procId);});
+  return pr?CATS_REGIONAIS.includes(pr.c):false;
+}
+
+window.openAddOdontoProc=function(ptId){
+  var p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  var allTeeth=[...PERM_U,...PERM_L,...DEC_U,...DEC_L];
+  var toothOpts=allTeeth.map(function(t){return"<option value='"+t+"'>Dente "+t+"</option>";}).join("");
+  var m=document.createElement("div");m.className="mbg";m.id="odp-modal";
+  m.innerHTML="<div class='mbx' style='max-width:440px'><div class='mhd'>"
+    +"<div class='mhd-title'>🦷 Adicionar Procedimento</div>"
+    +"<button onclick=\"document.getElementById('odp-modal').remove()\" style='background:none;border:none;color:#555;cursor:pointer;font-size:22px'>✕</button>"
+    +"</div><div class='mbd' style='display:flex;flex-direction:column;gap:10px'>"
+    +"<div><label class='lbl'>Procedimento</label>"
+    +"<div style='position:relative'>"
+    +"<input id='odp-proc-inp' class='inp' placeholder='🔍 Buscar procedimento...' oninput='odpSearch(this.value)' autocomplete='off'/>"
+    +"<input type='hidden' id='odp-proc-id' value=''/>"
+    +"<input type='hidden' id='odp-proc-name' value=''/>"
+    +"<input type='hidden' id='odp-proc-price' value=''/>"
+    +"<input type='hidden' id='odp-is-regional' value='0'/>"
+    +"<div id='odp-drop' style='display:none;position:absolute;top:100%;left:0;right:0;background:#0F0F0F;border:1px solid rgba(198,164,109,0.3);border-radius:0 0 8px 8px;z-index:9999;max-height:180px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.8)'></div>"
+    +"</div></div>"
+    +"<div id='odp-tooth-section'>"
+    +"<div class='g2'>"
+    +"<div><label class='lbl'>Dente</label><select id='odp-tooth' class='inp'>"+toothOpts+"</select></div>"
+    +"<div><label class='lbl'>Data</label><input id='odp-date' type='date' value='"+todayISO()+"' class='inp'/></div>"
+    +"</div>"
+    +"<div id='odp-faces-section'><label class='lbl'>Faces</label>"
+    +"<div style='display:flex;gap:6px;flex-wrap:wrap'>"
+    +["V","O","M","D","L","Todas"].map(function(f){
+        return"<label style='display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:#888'>"
+          +"<input type='checkbox' value='"+f+"' class='odp-face' style='accent-color:#C6A46D'/> "+f+"</label>";
+      }).join("")
+    +"</div></div>"
+    +"</div>"
+    +"<div class='g2'>"
+    +"<div><label class='lbl'>Status</label>"
+    +"<select id='odp-status' class='inp'>"
+    +Object.entries(ODONTO_STATUS).map(function(e){return"<option value='"+e[0]+"'>"+e[1].l+"</option>";}).join("")
+    +"</select></div>"
+    +"<div><label class='lbl'>Valor (R$)</label><input id='odp-valor' type='number' min='0' step='0.01' class='inp' placeholder='0,00'/></div>"
+    +"</div>"
+    +"<div style='display:flex;gap:8px;margin-top:4px'>"
+    +"<button onclick='saveOdontoProc("+ptId+")' class='bp' style='flex:1'>✅ Adicionar</button>"
+    +"<button onclick=\"document.getElementById('odp-modal').remove()\" class='bg' style='color:#555'>Cancelar</button>"
+    +"</div></div></div>";
+  document.body.appendChild(m);
+};
+
+window.odpSwitchToothUI=function(isRegional){
+  var sec=document.getElementById("odp-tooth-section");if(!sec)return;
+  var allTeeth=[...PERM_U,...PERM_L,...DEC_U,...DEC_L];
+  var dateVal=(document.getElementById("odp-date")||{}).value||todayISO();
+  if(isRegional){
+    // Multi-select de dentes por região
+    var quadrantes=[
+      {l:"Superior Dir. (1x)",teeth:PERM_U.slice(0,8)},
+      {l:"Superior Esq. (2x)",teeth:PERM_U.slice(8)},
+      {l:"Inferior Esq. (3x)",teeth:PERM_L.slice(8)},
+      {l:"Inferior Dir. (4x)",teeth:PERM_L.slice(0,8)},
+      {l:"Decíduos Sup.",teeth:DEC_U},
+      {l:"Decíduos Inf.",teeth:DEC_L}
+    ];
+    var checkboxes=quadrantes.map(function(q){
+      return"<div style='margin-bottom:6px'>"
+        +"<div style='color:#666;font-size:10px;margin-bottom:3px'>"+q.l+"</div>"
+        +"<div style='display:flex;gap:5px;flex-wrap:wrap'>"
+        +q.teeth.map(function(t){
+          return"<label style='display:flex;align-items:center;gap:2px;cursor:pointer;font-size:11px;color:#aaa;min-width:32px'>"
+            +"<input type='checkbox' value='"+t+"' class='odp-tooth-multi' style='accent-color:#C6A46D'/> "+t+"</label>";
+        }).join("")
+        +"</div></div>";
+    }).join("");
+    sec.innerHTML="<div>"
+      +"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:4px'>"
+      +"<label class='lbl' style='margin:0'>Dentes envolvidos (opcional)</label>"
+      +"<div style='display:flex;gap:4px'>"
+      +"<button type='button' onclick='odpCheckAllTeeth(true)' style='background:none;border:1px solid rgba(198,164,109,0.3);border-radius:4px;color:#C6A46D;cursor:pointer;font-size:10px;padding:2px 7px'>Todos</button>"
+      +"<button type='button' onclick='odpCheckAllTeeth(false)' style='background:none;border:1px solid rgba(198,164,109,0.2);border-radius:4px;color:#555;cursor:pointer;font-size:10px;padding:2px 7px'>Limpar</button>"
+      +"</div></div>"
+      +"<div style='background:#0a0a0a;border:1px solid rgba(198,164,109,0.12);border-radius:8px;padding:10px;max-height:200px;overflow-y:auto'>"
+      +checkboxes
+      +"</div>"
+      +"<div style='margin-top:6px'><label class='lbl'>Data</label><input id='odp-date' type='date' value='"+dateVal+"' class='inp'/></div>"
+      +"<div style='background:rgba(198,164,109,0.08);border:1px solid rgba(198,164,109,0.2);border-radius:6px;padding:6px 10px;font-size:11px;color:#C6A46D;margin-top:4px'>"
+      +"💡 Valor cobrado pelo procedimento — não por dente</div>"
+      +"</div>";
+  } else {
+    // Voltar para single-tooth
+    var toothOpts=allTeeth.map(function(t){return"<option value='"+t+"'>Dente "+t+"</option>";}).join("");
+    sec.innerHTML="<div class='g2'>"
+      +"<div><label class='lbl'>Dente</label><select id='odp-tooth' class='inp'>"+toothOpts+"</select></div>"
+      +"<div><label class='lbl'>Data</label><input id='odp-date' type='date' value='"+dateVal+"' class='inp'/></div>"
+      +"</div>"
+      +"<div id='odp-faces-section'><label class='lbl'>Faces</label>"
+      +"<div style='display:flex;gap:6px;flex-wrap:wrap'>"
+      +["V","O","M","D","L","Todas"].map(function(f){
+          return"<label style='display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:#888'>"
+            +"<input type='checkbox' value='"+f+"' class='odp-face' style='accent-color:#C6A46D'/> "+f+"</label>";
+        }).join("")
+      +"</div></div>";
+  }
+};
+window.odpCheckAllTeeth=function(check){
+  document.querySelectorAll(".odp-tooth-multi").forEach(function(cb){cb.checked=check;});
+};
+
+window.odpSearch=function(val){
+  val=(val||"").trim().toLowerCase();
+  var drop=document.getElementById("odp-drop");if(!drop)return;
+  if(val.length<1){drop.style.display="none";return;}
+  var matches=PROCS.filter(function(p){return p.n.toLowerCase().includes(val)||p.c.toLowerCase().includes(val);}).slice(0,8);
+  if(matches.length===0){drop.style.display="none";return;}
+  drop.innerHTML="";
+  matches.forEach(function(p){
+    var d=document.createElement("div");
+    d.style.cssText="padding:9px 12px;cursor:pointer;border-bottom:1px solid rgba(198,164,109,0.07)";
+    d.addEventListener("mouseenter",function(){this.style.background="rgba(198,164,109,0.08)";});
+    d.addEventListener("mouseleave",function(){this.style.background="";});
+    d.addEventListener("mousedown",function(e){
+      e.preventDefault();
+      document.getElementById("odp-proc-inp").value=p.n;
+      document.getElementById("odp-proc-id").value=p.id;
+      document.getElementById("odp-proc-name").value=p.n;
+      document.getElementById("odp-proc-price").value=p.p;
+      document.getElementById("odp-valor").value=p.p;
+      var regional=isProcRegional(p.id);
+      document.getElementById("odp-is-regional").value=regional?"1":"0";
+      odpSwitchToothUI(regional);
+      drop.style.display="none";
+    });
+    d.innerHTML="<div style='color:#EAEAEA;font-size:12px;font-weight:500'>"+p.n+"</div>"
+      +"<div style='color:#666;font-size:10px'>"+p.c+" · R$ "+p.p.toLocaleString("pt-BR")+"</div>";
+    drop.appendChild(d);
+  });
+  drop.style.display="block";
+};
+
+window.saveOdontoProc=function(ptId){
+  var procName=(document.getElementById("odp-proc-inp")||{}).value||"";
+  var date=(document.getElementById("odp-date")||{}).value||todayISO();
+  var status=(document.getElementById("odp-status")||{}).value||"planejado";
+  var valor=Number((document.getElementById("odp-valor")||{}).value||0);
+  var procId=Number((document.getElementById("odp-proc-id")||{}).value||0);
+  var isRegional=(document.getElementById("odp-is-regional")||{}).value==="1";
+  if(!procName){alert("Selecione um procedimento.");return;}
+  var p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  var np;
+  if(isRegional){
+    var teethCbs=document.querySelectorAll(".odp-tooth-multi:checked");
+    var teeth=Array.from(teethCbs).map(function(cb){return Number(cb.value);});
+    np={id:Date.now(),procId:procId,procName:procName,isRegional:true,teeth:teeth,tooth:0,faces:[],status:status,date:date,valor:valor};
+  } else {
+    var tooth=Number((document.getElementById("odp-tooth")||{}).value||0);
+    if(!tooth){alert("Selecione o dente.");return;}
+    var faceCbs=document.querySelectorAll(".odp-face:checked");
+    var faces=Array.from(faceCbs).map(function(cb){return cb.value;});
+    if(faces.includes("Todas"))faces=["V","O","M","D","L"];
+    np={id:Date.now(),procId:procId,procName:procName,isRegional:false,tooth:tooth,faces:faces,status:status,date:date,valor:valor};
+  }
+  var procs=[...(p.odontoProcedures||[]),np];
+  updPt(ptId,"odontoProcedures",procs);
+  document.getElementById("odp-modal")?.remove();
+};
+
+window.cycleOdontoProcStatus=function(ptId,id,nextStatus){
+  var p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  var procs=(p.odontoProcedures||[]).map(function(pr){return pr.id===id?Object.assign({},pr,{status:nextStatus}):pr;});
+  updPt(ptId,"odontoProcedures",procs);
+};
+
+window.delOdontoProc=function(ptId,id){
+  if(!confirm("Remover este procedimento do dente?"))return;
+  var p=ST.pts.find(x=>x.id===ptId);if(!p)return;
+  updPt(ptId,"odontoProcedures",(p.odontoProcedures||[]).filter(function(pr){return pr.id!==id;}));
+};
 
 window.clickTooth=t=>{
   const p=ST.pts.find(x=>x.id===ST.selPt);if(!p)return;
@@ -1711,10 +2026,11 @@ function pagePts(){
       const docs=p.docs||[];
       tc=docs.length===0
         ?`<div style="color:#333;text-align:center;padding:22px 0;font-size:13px">📄 Nenhum documento assinado.<br/><span style="font-size:11px;color:#222;display:block;margin-top:6px">Acesse "Termos ROF™" para gerar termos.</span></div>`
-        :docs.map(doc=>`<div class="card" style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        :docs.map((doc,di)=>`<div class="card" style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
           <span style="font-size:22px">📄</span>
           <div style="flex:1"><div style="color:#ddd;font-weight:700;font-size:13px">${doc.title}</div><div style="color:#555;font-size:11px">Assinado em ${doc.date}</div></div>
-          <div style="width:8px;height:8px;border-radius:50%;background:#22c55e"></div>
+          <div style="width:8px;height:8px;border-radius:50%;background:#22c55e;flex-shrink:0"></div>
+          <button onclick="delDoc(${p.id},${di})" style="background:none;border:none;color:#333;cursor:pointer;font-size:14px;padding:4px;flex-shrink:0" title="Excluir documento">🗑</button>
         </div>`).join("");
     }
 
@@ -3928,13 +4244,56 @@ function pageTerms(){
 
   if(done){
     const t=done.term,sig=done.sig;
+    const isContrato=t.k==="contrato";
+
+    // Para contrato: cláusulas; para termos clínicos: procedimentos do protocolo
     const procsHtml=(t.procs||[]).map((pr,i)=>`
       <div style="margin-bottom:12px;padding:10px;background:#f9f5e8;border-radius:8px;border-left:3px solid #C6A46D">
         <div style="color:#8B6914;font-weight:800;font-size:12px;margin-bottom:3px">${i+1}. ${pr.n}</div>
-        <div style="color:#555;font-size:11px;line-height:1.6">${pr.d}</div>
+        <div style="color:#555;font-size:11px;line-height:1.6;white-space:pre-wrap">${pr.d}</div>
       </div>`).join("");
+
+    // Bloco do orçamento — só aparece no contrato, quando o paciente tem plano
+    let planoHtml="";
+    if(isContrato&&done.plano){
+      const pl=done.plano;
+      const itens=pl.itens||[];
+      const total=itens.reduce((s,i)=>s+(i.qty*(i.price||0)),0);
+      const desc=Number(pl.desconto||0);
+      const totalDesc=Math.max(0,total-desc);
+      const parcelas=Number(pl.parcelas||1);
+      if(itens.length>0){
+        const rows=itens.map(it=>`<tr style="border-bottom:1px solid #e5e5e5">
+          <td style="padding:7px 10px;font-size:12px;color:#333">${it.name||"?"}</td>
+          <td style="padding:7px 10px;text-align:center;font-size:12px;color:#666">${it.qty}</td>
+          <td style="padding:7px 10px;text-align:right;font-size:12px;color:#666">R$ ${(it.price||0).toLocaleString("pt-BR")}</td>
+          <td style="padding:7px 10px;text-align:right;font-size:12px;font-weight:700;color:#333">R$ ${(it.qty*(it.price||0)).toLocaleString("pt-BR")}</td>
+        </tr>`).join("");
+        planoHtml=`<div style="margin-bottom:18px">
+          <div style="color:#8B6914;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;border-left:4px solid #C6A46D;padding-left:8px">💰 Orçamento do Tratamento</div>
+          <table style="width:100%;border-collapse:collapse;border:1px solid #e5e5e5;border-radius:8px;overflow:hidden;margin-bottom:10px">
+            <thead><tr style="background:#f5f5f5">
+              <th style="padding:7px 10px;text-align:left;font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px">Procedimento</th>
+              <th style="padding:7px 10px;text-align:center;font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;width:50px">Qtd</th>
+              <th style="padding:7px 10px;text-align:right;font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px">Unit.</th>
+              <th style="padding:7px 10px;text-align:right;font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px">Total</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+          ${desc>0?`<div style="display:flex;justify-content:flex-end;gap:16px;margin-bottom:4px;font-size:12px;color:#666"><span>Subtotal</span><span>R$ ${total.toLocaleString("pt-BR")}</span></div><div style="display:flex;justify-content:flex-end;gap:16px;margin-bottom:8px;font-size:12px;color:#ef4444"><span>Desconto</span><span>− R$ ${desc.toLocaleString("pt-BR")}</span></div>`:""}
+          <div style="background:linear-gradient(135deg,#8B6914,#E2C99A,#C6A46D);border-radius:8px;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="color:#000;font-size:13px;font-weight:700">TOTAL DO TRATAMENTO</span>
+            <span style="color:#000;font-size:18px;font-weight:900">R$ ${totalDesc.toLocaleString("pt-BR")}</span>
+          </div>
+          <div style="text-align:center;font-size:13px;color:#555;margin-bottom:6px">${parcelas>1?parcelas+"× de R$ "+Math.round(totalDesc/parcelas).toLocaleString("pt-BR")+" (sem juros)":"Pagamento à vista"}</div>
+          ${pl.obs?`<div style="background:#f9f9f9;border:1px solid #e5e5e5;border-radius:7px;padding:10px 14px;font-size:12px;color:#555;line-height:1.7;white-space:pre-wrap"><strong style="color:#8B6914">Condições e observações:</strong> ${pl.obs}</div>`:""}
+          ${pl.validade?`<div style="font-size:11px;color:#888;margin-top:6px;text-align:right">Orçamento válido até: ${fmtDate(pl.validade)}</div>`:""}
+        </div>`;
+      }
+    }
+
     return`<div style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap">
-      <button onclick="set({tDone:null,tSig:null,tSigDra:null})" class="bg">← Novo Termo</button>
+      <button onclick="set({tDone:null,tSig:null,tSigDra:null,selTerm:null})" class="bg">← Novo Termo</button>
       <button onclick="window.print()" class="bp">🖨️ Imprimir</button>
       <button onclick="window.print()" class="bg" style="color:#C6A46D">💾 Salvar PDF</button>
     </div>
@@ -3952,22 +4311,24 @@ function pageTerms(){
             <span style="font-size:22px">${t.e}</span>
             <div style="text-align:left"><div style="color:#8B6914;font-weight:900;font-size:16px">${t.n}</div><div style="color:#888;font-size:11px">${t.sub}</div></div>
           </div>
-          <div style="color:#999;font-size:9px;letter-spacing:3px;text-transform:uppercase">TERMO DE CONSENTIMENTO LIVRE E ESCLARECIDO</div>
+          <div style="color:#999;font-size:9px;letter-spacing:3px;text-transform:uppercase">${isContrato?"CONTRATO DE PRESTAÇÃO DE SERVIÇOS":"TERMO DE CONSENTIMENTO LIVRE E ESCLARECIDO"}</div>
         </div>
         <div style="background:#f9f5e8;border-radius:8px;padding:10px 14px;margin-bottom:18px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">
           <div><div style="color:#888;font-size:9px;text-transform:uppercase;letter-spacing:1px">Paciente</div><div style="color:#111;font-weight:800;font-size:16px;margin-top:2px">${done.patient}</div></div>
           <div style="text-align:right"><div style="color:#888;font-size:9px;text-transform:uppercase;letter-spacing:1px">Data</div><div style="color:#555;font-weight:700;margin-top:2px">${done.date}</div></div>
         </div>
+        ${planoHtml}
         ${procsHtml?`<div style="margin-bottom:18px">
-          <div style="color:#8B6914;font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;border-left:4px solid #C6A46D;padding-left:8px">📋 Procedimentos do Protocolo ${t.n}</div>
+          <div style="color:#8B6914;font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;border-left:4px solid #C6A46D;padding-left:8px">${isContrato?"📋 Cláusulas Contratuais":"📋 Procedimentos do Protocolo "+t.n}</div>
           ${procsHtml}
         </div>`:""}
-        <div style="margin-bottom:14px"><div style="color:#8B6914;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">⚠️ Riscos e Efeitos Adversos</div><pre style="color:#555;font-size:12px;line-height:1.8">${t.riscos}</pre></div>
-        <div style="margin-bottom:14px"><div style="color:#8B6914;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">🚫 Contraindicações</div><div style="color:#555;font-size:12px;line-height:1.7">${t.contras}</div></div>
-        <div style="margin-bottom:18px"><div style="color:#8B6914;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">✅ Cuidados Pós-Procedimento</div><pre style="color:#555;font-size:12px;line-height:1.8">${t.pos}</pre></div>
+        ${!isContrato?`
+        <div style="margin-bottom:14px"><div style="color:#8B6914;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">⚠️ Riscos e Efeitos Adversos</div><pre style="color:#555;font-size:12px;line-height:1.8;white-space:pre-wrap">${t.riscos||""}</pre></div>
+        <div style="margin-bottom:14px"><div style="color:#8B6914;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">🚫 Contraindicações</div><div style="color:#555;font-size:12px;line-height:1.7">${t.contras||""}</div></div>
+        <div style="margin-bottom:18px"><div style="color:#8B6914;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">✅ Cuidados Pós-Procedimento</div><pre style="color:#555;font-size:12px;line-height:1.8;white-space:pre-wrap">${t.pos||""}</pre></div>`:""}
         <div style="background:#f9f5e8;border:1px solid #C6A46D44;border-radius:8px;padding:12px;margin-bottom:16px;text-align:center"><pre style="color:#8B6914;font-size:11px;line-height:1.8;font-style:italic;margin:0">${FRASE}</pre></div>
-        <div style="background:#fff8e8;border:1px solid #C6A46D55;border-radius:8px;padding:12px 14px;font-size:12px;color:#555;line-height:1.8;margin-bottom:14px"><strong style="color:#8B6914">Declaração do paciente:</strong> ${t.decl}</div>
-        <div style="background:#f9f9f9;border-radius:8px;padding:10px 14px;font-size:11.5px;color:#666;line-height:1.8;margin-bottom:22px;border:1px solid #e5e5e5">Declaro ter lido e compreendido todas as informações acima, ter tido oportunidade de esclarecer minhas dúvidas junto à Dra. Rossana Batista Fucks e aos profissionais do Método ROF™, e consinto livremente com a realização do procedimento descrito.</div>
+        <div style="background:#fff8e8;border:1px solid #C6A46D55;border-radius:8px;padding:12px 14px;font-size:12px;color:#555;line-height:1.8;margin-bottom:14px"><strong style="color:#8B6914">Declaração do paciente:</strong> ${isContrato?(t.declaracao||""):(t.decl||"")}</div>
+        <div style="background:#f9f9f9;border-radius:8px;padding:10px 14px;font-size:11.5px;color:#666;line-height:1.8;margin-bottom:22px;border:1px solid #e5e5e5">${isContrato?"Declaro que li e compreendi todos os termos e cláusulas deste contrato, bem como os procedimentos, valores e condições de pagamento acima descritos, concordando livre e espontaneamente com todas as condições estabelecidas.":"Declaro ter lido e compreendido todas as informações acima, ter tido oportunidade de esclarecer minhas dúvidas junto à Dra. Rossana Batista Fucks e aos profissionais do Método ROF™, e consinto livremente com a realização do procedimento descrito."}</div>
         <div style="display:flex;justify-content:space-between;gap:20px;padding-top:18px;border-top:1px solid #e5e5e5">
           <div style="flex:1;text-align:center"><div style="border-top:1px solid #ccc;padding-top:10px;color:#888;font-size:11px">Dra. Rossana Batista Fucks<br/><span style="color:#C6A46D;font-weight:700">CRO/SC 21403 · Método ROF™</span></div></div>
           <div style="flex:1;text-align:center">
@@ -4098,7 +4459,14 @@ window.confirmTerm=()=>{
   if(!pat||!sig||!selT){alert("Selecione o paciente e faça a assinatura.");return;}
   const doc={title:selT.n,date:todayFmt()};
   const nps=ST.pts.map(p=>p.name===pat?{...p,docs:[...(p.docs||[]),doc]}:p);
-  save("rof_pts",nps);set({pts:nps,tDone:{term:selT,patient:pat,sig,date:todayFmt()}});
+  const ptObj=ST.pts.find(p=>p.name===pat);
+  save("rof_pts",nps);
+  set({pts:nps,tDone:{term:selT,patient:pat,sig,sigDra:ST.tSigDra||null,plano:ptObj?.plano||null,date:todayFmt()}});
+};
+window.delDoc=function(ptId,idx){
+  if(!confirm("Excluir este documento assinado? Esta ação não pode ser desfeita."))return;
+  var nps=ST.pts.map(function(p){if(p.id!==ptId)return p;var docs=(p.docs||[]).filter(function(_,i){return i!==idx;});return Object.assign({},p,{docs:docs});});
+  save("rof_pts",nps);set({pts:nps});
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -4234,12 +4602,25 @@ window.addEventListener("resize",()=>{
 
 </script>
 </body>
-</htmlwindow.procSearch=function(val){
+<script>
+window.procSelect=function(el){
+  var id=el.getAttribute("data-id");
+  var name=el.getAttribute("data-name");
+  var inp=document.getElementById("ap-proc-inp");
+  var hid=document.getElementById("ap-proc");
+  var drop=document.getElementById("ap-proc-drop");
+  if(inp)inp.value=name;
+  if(hid)hid.value=id;
+  if(drop)drop.style.display="none";
+};
+window.procSearch=function(val){
   val=(val||"").trim().toLowerCase();
   var drop=document.getElementById("ap-proc-drop");
   if(!drop)return;
   if(val.length<1){drop.style.display="none";return;}
-  var matches=PROCS.filter(function(p){
+  var cat=(typeof ST!=="undefined"&&ST.aptCat)||"Todos";
+  var pool=cat==="Todos"?PROCS:PROCS.filter(function(p){return p.c===cat;});
+  var matches=pool.filter(function(p){
     return p.n.toLowerCase().includes(val)||p.c.toLowerCase().includes(val);
   }).slice(0,8);
   if(matches.length===0){drop.style.display="none";return;}
@@ -4251,7 +4632,7 @@ window.addEventListener("resize",()=>{
     d.style.cssText="padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(198,164,109,0.07)";
     d.addEventListener("mouseenter",function(){this.style.background="rgba(198,164,109,0.08)";});
     d.addEventListener("mouseleave",function(){this.style.background="";});
-    d.addEventListener("click",function(){procSelect(this);});
+    d.addEventListener("mousedown",function(e){e.preventDefault();procSelect(this);});
     d.innerHTML="<div style='color:#EAEAEA;font-size:13px;font-weight:500'>"+p.n+"</div>"
       +"<div style='color:#666;font-size:10px'>"+p.c+" · R$ "+p.p.toLocaleString("pt-BR")+"</div>";
     drop.appendChild(d);
@@ -4440,5 +4821,5 @@ function renderMes(apts,monthDays,selDate){
   h+="</div></div>";
   return h;
 }
-
->
+</script>
+</html>
