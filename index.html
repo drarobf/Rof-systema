@@ -3122,8 +3122,7 @@ window.gerarLinkContrato=async function(ptId,tipo){
     // Salva ID no paciente
     const pts=ST.pts.map(x=>sameId(x.id,ptId)?{...x,contratoLinkId:uuid,contratoLinkTipo:tipo,contratoLinkStatus:"pending"}:x);
     ST.pts=pts;save("rof_pts",pts);set({pts});
-    toast("Link gerado! Abrindo WhatsApp...","success");
-    setTimeout(()=>enviarLinkWhats(ptId),400);
+    toast("Link gerado! Use o botão 📱 Reenviar para enviar ao paciente.","success");
   }catch(e){
     console.error("Erro ao gerar link:",e);
     const msg=String((e&&e.message)||"");
@@ -5666,7 +5665,7 @@ const PLANO_STATUS={
 };
 
 // Condições que ficam como anel/borda no dente — não sobrescrevem as faces clínicas
-const OVERLAY_CONDS=new Set(["clareamento","faceta"]);
+const OVERLAY_CONDS=new Set(["clareamento","faceta","raspagem"]);
 
 function toothSVG(num,od,isDec,swapMD=false,isUpper=true,statusDot=""){
   const td=od[num]||{};
@@ -7645,6 +7644,7 @@ function renderPlano(p){
     +"<div style='display:flex;gap:8px;flex-wrap:wrap'>"
     +"<button onclick='printPlano("+pid+")' class='bp' style='flex:1;padding:11px'>🖨️ Imprimir / Salvar PDF</button>"
     +"<button onclick='sendWhats("+pid+",\"orcamento\",0)' class='bg' style='padding:11px;color:#22c55e;border-color:#22c55e44'>📱 WhatsApp</button>"
+    +"<button onclick='importarOrcamentoContrato("+pid+")' class='bg' style='padding:11px;color:#E2C99A;border-color:rgba(198,164,109,0.4)'>📋 Enviar p/ Contrato</button>"
     +"<button onclick='clearPlano("+pid+")' class='bg' style='border-color:#ef444444;color:#ef4444;padding:11px'>🗑 Limpar Orçamento</button>"
     +"</div>"
     +"</div>";
