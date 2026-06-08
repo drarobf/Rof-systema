@@ -2867,7 +2867,8 @@ window.renderContrato=function(p){
           <div style="display:flex;gap:5px">
             <button onclick="enviarLinkWhats(${pid})" class="bg" style="flex:1;font-size:10px;padding:6px;color:#22c55e;border-color:#22c55e22">📱 Reenviar</button>
             <button onclick="copiarLinkContrato(${pid})" class="bg" style="flex:1;font-size:10px;padding:6px;color:#60a5fa;border-color:#60a5fa22">📋 Copiar link</button>
-            <button onclick="novoContratoLink(${pid})" class="bg" style="font-size:10px;padding:6px;color:#444" title="Gerar novo link">↺ Novo</button>
+            <button onclick="novoContratoLink(${pid})" class="bg" style="flex:1;font-size:10px;padding:6px;color:#E2C99A;border-color:rgba(198,164,109,0.25)" title="Atualiza os dados do contrato mantendo o mesmo link">↺ Atualizar</button>
+            <button onclick="resetContratoLink(${pid})" class="bg" style="font-size:10px;padding:6px;color:#444;border-color:#33333344" title="Gera um link completamente novo (invalida o anterior)">🔄</button>
           </div>
         </div>`
       :`<button onclick="abrirModalContratoLink(${pid})" style="margin-top:8px;width:100%;padding:13px;background:linear-gradient(135deg,rgba(96,165,250,0.1),rgba(96,165,250,0.05));border:1px solid rgba(96,165,250,0.28);border-radius:10px;color:#60a5fa;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;transition:background 0.2s">🔗 Enviar Link para Assinar Online</button>`}
@@ -3113,16 +3114,29 @@ window.gerarLinkContrato=async function(ptId,tipo){
     geradoEm:new Date().toISOString()
   };
   try{
-    toast("Gerando link...","info");
-    const {data:rows,error}=await _sb.from("rof_intake")
-      .insert({dr_label:"rof_contrato_"+String(ptId),data:contratoData,status:"pending"})
-      .select("id").single();
-    if(error)throw error;
-    const uuid=rows.id;
-    // Salva ID no paciente
-    const pts=ST.pts.map(x=>sameId(x.id,ptId)?{...x,contratoLinkId:uuid,contratoLinkTipo:tipo,contratoLinkStatus:"pending"}:x);
-    ST.pts=pts;save("rof_pts",pts);set({pts});
-    toast("Link gerado! Use o botão 📱 Reenviar para enviar ao paciente.","success");
+    const jaTemLink=p.contratoLinkId;
+    if(jaTemLink){
+      // Atualiza a linha existente — o mesmo link continua válido, mas com dados atuais
+      toast("Atualizando contrato...","info");
+      const {error}=await _sb.from("rof_intake")
+        .update({data:contratoData,status:"pending"})
+        .eq("id",jaTemLink);
+      if(error)throw error;
+      const pts=ST.pts.map(x=>sameId(x.id,ptId)?{...x,contratoLinkTipo:tipo,contratoLinkStatus:"pending"}:x);
+      ST.pts=pts;save("rof_pts",pts);set({pts});
+      toast("Contrato atualizado! O link já enviado agora mostra os dados atuais.","success");
+    }else{
+      // Cria nova linha — primeiro link para este paciente
+      toast("Gerando link...","info");
+      const {data:rows,error}=await _sb.from("rof_intake")
+        .insert({dr_label:"rof_contrato_"+String(ptId),data:contratoData,status:"pending"})
+        .select("id").single();
+      if(error)throw error;
+      const uuid=rows.id;
+      const pts=ST.pts.map(x=>sameId(x.id,ptId)?{...x,contratoLinkId:uuid,contratoLinkTipo:tipo,contratoLinkStatus:"pending"}:x);
+      ST.pts=pts;save("rof_pts",pts);set({pts});
+      toast("Link gerado! Use o botão 📱 Reenviar para enviar ao paciente.","success");
+    }
   }catch(e){
     console.error("Erro ao gerar link:",e);
     const msg=String((e&&e.message)||"");
@@ -3164,7 +3178,13 @@ window.copiarLinkContrato=function(ptId){
   }
 };
 
+// "↺ Atualizar" — atualiza o contrato existente no Supabase sem trocar o UUID/link
 window.novoContratoLink=function(ptId){
+  abrirModalContratoLink(ptId);
+};
+// "↺ Gerar link novo" — força criação de um link totalmente novo (ex: paciente que precisa reabrir do zero)
+window.resetContratoLink=function(ptId){
+  if(!confirm("Isso vai gerar um link NOVO — o link anterior ficará inválido. O paciente precisará do novo link. Tem certeza?"))return;
   const pts=ST.pts.map(x=>sameId(x.id,ptId)?{...x,contratoLinkId:null,contratoLinkTipo:null,contratoLinkStatus:null}:x);
   ST.pts=pts;save("rof_pts",pts);set({pts});
   setTimeout(()=>abrirModalContratoLink(ptId),200);

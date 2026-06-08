@@ -18,11 +18,11 @@
   to = "/.netlify/functions/api/:splat"
   status = 200
 
-# Redireciona a raiz para o sistema principal
+# Serve o sistema principal atual. Evita 301 permanente para o HTML legado.
 [[redirects]]
   from = "/"
-  to = "/Sistema-ROF.html"
-  status = 301
+  to = "/index.html"
+  status = 200
 
 # SPA fallback — garante que o index.html seja servido para qualquer rota
 [[redirects]]
