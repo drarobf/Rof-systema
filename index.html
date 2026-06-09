@@ -7151,7 +7151,10 @@ function pagePts(){
       </div>`;
     }
     else if(ptTab==="clinic"){
-      tc=renderOdontogram(p.odontogram||{},p.id)+
+      let _odHtml="";
+      try{_odHtml=renderOdontogram(p.odontogram||{},p.id);}
+      catch(e){console.error("renderOdontogram error:",e);_odHtml=`<div style="color:#ef4444;padding:12px;background:#1a0000;border-radius:8px;font-size:12px">⚠️ Erro ao carregar odontograma: ${e.message}</div>`;}
+      tc=_odHtml+
         renderPlanoClinicoOdontograma(p)+
         `<div style="margin-top:18px">
           ${[["Queixa principal","queixa"],["Diagnóstico","diagnostico"],["Plano de tratamento","plano_tto"],["Observações periodontais","perio_obs"]].map(([l,k])=>`
