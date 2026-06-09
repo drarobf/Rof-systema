@@ -5734,6 +5734,17 @@ function toothSVG(num,od,isDec,swapMD=false,isUpper=true,statusDot=""){
   </svg>`;
 }
 
+window.odToggleFace=function(f){
+  var fs=(ST.odFaces||["O"]).slice();
+  var i=fs.indexOf(f);
+  if(i>=0)fs.splice(i,1);else fs.push(f);
+  set({odFaces:fs.length>0?fs:["O"]});
+};
+window.odToggleAll=function(){
+  var all=["V","O","M","D","L"];
+  var allSel=all.every(function(f){return(ST.odFaces||[]).includes(f);});
+  set({odFaces:allSel?["O"]:all});
+};
 function renderOdontogram(od,ptId){
   const p=ST.pts.find(x=>sameId(x.id,ptId))||{};
   const plan=p.planoClinico||[];
@@ -5760,19 +5771,11 @@ function renderOdontogram(od,ptId){
     </button>`).join("");
   const allFaces=["V","O","M","D","L"];
   const allSelected=allFaces.every(f=>odFaces.includes(f));
-  const faceBtns=`
-    <button onclick="set({odFaces:${allSelected?"[\"O\"]":"[\"V\",\"O\",\"M\",\"D\",\"L\"]"}})"
-      style="padding:4px 10px;border-radius:6px;border:1px solid ${allSelected?G:BD};
-      background:${allSelected?"#C6A46D22":"transparent"};
-      cursor:pointer;font-family:Georgia,serif;font-size:10px;
-      color:${allSelected?GL:"#555"};font-weight:${allSelected?"700":"400"}">Todas</button>`
+  const faceBtns=
+    `<button onclick="odToggleAll()" style="padding:4px 10px;border-radius:6px;border:1px solid ${allSelected?G:BD};background:${allSelected?"#C6A46D22":"transparent"};cursor:pointer;font-family:Georgia,serif;font-size:10px;color:${allSelected?GL:"#555"};font-weight:${allSelected?"700":"400"}">Todas</button>`
     +FACES_LIST.map(f=>{
       const active=odFaces.includes(f.k);
-      return`<button onclick="(function(){var fs=${JSON.stringify(odFaces)};var i=fs.indexOf('${f.k}');if(i>=0)fs.splice(i,1);else fs.push('${f.k}');set({odFaces:fs.length>0?fs:['O']});})()"
-        style="padding:4px 8px;border-radius:6px;border:1px solid ${active?G:BD};
-        background:${active?"#C6A46D22":"transparent"};
-        cursor:pointer;font-family:Georgia,serif;font-size:10px;
-        color:${active?GL:"#555"};font-weight:${active?"700":"400"}">${f.l}</button>`;
+      return`<button onclick="odToggleFace('${f.k}')" style="padding:4px 8px;border-radius:6px;border:1px solid ${active?G:BD};background:${active?"#C6A46D22":"transparent"};cursor:pointer;font-family:Georgia,serif;font-size:10px;color:${active?GL:"#555"};font-weight:${active?"700":"400"}">${f.l}</button>`;
     }).join("");
   return`<div>
     <!-- Legenda de status do plano clínico -->
