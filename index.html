@@ -5829,7 +5829,7 @@ function renderOdontogram(od,ptId){
     <div style="color:#444;font-size:11px;margin-bottom:10px">
       Clique dente individual ou selecione grupo → marca
       <strong style="color:${COND[sel]?.c}">${COND[sel]?.l}</strong>
-      ${OVERLAY_CONDS.has(sel)?`<span style="color:#666">como <b style="color:${COND[sel]?.c}">anel colorido</b> (não altera condições das faces)</span>`:`na face <strong style="color:#C6A46D">${face==="todas"?"Todas":FACES_LIST.find(f=>f.k===face)?.l||face}</strong>`}
+      ${OVERLAY_CONDS.has(sel)?`<span style="color:#666">como <b style="color:${COND[sel]?.c}">anel colorido</b> (não altera condições das faces)</span>`:`na(s) face(s) <strong style="color:#C6A46D">${odFaces.length===5?"Todas":odFaces.map(k=>FACES_LIST.find(f=>f.k===k)?.l||k).join(", ")}</strong>`}
     </div>
     ${(()=>{
       const allConds=new Set();
@@ -7153,7 +7153,7 @@ function pagePts(){
     else if(ptTab==="clinic"){
       let _odHtml="";
       try{_odHtml=renderOdontogram(p.odontogram||{},p.id);}
-      catch(e){console.error("renderOdontogram error:",e);_odHtml=`<div style="color:#ef4444;padding:12px;background:#1a0000;border-radius:8px;font-size:12px">⚠️ Erro ao carregar odontograma: ${e.message}</div>`;}
+      catch(e){console.error("renderOdontogram error:",e);_odHtml=`<div style="color:#ef4444;padding:12px;background:#1a0000;border-radius:8px;font-size:12px;word-break:break-all">⚠️ Erro: <b>${e.message||String(e)}</b><br/><small style="color:#f87171;opacity:0.7">${(e.stack||"").substring(0,300)}</small></div>`;}
       tc=_odHtml+
         renderPlanoClinicoOdontograma(p)+
         `<div style="margin-top:18px">
