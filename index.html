@@ -5656,6 +5656,8 @@ const COND={
   restaurado: {l:"Restaurado",         c:"#22c55e",b:"#15803d"},
   restaurar:  {l:"Restaurar",          c:"#60a5fa",b:"#2563eb"},
   restauracao:{l:"Restauração",        c:"#34d399",b:"#059669"},
+  inlay:      {l:"Inlay",              c:"#fb923c",b:"#ea580c"},
+  onlay:      {l:"Onlay",              c:"#f472b6",b:"#db2777"},
   ausente:    {l:"Ausente",            c:"#6b7280",b:"#4b5563"},
   extraido:   {l:"Extraído",           c:"#991b1b",b:"#7f1d1d"},
   extrair:    {l:"Extrair (planej.)",  c:"#f59e0b",b:"#b45309"},
@@ -5685,7 +5687,8 @@ const PLANO_STATUS={
 };
 
 // Condições que ficam como anel/borda no dente — não sobrescrevem as faces clínicas
-const OVERLAY_CONDS=new Set(["clareamento","faceta","raspagem"]);
+// endodontia é overlay para poder coexistir com coroa/restauração na mesma face
+const OVERLAY_CONDS=new Set(["clareamento","faceta","raspagem","endodontia"]);
 
 function toothSVG(num,od,isDec,swapMD=false,isUpper=true,statusDot=""){
   const td=od[num]||{};
@@ -6211,6 +6214,14 @@ const SUGEST_PROC_POR_COND={
 
   // RESTAURADO (manutenção/troca) → polimento + nova restauração + ajuste oclusal
   restaurado:[20,21,50,10,11,12,13],
+
+  // INLAY → restauração indireta cerâmica/resina intracoronária
+  inlay:[72,11,12,13,20,21],
+  // (72 = inlay/onlay/overlay; 11-13 = restaurações; 20/21 = polimento/acabamento)
+
+  // ONLAY → restauração indireta extracoronária (cobre cúspides)
+  onlay:[72,67,11,12,13,60],
+  // (72 = inlay/onlay; 67 = coroa se desgaste maior; 60 = pino se necessário)
 
   // RESTAURAR (planejado) → restaurações por tamanho
   restaurar:[10,11,12,13,72,80],
