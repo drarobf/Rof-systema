@@ -4863,7 +4863,7 @@ function pageAgenda(){
       <div><label class="lbl">Data</label><input id="ap-date" type="date" value="${date}" class="inp"/></div>
       <div>
         <label class="lbl">Horário de início</label>
-        <select id="ap-time" class="inp">${SLOTS.map(s=>`<option value="${s}" ${s===ST.aptSlot?"selected":""}>${s}</option>`).join("")}</select>
+        <select id="ap-time" class="inp" onchange="set({aptSlot:this.value})">${SLOTS.map(s=>`<option value="${s}" ${s===ST.aptSlot?"selected":""}>${s}</option>`).join("")}</select>
       </div>
       <div>
         <label class="lbl">Duração da consulta</label>
