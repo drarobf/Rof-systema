@@ -4390,7 +4390,7 @@ const ST={
   bloqueios:load("rof_bloqueios",[]),
   selPt:null,ptTab:"info",
   agDate:todayISO(),agCat:"Todos",
-  ptSrc:"",odSel:"carie",odFace:"O",
+  ptSrc:"",odSel:"carie",odFaces:["O"],
   selTerm:null,tSig:null,tDraSig:null,tDone:null,sigMode:"draw",draSigMode:"draw",
   aiMsgs:[{r:"a",t:"Olá! Sou Júlia, secretária virtual do Método ROF™. Como posso ajudar hoje? 😊"}],
   aiInp:"",aiLoad:false,
@@ -5737,7 +5737,7 @@ function toothSVG(num,od,isDec,swapMD=false,isUpper=true,statusDot=""){
 function renderOdontogram(od,ptId){
   const p=ST.pts.find(x=>sameId(x.id,ptId))||{};
   const plan=p.planoClinico||[];
-  const sel=ST.odSel||"carie";const face=ST.odFace||"O";
+  const sel=ST.odSel||"carie";const odFaces=Array.isArray(ST.odFaces)&&ST.odFaces.length>0?ST.odFaces:["O"];
   const ptIdStr=jsArg(ptId);  // para onclick com aspas simples
   const ptIdDq=typeof ptId==="number"?ptId:"'"+String(ptId).replace(/'/g,"\\'")+"'";  // para onclick com aspas duplas
 
@@ -5758,12 +5758,22 @@ function renderOdontogram(od,ptId){
       color:${sel===k?v.c:"#555"};white-space:nowrap">
       <div style="width:9px;height:9px;border-radius:2px;background:${v.c};flex-shrink:0"></div>${v.l}
     </button>`).join("");
-  const faceBtns=[{k:"todas",l:"Todas"},...FACES_LIST].map(f=>`
-    <button onclick="set({odFace:'${f.k}'})" style="padding:4px 8px;border-radius:6px;
-      border:1px solid ${face===f.k?G:BD};
-      background:${face===f.k?"#C6A46D22":"transparent"};
+  const allFaces=["V","O","M","D","L"];
+  const allSelected=allFaces.every(f=>odFaces.includes(f));
+  const faceBtns=`
+    <button onclick="set({odFaces:${allSelected?"[\"O\"]":"[\"V\",\"O\",\"M\",\"D\",\"L\"]"}})"
+      style="padding:4px 10px;border-radius:6px;border:1px solid ${allSelected?G:BD};
+      background:${allSelected?"#C6A46D22":"transparent"};
       cursor:pointer;font-family:Georgia,serif;font-size:10px;
-      color:${face===f.k?GL:"#555"}">${f.l}</button>`).join("");
+      color:${allSelected?GL:"#555"};font-weight:${allSelected?"700":"400"}">Todas</button>`
+    +FACES_LIST.map(f=>{
+      const active=odFaces.includes(f.k);
+      return`<button onclick="(function(){var fs=${JSON.stringify(odFaces)};var i=fs.indexOf('${f.k}');if(i>=0)fs.splice(i,1);else fs.push('${f.k}');set({odFaces:fs.length>0?fs:['O']});})()"
+        style="padding:4px 8px;border-radius:6px;border:1px solid ${active?G:BD};
+        background:${active?"#C6A46D22":"transparent"};
+        cursor:pointer;font-family:Georgia,serif;font-size:10px;
+        color:${active?GL:"#555"};font-weight:${active?"700":"400"}">${f.l}</button>`;
+    }).join("");
   return`<div>
     <!-- Legenda de status do plano clínico -->
     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;padding:7px 10px;background:#0a0a0a;border-radius:6px;border:1px solid rgba(198,164,109,0.08);align-items:center">
@@ -5780,7 +5790,11 @@ function renderOdontogram(od,ptId){
       <div style="display:flex;gap:4px;flex-wrap:wrap">${condBtns}</div>
     </div>
     <div style="margin-bottom:10px">
-      <div class="lbl">Face do dente:</div>
+      <div class="lbl" style="display:flex;align-items:center;gap:6px">
+        Face(s) a marcar:
+        <span style="color:#C6A46D;font-size:10px;font-weight:700">${allSelected?"todas as faces":odFaces.length+"F selecionada"+(odFaces.length>1?"s":"")+": "+odFaces.join("+")}</span>
+        <span style="color:#555;font-size:9px">(clique para selecionar múltiplas)</span>
+      </div>
       <div style="display:flex;gap:4px;flex-wrap:wrap">${faceBtns}</div>
     </div>
     <!-- Seleção em grupo -->
@@ -5881,8 +5895,7 @@ window.clickTooth=t=>{
   const p=ST.pts.find(x=>sameId(x.id,ST.selPt));if(!p)return;
   const od={...(p.odontogram||{})};
   const sel=ST.odSel||"carie";
-  const face=ST.odFace||"O";
-  const faces=face==="todas"?["V","O","M","D","L"]:[face];
+  const faces=Array.isArray(ST.odFaces)&&ST.odFaces.length>0?ST.odFaces:["O"];
   const isOverlay=typeof OVERLAY_CONDS!=="undefined"&&OVERLAY_CONDS.has(sel);
   if(isOverlay){
     // Overlay: marca como anel colorido sem sobrescrever faces clínicas
@@ -5905,8 +5918,7 @@ window.clickTooth=t=>{
 window.aplicarCondicaoGrupo=function(ptId,teeth){
   const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p)return;
   const sel=ST.odSel||"carie";
-  const face=ST.odFace||"O";
-  const faces=face==="todas"?["V","O","M","D","L"]:[face];
+  const faces=Array.isArray(ST.odFaces)&&ST.odFaces.length>0?ST.odFaces:["O"];
   const od={...(p.odontogram||{})};
   if(OVERLAY_CONDS.has(sel)){
     // Overlay: marca como anel colorido sem sobrescrever faces clínicas
@@ -6349,6 +6361,19 @@ window.abrirPlanoClinicoModal=function(tooth,cond,faces){
   </div>`;
   document.body.appendChild(modal);
   _modalProcSug=true;
+  // Auto-seleciona restauração pelo número de faces (restaurar, carie, fratura)
+  const RESTO_CONDS=["restaurar","restauracao","carie","fratura","inlay","onlay"];
+  if(RESTO_CONDS.includes(cond)&&faces.length>=1){
+    const nf=Math.min(faces.length,4);
+    const procIdMap={1:10,2:11,3:12,4:13};
+    const autoId=procIdMap[nf];
+    if(autoId){
+      setTimeout(()=>{
+        const sel=document.getElementById("modal-proc");
+        if(sel){sel.value=String(autoId);syncOdontoProcPrice();}
+      },50);
+    }
+  }
   // Esc fecha
   modal.addEventListener("click",e=>{if(e.target===modal)modal.remove();});
 };
