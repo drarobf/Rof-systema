@@ -6129,8 +6129,30 @@ function renderPlanoClinicoOdontograma(p){
       </div>
     </div>`;
   }
-  // Ordena por dente
-  const ordenado=[...plan].sort((a,b)=>(a.tooth||0)-(b.tooth||0));
+  // Agrupa itens perArch (evita multiplicação por dente em prótese, profilaxia, clareamento, etc.)
+  function agruparPlan(items){
+    const result=[];
+    const seen={};
+    const sorted=[...items].sort((a,b)=>(a.tooth||0)-(b.tooth||0));
+    for(const it of sorted){
+      const pr=PROCS.find(x=>x.id===it.procId);
+      if(pr&&pr.perArch){
+        const key=it.procId+"_"+(it.price||pr.p||0)+"_"+(it.status||"planejado");
+        if(!seen[key]){
+          const teeth=it._teeth&&it._teeth.length?it._teeth:(it.tooth?[it.tooth]:[]);
+          seen[key]={...it,tooth:null,_teeth:teeth,_groupIds:[it.id]};
+          result.push(seen[key]);
+        }else{
+          if(it.tooth)seen[key]._teeth.push(it.tooth);
+          seen[key]._groupIds.push(it.id);
+        }
+      }else{
+        result.push(it);
+      }
+    }
+    return result;
+  }
+  const ordenado=agruparPlan(plan);
   const planejados=ordenado.filter(it=>it.status==="planejado");
   const iniciados=ordenado.filter(it=>it.status==="iniciado");
   const feitos=ordenado.filter(it=>it.status==="feito");
@@ -6142,16 +6164,21 @@ function renderPlanoClinicoOdontograma(p){
     const condInfo=COND[it.cond]||{l:it.cond,c:"#888"};
     const facesLbl=it.faces?.length===5?"todas":(it.faces||[]).join(", ");
     const st=PLANO_STATUS[it.status]||PLANO_STATUS.planejado;
+    const toothLbl=it._teeth&&it._teeth.length>0?it._teeth.join(", "):(it.tooth||"—");
+    const dentesLabel=it._groupIds?"por procedimento":(it.tooth?"dente "+it.tooth:"");
+    const removeOnclick=it._groupIds
+      ?"removerProcDoPlano(["+it._groupIds.join(",")+"])"
+      :"removerProcDoPlano("+it.id+")";
     return `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:${it.status==="feito"?"rgba(34,197,94,0.05)":it.status==="iniciado"?"rgba(245,158,11,0.04)":"#0a0a0a"};border-radius:6px;margin-bottom:4px;border-left:3px solid ${st.c}">
       <button onclick="ciclarStatusProc(${it.id})"
         style="background:${st.c}22;border:1px solid ${st.c}44;border-radius:8px;padding:8px 12px;color:${st.c};cursor:pointer;font-size:12px;font-family:Georgia,serif;flex-shrink:0;white-space:nowrap;min-width:44px;min-height:44px;touch-action:manipulation">${st.btn}</button>
-      <div style="background:${condInfo.c}22;color:${condInfo.c};font-size:10px;font-weight:800;width:32px;text-align:center;padding:3px 0;border-radius:4px;flex-shrink:0">${it.tooth}</div>
+      <div style="background:${condInfo.c}22;color:${condInfo.c};font-size:9px;font-weight:800;min-width:32px;text-align:center;padding:3px 4px;border-radius:4px;flex-shrink:0">${toothLbl}</div>
       <div style="flex:1;min-width:0">
         <div style="color:${it.status==="feito"?"#888":"#ddd"};font-size:12px;font-weight:600;${it.status==="feito"?"text-decoration:line-through":""}">${it.name}</div>
-        <div style="color:#555;font-size:10px">${condInfo.l} · ${facesLbl} ${it.obs?"· "+it.obs:""}</div>
+        <div style="color:#555;font-size:10px">${condInfo.l} · ${dentesLabel} ${it.obs?"· "+it.obs:""}</div>
       </div>
       <div style="color:#E2C99A;font-size:12px;font-weight:700;white-space:nowrap">R$ ${Number(it.price||0).toLocaleString("pt-BR")}</div>
-      <button onclick="removerProcDoPlano(${it.id})" style="background:none;border:none;color:#444;cursor:pointer;font-size:14px;padding:4px">🗑</button>
+      <button onclick="${removeOnclick}" style="background:none;border:none;color:#444;cursor:pointer;font-size:14px;padding:4px">🗑</button>
     </div>`;
   };
 
@@ -6504,12 +6531,13 @@ window.clearPlanoClinico=function(ptId){
   },"Limpar");
 };
 window.removerProcDoPlano=function(itemId){
+  const ids=Array.isArray(itemId)?itemId:[itemId];
+  const idSet=new Set(ids);
   const nps=ST.pts.map(p=>{
     if(!sameId(p.id,ST.selPt))return p;
-    return {...p,planoClinico:(p.planoClinico||[]).filter(it=>it.id!==itemId)};
+    return {...p,planoClinico:(p.planoClinico||[]).filter(it=>!idSet.has(it.id))};
   });
   save("rof_pts",nps);set({pts:nps});
-  // Re-renderiza o modal se ainda estiver aberto
   const m=document.getElementById("plano-clinico-modal");
   if(m&&_planoCtx.tooth){
     m.remove();
