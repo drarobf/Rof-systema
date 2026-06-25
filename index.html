@@ -2995,7 +2995,7 @@ window.copiarParcelasOrcamento=function(ptId){
   const subtotal=itens.reduce(function(s,i){
     var pr=PROCS.find(function(x){return x.id===i.procId;})||{p:0};
     var unit=Number(i.price)||(Number(pr.p)||0);
-    return s+(Number(i.qty)||1)*unit;
+    return s+(pr.perArch?unit:(Number(i.qty)||1)*unit);
   },0);
   const totalDesc=Math.max(0,subtotal-desc);
   const entrada=Number(plano.entrada||0);
@@ -4133,17 +4133,17 @@ const DEF_PROCS=[
   {id:13,n:"Restauração resina 4 faces",p:300,c:"Restaurações"},
   {id:14,n:"Restauração dente decíduo",p:120,c:"Restaurações"},
   // Prevenção
-  {id:20,n:"Profilaxia e polimento dentário",p:150,c:"Prevenção"},
-  {id:21,n:"Raspagem supragengival",p:200,c:"Prevenção"},
-  {id:22,n:"Raspagem subgengival por hemiarcada",p:280,c:"Prevenção"},
-  {id:23,n:"Aplicação tópica de flúor (ATF)",p:80,c:"Prevenção"},
-  {id:24,n:"Profilaxia e ATF infantil",p:120,c:"Prevenção"},
-  {id:25,n:"Sessão de laserterapia",p:200,c:"Prevenção"},
+  {id:20,n:"Profilaxia e polimento dentário",p:150,c:"Prevenção",perArch:true},
+  {id:21,n:"Raspagem supragengival",p:200,c:"Prevenção",perArch:true},
+  {id:22,n:"Raspagem subgengival por hemiarcada",p:280,c:"Prevenção",perArch:true},
+  {id:23,n:"Aplicação tópica de flúor (ATF)",p:80,c:"Prevenção",perArch:true},
+  {id:24,n:"Profilaxia e ATF infantil",p:120,c:"Prevenção",perArch:true},
+  {id:25,n:"Sessão de laserterapia",p:200,c:"Prevenção",perArch:true},
   // Clareamento
-  {id:30,n:"Clareamento caseiro (moldeiras)",p:450,c:"Clareamento"},
-  {id:31,n:"Clareamento consultório 3 sessões",p:900,c:"Clareamento"},
-  {id:32,n:"Moldeira de acetato",p:150,c:"Clareamento"},
-  {id:33,n:"Moldeira clareamento",p:200,c:"Clareamento"},
+  {id:30,n:"Clareamento caseiro (moldeiras)",p:450,c:"Clareamento",perArch:true},
+  {id:31,n:"Clareamento consultório 3 sessões",p:900,c:"Clareamento",perArch:true},
+  {id:32,n:"Moldeira de acetato",p:150,c:"Clareamento",perArch:true},
+  {id:33,n:"Moldeira clareamento",p:200,c:"Clareamento",perArch:true},
   // Cirurgia
   {id:40,n:"Extração simples",p:300,c:"Cirurgia"},
   {id:41,n:"Extração de siso",p:650,c:"Cirurgia"},
@@ -4153,7 +4153,7 @@ const DEF_PROCS=[
   {id:45,n:"Aumento de coroa clínica unitária",p:800,c:"Cirurgia"},
   // Oclusão
   {id:50,n:"Ajuste oclusal",p:200,c:"Oclusão / ATM"},
-  {id:51,n:"Placa miorrelaxante",p:1200,c:"Oclusão / ATM"},
+  {id:51,n:"Placa miorrelaxante",p:1200,c:"Oclusão / ATM",perArch:true},
   // Endodontia
   {id:75,n:"Tratamento de canal — monorradicular",p:1200,c:"Endodontia"},
   {id:76,n:"Tratamento de canal — birradicular",p:1600,c:"Endodontia"},
@@ -4185,26 +4185,26 @@ const DEF_PROCS=[
   {id:92,n:"Contenção ortodôntica",p:450,c:"Ortodontia"},
   // Implante
   {id:100,n:"Implante dental",p:3500,c:"Implante"},
-  // Harmonização
-  {id:110,n:"Toxina botulínica",p:900,c:"Harmonização"},
-  {id:111,n:"Ácido hialurônico",p:1200,c:"Harmonização"},
-  {id:112,n:"Bioestimuladores de colágeno",p:1500,c:"Harmonização"},
-  {id:113,n:"PDRN",p:950,c:"Harmonização"},
-  {id:114,n:"Profhilo®",p:1800,c:"Harmonização"},
-  {id:115,n:"Peeling químico",p:650,c:"Harmonização"},
-  {id:116,n:"Microagulhamento",p:800,c:"Harmonização"},
-  {id:117,n:"Fios de sustentação",p:2500,c:"Harmonização"},
-  // Protocolos ROF
-  {id:200,n:"ROF White Glow™",p:900,c:"Protocolos ROF"},
-  {id:201,n:"ROF Veneer Glow™",p:3200,c:"Protocolos ROF"},
-  {id:202,n:"ROF Upper Lift™",p:1200,c:"Protocolos ROF"},
-  {id:203,n:"ROF Lips™",p:1400,c:"Protocolos ROF"},
-  {id:204,n:"ROF Balance™",p:2800,c:"Protocolos ROF"},
-  {id:205,n:"ROF Skin™",p:3500,c:"Protocolos ROF"},
-  {id:206,n:"ROF Contour™",p:4500,c:"Protocolos ROF"},
-  {id:207,n:"ROF Rejuvenate™",p:5500,c:"Protocolos ROF"},
-  {id:208,n:"ROF Osseum™",p:3500,c:"Protocolos ROF"},
-  {id:209,n:"ROF Prime™",p:18000,c:"Protocolos ROF"},
+  // Harmonização — sempre por procedimento
+  {id:110,n:"Toxina botulínica",p:900,c:"Harmonização",perArch:true},
+  {id:111,n:"Ácido hialurônico",p:1200,c:"Harmonização",perArch:true},
+  {id:112,n:"Bioestimuladores de colágeno",p:1500,c:"Harmonização",perArch:true},
+  {id:113,n:"PDRN",p:950,c:"Harmonização",perArch:true},
+  {id:114,n:"Profhilo®",p:1800,c:"Harmonização",perArch:true},
+  {id:115,n:"Peeling químico",p:650,c:"Harmonização",perArch:true},
+  {id:116,n:"Microagulhamento",p:800,c:"Harmonização",perArch:true},
+  {id:117,n:"Fios de sustentação",p:2500,c:"Harmonização",perArch:true},
+  // Protocolos ROF — sempre por protocolo
+  {id:200,n:"ROF White Glow™",p:900,c:"Protocolos ROF",perArch:true},
+  {id:201,n:"ROF Veneer Glow™",p:3200,c:"Protocolos ROF",perArch:true},
+  {id:202,n:"ROF Upper Lift™",p:1200,c:"Protocolos ROF",perArch:true},
+  {id:203,n:"ROF Lips™",p:1400,c:"Protocolos ROF",perArch:true},
+  {id:204,n:"ROF Balance™",p:2800,c:"Protocolos ROF",perArch:true},
+  {id:205,n:"ROF Skin™",p:3500,c:"Protocolos ROF",perArch:true},
+  {id:206,n:"ROF Contour™",p:4500,c:"Protocolos ROF",perArch:true},
+  {id:207,n:"ROF Rejuvenate™",p:5500,c:"Protocolos ROF",perArch:true},
+  {id:208,n:"ROF Osseum™",p:3500,c:"Protocolos ROF",perArch:true},
+  {id:209,n:"ROF Prime™",p:18000,c:"Protocolos ROF",perArch:true},
 ];
 function normBusca(s){
   return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
@@ -6076,24 +6076,24 @@ window.adicionarProcAoPlanoGrupo=function(){
   const {ptId,teeth,cond,faces}=_planoGrupoCtx;
   const ts=Date.now();
   let novosItens,toastMsg;
-  if(OVERLAY_PRECO_UNICO.has(cond)){
-    // Faceta/endodontia: UM item com preço TOTAL da arcada/tratamento
+  if(OVERLAY_PRECO_UNICO.has(cond)||pr.perArch){
+    // Preço único por procedimento (faceta, endodontia, clareamento, profilaxia, prótese, protocolo, etc.)
     novosItens=[{
       id:ts,
       tooth:null,
-      _teeth:teeth,  // referência visual
+      _teeth:teeth,
       faces:[],
       cond,
       procId,
-      name:pr.n+" ("+teeth.length+" dentes: "+teeth.join(", ")+")",
-      price,         // preço TOTAL — não por dente
+      name:pr.n+(teeth.length>1?" ("+teeth.length+" dentes)":""),
+      price,
       status,
       obs,
       createdAt:new Date().toISOString(),
     }];
-    toastMsg=`✓ ${pr.n} — R$ ${price.toLocaleString("pt-BR")} total (${teeth.length} dentes)`;
+    toastMsg=`✓ ${pr.n} — R$ ${price.toLocaleString("pt-BR")} (por procedimento)`;
   }else{
-    // Procedimento normal + clareamento + profilaxia: um item por dente
+    // Procedimento por dente (restaurações, extrações, implantes, etc.)
     novosItens=teeth.map((t,i)=>({
       id:ts+i,
       tooth:t,
@@ -7865,7 +7865,7 @@ function renderPlano(p){
   var total=itens.reduce(function(s,i){
     var pr=PROCS.find(function(x){return x.id===i.procId;})||{p:0};
     var unit=Number(i.price)||(Number(pr.p)||0);
-    return s+(Number(i.qty)||1)*unit;
+    return s+(pr.perArch?unit:(Number(i.qty)||1)*unit);
   },0);
   var desc=Number(plano.desconto||0);
   var totalDesc=Math.max(0,total-desc);
@@ -7892,10 +7892,14 @@ function renderPlano(p){
     :itens.map(function(it,i){
       var pr=PROCS.find(function(p){return p.id===it.procId;})||{n:it.name||"?",p:it.price||0};
       var unit=Number(it.price)||(Number(pr.p)||0);
-      var rowTotal=Number(it.qty||1)*unit;
+      var isFlat=!!(pr.perArch);
+      var rowTotal=isFlat?unit:Number(it.qty||1)*unit;
+      var qtyCell=isFlat
+        ?"<td style='text-align:center;color:#888;font-size:11px'>—</td>"
+        :"<td><input type='number' min='1' max='99' value='"+it.qty+"' onchange='planoQty("+pid+","+i+",this.value)' style='width:46px;background:#0e0e0e;border:1px solid #2a1f0a;border-radius:6px;padding:4px 6px;color:#ddd;font-size:12px;text-align:center'/></td>";
       return "<tr style='background:"+(i%2===0?"transparent":"#0e0e0e44")+"'>"
-        +"<td style='color:#ddd;font-size:12px'>"+pr.n+(it.name&&it.name!==pr.n?"<br><span style='color:#555;font-size:10px'>"+it.name+"</span>":"")+"</td>"
-        +"<td><input type='number' min='1' max='99' value='"+it.qty+"' onchange='planoQty("+pid+","+i+",this.value)' style='width:46px;background:#0e0e0e;border:1px solid #2a1f0a;border-radius:6px;padding:4px 6px;color:#ddd;font-size:12px;text-align:center'/></td>"
+        +"<td style='color:#ddd;font-size:12px'>"+pr.n+(it.name&&it.name!==pr.n?"<br><span style='color:#555;font-size:10px'>"+it.name+"</span>":"")+(isFlat?"<br><span style='color:#888;font-size:9px'>por procedimento</span>":"")+"</td>"
+        +qtyCell
         +"<td style='color:#bbb;font-size:12px'>R$ "+unit.toLocaleString("pt-BR")+"</td>"
         +"<td style='color:#E2C99A;font-weight:700;font-size:12px'>R$ "+rowTotal.toLocaleString("pt-BR")+"</td>"
         +"<td><button onclick='planoRemove("+pid+","+i+")' style='background:none;border:none;color:#333;cursor:pointer;font-size:14px'>🗑</button></td>"
@@ -7978,7 +7982,7 @@ function calcPlanoTotals(plano){
   var total=itens.reduce(function(s,i){
     var pr=PROCS.find(function(x){return x.id===i.procId;})||{p:0};
     var unit=Number(i.price)||(Number(pr.p)||0);
-    return s+(Number(i.qty)||1)*unit;
+    return s+(pr.perArch?unit:(Number(i.qty)||1)*unit);
   },0);
   var desc=Number(plano.desconto||0);
   var totalDesc=Math.max(0,total-desc);
@@ -8041,9 +8045,9 @@ window.planoAdd=function(ptId){
   var qtyEl=document.getElementById("plano-qty");
   var priceEl=document.getElementById("plano-price");
   var procId=Number(selEl&&selEl.value||0);
-  var qty=Math.max(1,Number(qtyEl&&qtyEl.value||1));
   var pr=PROCS.find(function(p){return p.id===procId;});
   if(!pr){toast("Selecione um procedimento.","warning");return;}
+  var qty=pr.perArch?1:Math.max(1,Number(qtyEl&&qtyEl.value||1));
   var customPrice=priceEl&&priceEl.value?Number(priceEl.value):pr.p;
   var item={procId:pr.id,name:pr.n,qty:qty,price:customPrice};
   updPlano(ptId,function(pl){return Object.assign({},pl,{itens:(pl.itens||[]).concat([item])});});
@@ -8069,7 +8073,7 @@ window.printPlano=function(ptId){
   var total=itens.reduce(function(s,i){
     var pr=PROCS.find(function(x){return x.id===i.procId;})||{p:0};
     var unit=Number(i.price)||(Number(pr.p)||0);
-    return s+(Number(i.qty)||1)*unit;
+    return s+(pr.perArch?unit:(Number(i.qty)||1)*unit);
   },0);
   var desc=Number(plano.desconto||0);
   var totalDesc=Math.max(0,total-desc);
@@ -8080,11 +8084,13 @@ window.printPlano=function(ptId){
 
   var itensRows=itens.map(function(it,i){
     var pr=PROCS.find(function(x){return x.id===it.procId;})||{n:it.name||"?",p:it.price||0};
+    var unit=Number(it.price)||(Number(pr.p)||0);
+    var rowTotal=pr.perArch?unit:it.qty*unit;
     return "<tr style='border-bottom:1px solid #e5e5e5'>"
       +"<td style='padding:8px 12px;font-size:12px;color:#333'>"+pr.n+"</td>"
-      +"<td style='padding:8px 12px;text-align:center;font-size:12px;color:#666'>"+it.qty+"</td>"
-      +"<td style='padding:8px 12px;text-align:right;font-size:12px;color:#666'>R$ "+(it.price||pr.p).toLocaleString("pt-BR")+"</td>"
-      +"<td style='padding:8px 12px;text-align:right;font-size:12px;font-weight:700;color:#333'>R$ "+(it.qty*(it.price||pr.p)).toLocaleString("pt-BR")+"</td>"
+      +"<td style='padding:8px 12px;text-align:center;font-size:12px;color:#666'>"+(pr.perArch?"—":it.qty)+"</td>"
+      +"<td style='padding:8px 12px;text-align:right;font-size:12px;color:#666'>R$ "+unit.toLocaleString("pt-BR")+"</td>"
+      +"<td style='padding:8px 12px;text-align:right;font-size:12px;font-weight:700;color:#333'>R$ "+rowTotal.toLocaleString("pt-BR")+"</td>"
       +"</tr>";
   }).join("");
 
