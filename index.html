@@ -1721,7 +1721,7 @@ function _applyCloudData(k,v){
     if(k==='rof_apts'&&Array.isArray(v))ST.apts=v;
     else if(k==='rof_bloqueios'&&Array.isArray(v))ST.bloqueios=v;
     else if(k==='rof_stk'&&Array.isArray(v))ST.stk=v;
-    else if(k==='rof_procs'&&Array.isArray(v))PROCS=v;
+    else if(k==='rof_procs'&&Array.isArray(v))PROCS=applyDefFlags(v);
     else if(k==='rof_caixa'&&Array.isArray(v))ST.caixa=v;
     // (rof_whats_templates e rof_orientacoes são lidos sob demanda do localStorage)
   }
@@ -1800,7 +1800,7 @@ window.importarBackup=function(){
         ST.apts=Array.isArray(data["rof_apts"])?data["rof_apts"]:[];
         ST.stk=Array.isArray(data["rof_stk"])?data["rof_stk"]:[];
         ST.caixa=Array.isArray(data["rof_caixa"])?data["rof_caixa"]:[];
-        if(Array.isArray(data["rof_procs"])&&data["rof_procs"].length)PROCS=data["rof_procs"];
+        if(Array.isArray(data["rof_procs"])&&data["rof_procs"].length)PROCS=applyDefFlags(data["rof_procs"]);
         set({});
         toast(`Backup restaurado! ${ST.pts.length} paciente(s) recuperado(s).`,"success");
       }catch(err){toast("Erro ao restaurar: "+err.message,"error");}
@@ -4232,7 +4232,14 @@ function procOptionsHTML(list){
   }).join("");
 }
 // Load editable procs from storage — com auto-merge de novos procedimentos do padrão
-let PROCS=sortProcsAlpha(load("rof_procs",DEF_PROCS));
+function applyDefFlags(procs){
+  // Aplica perArch do DEF_PROCS em procedimentos existentes (migração transparente)
+  return procs.map(function(p){
+    var def=DEF_PROCS.find(function(d){return d.id===p.id;});
+    return (def&&def.perArch)?Object.assign({},p,{perArch:true}):p;
+  });
+}
+let PROCS=sortProcsAlpha(applyDefFlags(load("rof_procs",DEF_PROCS)));
 // Auto-merge: se DEF_PROCS tem ids que não estão em PROCS, adiciona (preserva valores editados pelo usuário)
 (function autoMergeProcs(){
   const idsExistentes=new Set(PROCS.map(p=>p.id));
