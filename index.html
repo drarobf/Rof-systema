@@ -7352,8 +7352,8 @@ function pagePts(){
   var DEMO_NAMES_=["Ana Paula Ferreira","Carlos Eduardo Lima","Mariana Souza"];
   var hasDemo_=pts.some(function(p){return DEMO_NAMES_.includes(p.name);});
   var demoCount_=pts.filter(function(p){return DEMO_NAMES_.includes(p.name);}).length;
-  const _ptNames=new Set(pts.map(p=>p.name));
-  const _orphans=[...new Set(ST.apts.map(a=>a.patient))].filter(n=>n&&!_ptNames.has(n)).sort((a,b)=>a.localeCompare(b,"pt-BR"));
+  const _ptNames=new Set(pts.map(p=>(p.name||"").toLowerCase().trim()));
+  const _orphans=[...new Set(ST.apts.map(a=>a.patient))].filter(n=>n&&!_ptNames.has(n.toLowerCase().trim())).sort((a,b)=>a.localeCompare(b,"pt-BR"));
   const orphanBanner=_orphans.length===0?"":
     `<div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:12px 14px;margin-bottom:12px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
