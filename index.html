@@ -6578,17 +6578,21 @@ window.importarPlanoClinicoParaOrcamento=function(ptId){
     const unitPrice=Number(it.price)||(pr?Number(pr.p):0)||0;
     const key=it.procId+"_"+unitPrice;
     if(!agrupado[key]){
-      agrupado[key]={procId:it.procId,name:it.name,price:unitPrice,qty:0,dentes:[]};
+      agrupado[key]={procId:it.procId,name:it.name,price:unitPrice,qty:0,dentes:[],perArch:!!(pr&&pr.perArch)};
     }
     agrupado[key].qty++;
-    agrupado[key].dentes.push(it.tooth);
+    if(it.tooth)agrupado[key].dentes.push(it.tooth);
+    if(it._teeth)it._teeth.forEach(t=>{if(t&&!agrupado[key].dentes.includes(t))agrupado[key].dentes.push(t);});
   });
-  const novosItens=Object.values(agrupado).map(it=>({
-    procId:it.procId,
-    name:it.name+" (dentes "+it.dentes.join(", ")+")",
-    qty:it.qty,
-    price:it.price,  // sempre número positivo graças ao fallback acima
-  }));
+  const novosItens=Object.values(agrupado).map(it=>{
+    const dentesLabel=it.dentes.length>0?" (dentes "+it.dentes.join(", ")+")":"";
+    return{
+      procId:it.procId,
+      name:it.name+dentesLabel,
+      qty:it.perArch?1:it.qty,
+      price:it.price,
+    };
+  });
   const nps=ST.pts.map(x=>{
     if(!sameId(x.id,ptId))return x;
     const plano=x.plano||{itens:[],obs:"",desconto:0,parcelas:1,validade:""};
@@ -10636,7 +10640,7 @@ window.sendWhats=function(ptId,tipo,docId){
     var subtotal=itens.reduce(function(s,i){
       var pr=PROCS.find(function(x){return x.id===i.procId;})||{p:0};
       var unit=Number(i.price)||(Number(pr.p)||0);
-      return s+(Number(i.qty)||1)*unit;
+      return s+(pr.perArch?unit:(Number(i.qty)||1)*unit);
     },0);
     var desc=Number(plano.desconto||0);
     var totalDesc=Math.max(0,subtotal-desc);
@@ -10646,8 +10650,9 @@ window.sendWhats=function(ptId,tipo,docId){
       var pr=PROCS.find(function(p){return p.id===it.procId;});
       var nome=pr?pr.n:(it.name||"Procedimento");
       var preco=it.price||(pr?pr.p:0);
-      var totalItem=it.qty*preco;
-      var qtdLbl=it.qty>1?" (x"+it.qty+")":"";
+      var isFlat=!!(pr&&pr.perArch);
+      var totalItem=isFlat?preco:it.qty*preco;
+      var qtdLbl=(!isFlat&&it.qty>1)?" (x"+it.qty+")":"";
       return "• "+nome+qtdLbl+" — R$ "+totalItem.toLocaleString("pt-BR");
     }).join("\n");
 
