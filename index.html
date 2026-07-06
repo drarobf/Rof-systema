@@ -12348,20 +12348,19 @@ window.addEventListener("resize",()=>{
 
 
 window.procSearch=function(val){
-  val=(val||"").trim().toLowerCase();
+  var normVal=normBusca(val||"");
   var drop=document.getElementById("ap-proc-drop");
   if(!drop)return;
   var allProcs=[...PROCS].sort(function(a,b){return(a.n||"").localeCompare(b.n||"","pt-BR");});
-  // Sem texto: mostra todos os procedimentos
   var matches;
-  if(val.length<1){
+  if(normVal.length<1){
     matches=allProcs;
   } else {
     matches=allProcs.filter(function(p){
-      return p.n.toLowerCase().includes(val)||p.c.toLowerCase().includes(val);
+      return normBusca(p.n).includes(normVal)||normBusca(p.c||"").includes(normVal);
     }).sort(function(a,b){
-      var an=a.n.toLowerCase(),bn=b.n.toLowerCase();
-      var aS=an.startsWith(val),bS=bn.startsWith(val);
+      var an=normBusca(a.n),bn=normBusca(b.n);
+      var aS=an.startsWith(normVal),bS=bn.startsWith(normVal);
       if(aS&&!bS)return -1;if(!aS&&bS)return 1;
       return an.localeCompare(bn,"pt-BR");
     });
