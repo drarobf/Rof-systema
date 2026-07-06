@@ -4920,9 +4920,9 @@ function pageAgenda(){
       <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">${catBtns}</div>
       <div style="position:relative">
         <input id="ap-proc-inp" class="inp" placeholder="🔍 Buscar procedimento..."
-          oninput="procSearch(this.value)" onfocus="procSearch(this.value)" autocomplete="off"/>
+          oninput="procSearch(this.value)" onfocus="procSearch(this.value)" onblur="setTimeout(()=>{var d=document.getElementById('ap-proc-drop');if(d)d.style.display='none';},200)" autocomplete="off"/>
         <input type="hidden" id="ap-proc" value=""/>
-        <div id="ap-proc-drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:#11100E;border:1px solid rgba(198,164,109,0.3);border-radius:0 0 10px 10px;z-index:999;max-height:210px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.8)"></div>
+        <div id="ap-proc-drop" style="display:none;position:fixed;background:#11100E;border:1px solid rgba(198,164,109,0.3);border-radius:0 0 10px 10px;z-index:9999;max-height:210px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.8)"></div>
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:12px">
@@ -12351,6 +12351,8 @@ window.procSearch=function(val){
   var normVal=normBusca(val||"");
   var drop=document.getElementById("ap-proc-drop");
   if(!drop)return;
+  var inp=document.getElementById("ap-proc-inp");
+  if(inp){var r=inp.getBoundingClientRect();drop.style.left=r.left+"px";drop.style.top=r.bottom+"px";drop.style.width=r.width+"px";}
   var allProcs=[...PROCS].sort(function(a,b){return(a.n||"").localeCompare(b.n||"","pt-BR");});
   var matches;
   if(normVal.length<1){
