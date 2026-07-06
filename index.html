@@ -2432,7 +2432,7 @@ window.abrirAddEtapaModal=function(ptId){
       <button onclick="document.getElementById('add-etapa-modal').remove()" style="background:none;border:none;color:#666;font-size:22px;cursor:pointer;line-height:1">×</button>
     </div>
     <label class="lbl">Procedimento</label>
-    <input id="aem-search" class="inp" placeholder="🔍 Buscar procedimento..." oninput="filtrarAem(this.value)" style="margin-bottom:6px"/>
+    <input id="aem-search" class="inp" placeholder="🔍 Buscar procedimento..." oninput="filtrarAem(this.value)" onfocus="filtrarAem(this.value)" style="margin-bottom:6px"/>
     <select id="aem-proc" class="inp" size="6" style="height:140px;margin-bottom:10px" onchange="(function(){var s=document.getElementById('aem-proc');var o=s.options[s.selectedIndex];document.getElementById('aem-val').value=o?o.dataset.price||'':''})()">
       <option value="">Selecionar...</option>
       ${procOpts}
@@ -2459,11 +2459,8 @@ window.abrirAddEtapaModal=function(ptId){
 };
 window.filtrarAem=function(q){
   const sel=document.getElementById("aem-proc");if(!sel)return;
-  const lq=(q||"").toLowerCase();
-  Array.from(sel.options).forEach(o=>{
-    if(!o.value)return;
-    o.style.display=(!lq||o.text.toLowerCase().includes(lq))?"":"none";
-  });
+  const lista=filterProcsAlpha(PROCS,q||"");
+  sel.innerHTML='<option value="">Selecionar...</option>'+lista.map(pr=>`<option value="${pr.id}" data-price="${pr.p||0}">${escOpt(pr.n)}${pr.p?' — R$ '+Number(pr.p).toLocaleString("pt-BR"):""}</option>`).join("");
 };
 window.confirmarAddEtapa=function(ptId){
   const sel=document.getElementById("aem-proc");
