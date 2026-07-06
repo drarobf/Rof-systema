@@ -1642,7 +1642,7 @@ const _syncQ = (()=>{try{return JSON.parse(localStorage.getItem("rof_sync_q")||"
 (function(){const heavy=new Set(['rof_pt_xrays']);let c=false;for(let i=_syncQ.length-1;i>=0;i--){if(_syncQ[i]&&heavy.has(_syncQ[i].k)){_syncQ.splice(i,1);c=true;}}if(c)try{localStorage.setItem("rof_sync_q",JSON.stringify(_syncQ));}catch{}})();
 const _pendingCloudWrites = new Set();
 const _lastLocalWriteAt = {};
-const SYNC_QUEUE_MAX_AGE_MS = 24*60*60*1000;
+const SYNC_QUEUE_MAX_AGE_MS = 30*24*60*60*1000;
 function _persistSyncQueue(){
   localStorage.setItem("rof_sync_q",JSON.stringify(_syncQ));
 }
@@ -1701,9 +1701,27 @@ function _setSyncBadge(ok){
 }
 function _applyCloudData(k,v){
   if(k==='rof_pts'&&Array.isArray(v)){
-    // Fotos e Rx estão em chaves separadas — mescla de volta sem salvar no rof_pts
-    localStorage.setItem(k,JSON.stringify(v));
-    ST.pts=mergePtXrays(mergePtPhotos(v.map(normalizePt)));
+    // Mescla: preserva pacientes criados localmente enquanto nuvem estava offline
+    const localPts=(()=>{try{return JSON.parse(localStorage.getItem(k)||"[]");}catch{return[];}})();
+    const cloudIds=new Set(v.map(p=>p&&p.id).filter(Boolean));
+    const localOnly=localPts.filter(p=>p&&p.id&&!cloudIds.has(p.id));
+    const merged=localOnly.length?[...v,...localOnly]:v;
+    if(localOnly.length){
+      _sb.from('rof_store').upsert({key:k,data:merged},{onConflict:'key'}).catch(()=>{});
+    }
+    localStorage.setItem(k,JSON.stringify(merged));
+    ST.pts=mergePtXrays(mergePtPhotos(merged.map(normalizePt)));
+  }else if(k==='rof_apts'&&Array.isArray(v)){
+    // Mescla: preserva agendamentos criados localmente enquanto nuvem estava offline
+    const localApts=(()=>{try{return JSON.parse(localStorage.getItem(k)||"[]");}catch{return[];}})();
+    const cloudIds=new Set(v.map(a=>a&&a.id).filter(Boolean));
+    const localOnly=localApts.filter(a=>a&&a.id&&!cloudIds.has(a.id));
+    const merged=localOnly.length?[...v,...localOnly]:v;
+    if(localOnly.length){
+      _sb.from('rof_store').upsert({key:k,data:merged},{onConflict:'key'}).catch(()=>{});
+    }
+    localStorage.setItem(k,JSON.stringify(merged));
+    ST.apts=merged;
   }else if(k==='rof_pt_photos'&&v&&typeof v==='object'&&!Array.isArray(v)){
     // Mescla: fotos locais têm prioridade sobre nuvem (evita sync apagar foto recém-tirada)
     const localPh=_loadPtPhotos();
