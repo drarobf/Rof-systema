@@ -8136,18 +8136,18 @@ window.confirmarEnvioFinanceiro=function(ptId){
   var novas=[];
   var base=dtInicio;
   if(modo==="unica"){
-    novas.push({id:"cr_"+Date.now()+"_0",paciente:p.name,desc:resumoProcs,total:t.totalDesc,pago:0,vencimento:base,status:"pendente"});
+    novas.push({id:"cr_"+Date.now()+"_0",paciente:p.name,desc:resumoProcs,total:t.totalDesc,pago:0,vencimento:base,status:"pendente",tipo:"consultorio"});
   } else {
     var offset=0;
     if(t.entrada>0){
-      novas.push({id:"cr_"+Date.now()+"_e",paciente:p.name,desc:"Entrada — "+resumoProcs,total:t.entrada,pago:0,vencimento:base,status:"pendente"});
+      novas.push({id:"cr_"+Date.now()+"_e",paciente:p.name,desc:"Entrada — "+resumoProcs,total:t.entrada,pago:0,vencimento:base,status:"pendente",tipo:"consultorio"});
       offset=30;
     }
     if(t.parcelas===1){
-      novas.push({id:"cr_"+Date.now()+"_1",paciente:p.name,desc:"À vista — "+resumoProcs,total:t.restante,pago:0,vencimento:addDias(base,offset),status:"pendente"});
+      novas.push({id:"cr_"+Date.now()+"_1",paciente:p.name,desc:"À vista — "+resumoProcs,total:t.restante,pago:0,vencimento:addDias(base,offset),status:"pendente",tipo:"consultorio"});
     } else {
       for(var i=0;i<t.parcelas;i++){
-        novas.push({id:"cr_"+Date.now()+"_"+i,paciente:p.name,desc:"Parcela "+(i+1)+"/"+t.parcelas+" — "+resumoProcs,total:t.vlrParcela,pago:0,vencimento:addDias(base,offset+i*30),status:"pendente"});
+        novas.push({id:"cr_"+Date.now()+"_"+i,paciente:p.name,desc:"Parcela "+(i+1)+"/"+t.parcelas+" — "+resumoProcs,total:t.vlrParcela,pago:0,vencimento:addDias(base,offset+i*30),status:"pendente",tipo:"consultorio"});
       }
     }
   }
@@ -10062,11 +10062,22 @@ window.savePagamento=function(ptId){
   var nps=ST.pts.map(function(p){if(!sameId(p.id,ptId))return p;return Object.assign({},p,{pagamentos:(p.pagamentos||[]).concat([pg])});});
   save("rof_pts",nps);
   // Pagamentos recebidos vão diretamente para A Receber
-  var newCR={};
   if(tipo==="entrada"){
     var pt=ST.pts.find(function(p){return sameId(p.id,ptId);});
-    newCR={id:"cr_pt_"+Date.now(),paciente:pt?pt.name:"",desc:desc,total:val,pago:val,vencimento:date,status:"quitado",tipo:"consultorio",origem:"pagamento"};
-    var nsCR=(ST.contasReceber||[]).concat([newCR]);
+    var ptName=pt?pt.name:"";
+    var existCR=(ST.contasReceber||[]).find(function(c){
+      return c.paciente===ptName&&c.status!=="quitado"&&c.origem!=="pagamento";
+    });
+    var nsCR;
+    if(existCR){
+      nsCR=(ST.contasReceber||[]).map(function(c){
+        if(c.id!==existCR.id)return c;
+        var np=(Number(c.pago)||0)+val;
+        return Object.assign({},c,{pago:np,status:np>=(Number(c.total)||0)?"quitado":"parcial"});
+      });
+    } else {
+      nsCR=(ST.contasReceber||[]).concat([{id:"cr_pt_"+pg.id,paciente:ptName,desc:desc,total:val,pago:val,vencimento:date,status:"quitado",tipo:"consultorio",origem:"pagamento"}]);
+    }
     save("rof_contas_receber",nsCR);
     document.getElementById("pag-modal")?.remove();
     set({pts:nps,contasReceber:nsCR});
@@ -10078,7 +10089,16 @@ window.savePagamento=function(ptId){
 window.delPagamento=function(ptId,pgId){
   rConfirm("Excluir este pagamento?",function(){
     var nps=ST.pts.map(function(p){if(!sameId(p.id,ptId))return p;return Object.assign({},p,{pagamentos:(p.pagamentos||[]).filter(function(x){return x.id!==pgId;})});});
-    save("rof_pts",nps);set({pts:nps});toast("Pagamento excluído.","success");
+    save("rof_pts",nps);
+    var crId="cr_pt_"+pgId;
+    var nsCR=(ST.contasReceber||[]).filter(function(c){return c.id!==crId;});
+    if(nsCR.length!==(ST.contasReceber||[]).length){
+      save("rof_contas_receber",nsCR);
+      set({pts:nps,contasReceber:nsCR});
+    } else {
+      set({pts:nps});
+    }
+    toast("Pagamento excluído.","success");
   },"Excluir Pagamento");
 };
 
@@ -10617,7 +10637,10 @@ function pageFinanceiro(){
       todos.push(Object.assign({},pg,{paciente:p.name}));
     });
   });
-  todos.sort(function(a,b){return b.date.localeCompare(a.date);});
+  (load("rof_caixa",[])||[]).forEach(function(e){
+    todos.push({id:e.id,desc:e.descricao||e.desc||"Lançamento",valor:Number(e.valor||0),date:e.date||todayISO(),forma:e.formaPag||e.forma||"",tipo:e.tipo==="despesa"?"saida":(e.tipo||"entrada"),paciente:e.paciente||"Caixa"});
+  });
+  todos.sort(function(a,b){return (b.date||"").localeCompare(a.date||"");});
   var periodo=ST.finPeriodo||"mes";
   var now=new Date();
   var filtered=todos.filter(function(pg){
@@ -10960,18 +10983,23 @@ window.registrarPagamentoReceber=function(id){
     <button onclick="document.getElementById('pag-cr-modal').remove()" style="background:none;border:none;color:#555;cursor:pointer;font-size:22px">✕</button>
   </div><div class="mbd">
     <div style="color:#888;font-size:13px;margin-bottom:14px">${conta.paciente} — ${conta.desc}<br><span style="color:#ef4444">Saldo em aberto: R$ ${saldo.toLocaleString("pt-BR",{minimumFractionDigits:2})}</span></div>
-    <div style="margin-bottom:10px"><label class="lbl">Valor recebido agora (R$) *</label>
+    <div style="margin-bottom:10px"><label class="lbl">Valor recebido (R$) *</label>
       <input id="pg-valor" type="number" min="0.01" step="0.01" class="inp" placeholder="0,00"/>
     </div>
-    <div style="margin-bottom:10px"><label class="lbl">Forma de pagamento</label>
-      <select id="pg-forma" class="inp">
-        <option value="">—</option>
-        <option value="Dinheiro">Dinheiro</option>
-        <option value="PIX">PIX</option>
-        <option value="Cartão débito">Cartão débito</option>
-        <option value="Cartão crédito">Cartão crédito</option>
-        <option value="Transferência">Transferência</option>
-      </select>
+    <div class="g2" style="margin-bottom:10px">
+      <div><label class="lbl">Data</label>
+        <input id="pg-date" type="date" value="${todayISO()}" class="inp"/>
+      </div>
+      <div><label class="lbl">Forma</label>
+        <select id="pg-forma" class="inp">
+          <option value="">—</option>
+          <option value="Dinheiro">Dinheiro</option>
+          <option value="PIX">PIX</option>
+          <option value="Cartão débito">Cartão débito</option>
+          <option value="Cartão crédito">Cartão crédito</option>
+          <option value="Transferência">Transferência</option>
+        </select>
+      </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:14px">
       <button onclick="confirmarPagamentoReceber('${id}')" class="bp" style="flex:1">✅ Confirmar</button>
@@ -10984,6 +11012,7 @@ window.registrarPagamentoReceber=function(id){
 window.confirmarPagamentoReceber=function(id){
   var valor=parseFloat(document.getElementById("pg-valor")?.value)||0;
   var forma=document.getElementById("pg-forma")?.value||"";
+  var date=document.getElementById("pg-date")?.value||todayISO();
   if(!valor||valor<=0){toast("Informe o valor recebido.","warning");return;}
   var ns=ST.contasReceber.map(function(c){
     if(c.id!==id)return c;
@@ -10991,12 +11020,19 @@ window.confirmarPagamentoReceber=function(id){
     var status=novoPago>=Number(c.total)?'quitado':'parcial';
     return Object.assign({},c,{pago:novoPago,status});
   });
-  save("rof_contas_receber",ns);set({contasReceber:ns});
+  save("rof_contas_receber",ns);
   var conta=ns.find(function(c){return c.id===id;});
-  if(conta){
+  var pt=conta?ST.pts.find(function(p){return p.name===conta.paciente;}):null;
+  if(pt){
+    var pg={id:Date.now(),desc:"Recebimento: "+conta.desc,valor:valor,date:date,forma:forma,tipo:"entrada"};
+    var nps=ST.pts.map(function(p){return p.id===pt.id?Object.assign({},p,{pagamentos:(p.pagamentos||[]).concat([pg])}):p;});
+    save("rof_pts",nps);
+    set({pts:nps,contasReceber:ns});
+  } else {
     var caixa=load("rof_caixa",[]);
-    var entrada={id:"cx_"+Date.now(),tipo:"entrada",valor,desc:"Recebimento: "+conta.desc,cat:"Tratamento",forma,date:todayISO(),paciente:conta.paciente};
+    var entrada={id:"cx_"+Date.now(),tipo:"entrada",valor,desc:"Recebimento: "+(conta?conta.desc:""),forma,date:date};
     save("rof_caixa",[...caixa,entrada]);
+    set({contasReceber:ns});
   }
   document.getElementById("pag-cr-modal")?.remove();
   toast("Pagamento registrado.","success");
