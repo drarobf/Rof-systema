@@ -4863,7 +4863,8 @@ function fmtPhone(p){
 window.whatsConfirm=function(aptId){
   const a=ST.apts.find(x=>x.id===aptId);if(!a)return;
   const pr=PROCS.find(p=>p.id===a.procId);
-  const pt=ST.pts.find(p=>p.name===a.patient);
+  let pt=a.patientId?ST.pts.find(p=>p.id===a.patientId):null;
+  if(!pt&&a.patient){const nm=a.patient.toLowerCase().trim();pt=ST.pts.find(p=>(p.name||"").toLowerCase().trim()===nm);}
   const phone=fmtPhone(pt?.phone||"");
   if(!phone){
     toast("Paciente sem telefone cadastrado. Adicione o WhatsApp na ficha.","warning");
