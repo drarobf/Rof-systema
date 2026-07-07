@@ -11261,9 +11261,9 @@ function pageContasReceber(){
   var tmpls=ST.recorrentesReceber||[];
   var hoje=todayISO();
   var mesAtual=hoje.slice(0,7);
-  var totalEmAberto=contas.filter(function(c){return c.status!=="quitado";}).reduce(function(s,c){return s+((Number(c.total)||0)-(Number(c.pago)||0));},0);
-  var totalRecebidoMes=contas.filter(function(c){return(c.vencimento||"").slice(0,7)===mesAtual;}).reduce(function(s,c){return s+(Number(c.pago)||0);},0);
-  var vencidas=contas.filter(function(c){return c.status!=="quitado"&&c.vencimento&&c.vencimento<hoje;});
+  var totalEmAberto=contas.filter(function(c){return c.status!=="quitado"&&!c.excluida;}).reduce(function(s,c){return s+((Number(c.total)||0)-(Number(c.pago)||0));},0);
+  var totalRecebidoMes=contas.filter(function(c){return(c.vencimento||"").slice(0,7)===mesAtual&&!c.excluida;}).reduce(function(s,c){return s+(Number(c.pago)||0);},0);
+  var vencidas=contas.filter(function(c){return c.status!=="quitado"&&c.vencimento&&c.vencimento<hoje&&!c.excluida;});
   function badge(c){
     if(c.status==="quitado")return`<span style="background:#22c55e22;color:#22c55e;border:1px solid #22c55e55;border-radius:20px;padding:2px 8px;font-size:9px;font-weight:700">✓ Quitado</span>`;
     if(c.status==="parcial")return`<span style="background:#60a5fa22;color:#60a5fa;border:1px solid #60a5fa55;border-radius:20px;padding:2px 8px;font-size:9px;font-weight:700">◑ Parcial</span>`;
@@ -11297,13 +11297,15 @@ function pageContasReceber(){
     </div>`;
   }
   function secaoTipoRec(tipoStr){
-    var tc=contas.filter(function(c){return(c.tipo||"consultorio")===tipoStr;});
+    var tc=contas.filter(function(c){return(c.tipo||"consultorio")===tipoStr&&!c.excluida;});
     var tt=tmpls.filter(function(t){return(t.tipo||"consultorio")===tipoStr&&t.ativo!==false;});
     var html="";
+    var CATS_PESSOAL=["aluguel","salario","pensao"];
     CATS_RECEBER.forEach(function(cat){
       var ct=tt.filter(function(t){return t.categoria===cat.k;});
       var ci=tc.filter(function(c){return ct.some(function(t){return t.id===c.templateId;})||(c.categoria===cat.k&&c.templateId);});
-      if(!ct.length&&!ci.length)return;
+      var sempreVisivel=tipoStr==="pessoal"&&CATS_PESSOAL.indexOf(cat.k)!==-1;
+      if(!ct.length&&!ci.length&&!sempreVisivel)return;
       ci.sort(function(a,b){return(b.vencimento||"").localeCompare(a.vencimento||"");});
       var tmpl=ct[0];
       html+=`<div style="margin-bottom:14px">
@@ -11315,18 +11317,30 @@ function pageContasReceber(){
           <button onclick="excluirTemplateRecorrenteReceber('${tmpl.id}')" style="background:none;border:none;color:#333;cursor:pointer;font-size:11px;padding:1px 4px" title="Remover">🗑</button>`
           :`<button onclick="abrirNovaContaRecorrenteReceberModal('${tipoStr}','${cat.k}')" style="background:none;border:1px dashed #333;color:#444;cursor:pointer;font-size:9px;padding:2px 7px;border-radius:20px">+ add recorrente</button>`}
         </div>
-        ${ci.length?`<div class="card" style="padding:0;overflow:hidden">${ci.map(rowRec).join("")}</div>`:`<div style="color:#333;font-size:10px;padding:2px 0 4px">Sem lançamentos este período.</div>`}
+        ${ci.length?`<div class="card" style="padding:0;overflow:hidden">${ci.map(rowRec).join("")}</div>`:`<div style="color:#333;font-size:10px;padding:2px 0 4px">${!ct.length?"Não configurado.":"Sem lançamentos este período."}</div>`}
       </div>`;
     });
-    // Avulsas (sem templateId nem recorrente flag de recorrente)
+    // Avulsas (sem templateId nem recorrente flag)
     var avulsas=tc.filter(function(c){return!c.templateId&&!c.recorrente;});
+    var lblAvulsas=tipoStr==="consultorio"?"💳 Pacientes":"💳 Outras";
     if(avulsas.length){
       var pend=avulsas.filter(function(c){return c.status!=="quitado";});
       var quit=avulsas.filter(function(c){return c.status==="quitado";});
       html+=`<div style="margin-bottom:8px">
-        <div style="color:#555;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:5px">💳 Avulsas / Pacientes</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+          <span style="color:#555;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase">${lblAvulsas}</span>
+          <button onclick="abrirNovaContaReceberModal(null,'${tipoStr}')" style="background:none;border:1px dashed #333;color:#444;cursor:pointer;font-size:9px;padding:2px 7px;border-radius:20px">+ add</button>
+        </div>
         ${pend.length?`<div class="card" style="padding:0;overflow:hidden;margin-bottom:8px">${pend.map(rowRec).join("")}</div>`:""}
         ${quit.length?`<details><summary style="color:#444;font-size:10px;cursor:pointer;margin-bottom:4px">✓ Quitadas (${quit.length})</summary><div class="card" style="padding:0;overflow:hidden">${quit.map(rowRec).join("")}</div></details>`:""}
+      </div>`;
+    } else if(tipoStr==="consultorio"){
+      html+=`<div style="margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+          <span style="color:#555;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase">💳 Pacientes</span>
+          <button onclick="abrirNovaContaReceberModal(null,'consultorio')" style="background:none;border:1px dashed #333;color:#444;cursor:pointer;font-size:9px;padding:2px 7px;border-radius:20px">+ add</button>
+        </div>
+        <div style="color:#333;font-size:10px;padding:2px 0 4px">Sem lançamentos este período.</div>
       </div>`;
     }
     if(!html)return`<div style="color:#333;font-size:12px;padding:10px 0;text-align:center">Nenhuma conta cadastrada.</div>`;
@@ -11434,12 +11448,12 @@ window.excluirTemplateRecorrenteReceber=function(id){
   },"Remover");
 };
 
-window.abrirNovaContaReceberModal=function(idEditar){
+window.abrirNovaContaReceberModal=function(idEditar, tipoPresel){
   var edit=idEditar?ST.contasReceber.find(function(c){return c.id===idEditar;}):null;
   document.getElementById("nova-cr-modal")?.remove();
   var m=document.createElement("div");m.className="mbg";m.id="nova-cr-modal";
   var ptOpts=ST.pts.map(function(p){return`<option value="${p.name.replace(/"/g,"&quot;")}"/>`;}).join("");
-  var editTipo=(edit&&edit.tipo)||"consultorio";
+  var editTipo=(edit&&edit.tipo)||(tipoPresel||"consultorio");
   m.innerHTML=`<div class="mbx" style="max-width:420px"><div class="mhd">
     <div class="mhd-title">💳 ${edit?"Editar":"Nova"} Conta a Receber</div>
     <button onclick="document.getElementById('nova-cr-modal').remove()" style="background:none;border:none;color:#555;cursor:pointer;font-size:22px">✕</button>
@@ -11562,7 +11576,15 @@ window.confirmarPagamentoReceber=function(id){
 };
 window.excluirContaReceber=function(id){
   rConfirm("Excluir esta conta?",function(){
-    var ns=ST.contasReceber.filter(function(c){return c.id!==id;});
+    var c=(ST.contasReceber||[]).find(function(x){return x.id===id;});
+    var ns;
+    if(c&&c.templateId&&c.mesRef){
+      ns=(ST.contasReceber||[]).map(function(x){
+        return x.id===id?Object.assign({},x,{excluida:true,status:"cancelado"}):x;
+      });
+    } else {
+      ns=(ST.contasReceber||[]).filter(function(x){return x.id!==id;});
+    }
     save("rof_contas_receber",ns);set({contasReceber:ns});
     toast("Conta removida.","success");
   },"Excluir");
