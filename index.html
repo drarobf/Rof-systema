@@ -11301,10 +11301,11 @@ function pageContasReceber(){
     var tt=tmpls.filter(function(t){return(t.tipo||"consultorio")===tipoStr&&t.ativo!==false;});
     var html="";
     var CATS_PESSOAL=["aluguel","salario","pensao"];
+    var CATS_CONSULTORIO=["convenio","impao"];
     CATS_RECEBER.forEach(function(cat){
       var ct=tt.filter(function(t){return t.categoria===cat.k;});
       var ci=tc.filter(function(c){return ct.some(function(t){return t.id===c.templateId;})||(c.categoria===cat.k&&c.templateId);});
-      var sempreVisivel=tipoStr==="pessoal"&&CATS_PESSOAL.indexOf(cat.k)!==-1;
+      var sempreVisivel=(tipoStr==="pessoal"&&CATS_PESSOAL.indexOf(cat.k)!==-1)||(tipoStr==="consultorio"&&CATS_CONSULTORIO.indexOf(cat.k)!==-1);
       if(!ct.length&&!ci.length&&!sempreVisivel)return;
       ci.sort(function(a,b){return(b.vencimento||"").localeCompare(a.vencimento||"");});
       var tmpl=ct[0];
