@@ -1636,7 +1636,7 @@ const _sb=(()=>{
 
 // rof_pt_xrays fica FORA do sync — RX em base64 são grandes demais para o Supabase free tier
 // rof_pt_photos retornou ao sync — fotos de perfil são comprimidas para ~15-25KB cada (seguro)
-const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_procs','rof_caixa','rof_whats_templates','rof_orientacoes','rof_bloqueios','rof_pt_photos','rof_contas_pagar','rof_labs','rof_contas_receber']);
+const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_procs','rof_caixa','rof_whats_templates','rof_orientacoes','rof_bloqueios','rof_pt_photos','rof_contas_pagar','rof_labs','rof_contas_receber','rof_contas_recorrentes']);
 const _syncQ = (()=>{try{return JSON.parse(localStorage.getItem("rof_sync_q")||"[]");}catch{return[];}})();
 // Remove imediatamente quaisquer syncs de RX já enfileirados (xrays são grandes demais)
 (function(){const heavy=new Set(['rof_pt_xrays']);let c=false;for(let i=_syncQ.length-1;i>=0;i--){if(_syncQ[i]&&heavy.has(_syncQ[i].k)){_syncQ.splice(i,1);c=true;}}if(c)try{localStorage.setItem("rof_sync_q",JSON.stringify(_syncQ));}catch{}})();
@@ -1740,6 +1740,7 @@ function _applyCloudData(k,v){
     if(k==='rof_apts'&&Array.isArray(v))ST.apts=v;
     else if(k==='rof_bloqueios'&&Array.isArray(v))ST.bloqueios=v;
     else if(k==='rof_contas_pagar'&&Array.isArray(v))ST.contasPagar=v;
+    else if(k==='rof_contas_recorrentes'&&Array.isArray(v))ST.contasRecorrentes=v;
     else if(k==='rof_labs'&&Array.isArray(v))ST.labs=v;
     else if(k==='rof_procs'&&Array.isArray(v))PROCS=applyDefFlags(v);
     else if(k==='rof_caixa'&&Array.isArray(v))ST.caixa=v;
@@ -1782,7 +1783,7 @@ window.forceCloudSync=forceCloudSync;
 
 // ── BACKUP EXPORT / IMPORT ────────────────────────────────────────
 window.exportarBackup=function(){
-  const keys=["rof_pts","rof_apts","rof_procs","rof_caixa","rof_whats_templates","rof_orientacoes","rof_pt_photos","rof_contas_pagar","rof_labs","rof_contas_receber"];
+  const keys=["rof_pts","rof_apts","rof_procs","rof_caixa","rof_whats_templates","rof_orientacoes","rof_pt_photos","rof_contas_pagar","rof_labs","rof_contas_receber","rof_contas_recorrentes"];
   const backup={_v:1,_ts:new Date().toISOString(),_app:"Sistema ROF"};
   keys.forEach(k=>{try{backup[k]=JSON.parse(localStorage.getItem(k)||"null");}catch{backup[k]=null;}});
   const blob=new Blob([JSON.stringify(backup,null,2)],{type:"application/json"});
@@ -1806,7 +1807,7 @@ window.importarBackup=function(){
       try{
         const data=JSON.parse(ev.target.result);
         if(!data||!data._app||data._app!=="Sistema ROF")throw new Error("Arquivo inválido — não é um backup do Sistema ROF.");
-        const keys=["rof_pts","rof_apts","rof_procs","rof_caixa","rof_whats_templates","rof_orientacoes","rof_pt_photos","rof_contas_pagar","rof_labs","rof_contas_receber"];
+        const keys=["rof_pts","rof_apts","rof_procs","rof_caixa","rof_whats_templates","rof_orientacoes","rof_pt_photos","rof_contas_pagar","rof_labs","rof_contas_receber","rof_contas_recorrentes"];
         keys.forEach(k=>{
           if(data[k]!==null&&data[k]!==undefined){
             localStorage.setItem(k,JSON.stringify(data[k]));
@@ -1819,6 +1820,7 @@ window.importarBackup=function(){
         ST.pts=mergePtPhotos(ST.pts);
         ST.apts=Array.isArray(data["rof_apts"])?data["rof_apts"]:[];
         ST.contasPagar=Array.isArray(data["rof_contas_pagar"])?data["rof_contas_pagar"]:[];
+        ST.contasRecorrentes=Array.isArray(data["rof_contas_recorrentes"])?data["rof_contas_recorrentes"]:[];
         ST.labs=Array.isArray(data["rof_labs"])?data["rof_labs"]:[];
         ST.caixa=Array.isArray(data["rof_caixa"])?data["rof_caixa"]:[];
         if(Array.isArray(data["rof_procs"])&&data["rof_procs"].length)PROCS=applyDefFlags(data["rof_procs"]);
@@ -4280,6 +4282,7 @@ const ST={
   apts:load("rof_apts",DEFAPTS),
   bloqueios:load("rof_bloqueios",[]),
   contasPagar:load("rof_contas_pagar",[]),
+  contasRecorrentes:load("rof_contas_recorrentes",[]),
   labs:load("rof_labs",[]),
   contasReceber:load("rof_contas_receber",[]),
   selPt:null,ptTab:"info",
@@ -10705,124 +10708,300 @@ function pageFinanceiro(){
 }
 
 // ═══════════════════════════════════════════════════════════════
-// CONTAS A PAGAR
+// CONTAS A PAGAR — CATEGORIAS E RECORRENTES
 // ═══════════════════════════════════════════════════════════════
-function pageContasPagar(){
+var CATS_PAGAR=[
+  {k:"aluguel",    l:"Aluguel",              ic:"🏠",c:"#C6A46D"},
+  {k:"condominio", l:"Condomínio",           ic:"🏢",c:"#60a5fa"},
+  {k:"luz",        l:"Luz / Energia",        ic:"⚡",c:"#f59e0b"},
+  {k:"internet",   l:"Internet",             ic:"🌐",c:"#22c55e"},
+  {k:"lixo_hosp",  l:"Lixo Hospitalar",      ic:"🗑️",c:"#ef4444"},
+  {k:"dental",     l:"Materiais Dentários",  ic:"🦷",c:"#a78bfa"},
+  {k:"escola",     l:"Escola",               ic:"📚",c:"#f97316"},
+  {k:"cartoes",    l:"Cartões",              ic:"💳",c:"#ec4899"},
+  {k:"outras",     l:"Outras",              ic:"📦",c:"#888888"},
+];
+function getCatInfo(k){return CATS_PAGAR.find(function(c){return c.k===k;})||CATS_PAGAR[CATS_PAGAR.length-1];}
+
+function autoGerarContasRecorrentes(){
+  var mesAtual=todayISO().slice(0,7);
+  var tmpls=ST.contasRecorrentes||[];
   var contas=ST.contasPagar||[];
+  var need=tmpls.filter(function(t){
+    return t.ativo!==false&&!contas.some(function(c){return c.templateId===t.id&&c.mesRef===mesAtual;});
+  });
+  if(!need.length)return;
+  var novos=need.map(function(t){
+    var dia=Number(t.diaVencimento)||10;
+    var venc=mesAtual+"-"+String(dia).padStart(2,"0");
+    var ci=getCatInfo(t.categoria);
+    return{id:"cp_"+t.id+"_"+mesAtual,templateId:t.id,mesRef:mesAtual,desc:t.desc||(ci?ci.l:"Recorrente"),fornecedor:t.fornecedor||"",valor:Number(t.valorBase||0),vencimento:venc,status:"pendente",tipo:t.tipo||"consultorio",categoria:t.categoria||"outras",recorrente:true};
+  });
+  var ns=contas.concat(novos);
+  save("rof_contas_pagar",ns);
+  set({contasPagar:ns});
+}
+
+function pageContasPagar(){
+  setTimeout(autoGerarContasRecorrentes,0);
+  var contas=ST.contasPagar||[];
+  var tmpls=ST.contasRecorrentes||[];
   var hoje=todayISO();
   var mesAtual=hoje.slice(0,7);
   var totalPendente=contas.filter(function(c){return c.status==="pendente";}).reduce(function(s,c){return s+(Number(c.valor)||0);},0);
   var totalPagoMes=contas.filter(function(c){return c.status==="pago"&&(c.vencimento||"").slice(0,7)===mesAtual;}).reduce(function(s,c){return s+(Number(c.valor)||0);},0);
   var vencidas=contas.filter(function(c){return c.status==="pendente"&&c.vencimento&&c.vencimento<hoje;});
-  function badgeStatus(c){
-    if(c.status==="pago")return`<span style="background:#22c55e22;color:#22c55e;border:1px solid #22c55e55;border-radius:20px;padding:2px 10px;font-size:10px;font-weight:700">✓ Pago</span>`;
-    if(c.vencimento&&c.vencimento<hoje)return`<span style="background:#ef444422;color:#ef4444;border:1px solid #ef444455;border-radius:20px;padding:2px 10px;font-size:10px;font-weight:700">⚠ Vencida</span>`;
-    return`<span style="background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b55;border-radius:20px;padding:2px 10px;font-size:10px;font-weight:700">⏳ Pendente</span>`;
+  function badge(c){
+    if(c.status==="pago")return`<span style="background:#22c55e22;color:#22c55e;border:1px solid #22c55e55;border-radius:20px;padding:2px 8px;font-size:9px;font-weight:700">✓ Pago</span>`;
+    if(c.vencimento&&c.vencimento<hoje)return`<span style="background:#ef444422;color:#ef4444;border:1px solid #ef444455;border-radius:20px;padding:2px 8px;font-size:9px;font-weight:700">⚠ Vencida</span>`;
+    return`<span style="background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b55;border-radius:20px;padding:2px 8px;font-size:9px;font-weight:700">⏳ Pendente</span>`;
   }
-  function rowConta(c){
-    return`<div style="padding:12px 14px;border-bottom:1px solid rgba(198,164,109,0.08);display:flex;align-items:center;gap:10px">
+  function rowInst(c){
+    return`<div style="padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:8px">
       <div style="flex:1;min-width:0">
-        <div style="color:#ddd;font-size:13px;font-weight:600">${c.recorrente?"🔄 ":""}${c.desc||"—"}</div>
-        <div style="color:#666;font-size:11px;margin-top:2px">${c.fornecedor||""}${c.vencimento?" · Vence: "+fmtDate(c.vencimento):""}${c.recorrente?" · "+((c.frequencia||"mensal").charAt(0).toUpperCase()+(c.frequencia||"mensal").slice(1)):""}</div>
+        <div style="color:#ddd;font-size:12px;font-weight:600">${c.desc||"—"}</div>
+        <div style="color:#444;font-size:10px;margin-top:1px">${c.fornecedor||""}${c.vencimento?" · "+fmtDate(c.vencimento):""}</div>
       </div>
-      <div style="text-align:right;flex-shrink:0">
-        <div style="color:${GL};font-weight:800;font-size:14px">R$ ${Number(c.valor||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
-        <div style="margin-top:4px">${badgeStatus(c)}</div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
-        ${c.status==="pendente"?`<button onclick="pagarConta('${c.id}')" style="background:#22c55e22;border:1px solid #22c55e55;color:#22c55e;border-radius:6px;cursor:pointer;font-size:11px;padding:4px 8px;font-family:var(--font-body)">✓ Pagar</button>`:""}
-        <button onclick="excluirConta('${c.id}')" style="background:none;border:none;color:#555;cursor:pointer;font-size:16px;padding:2px">🗑</button>
+      <div style="color:${GL};font-weight:800;font-size:13px;white-space:nowrap">R$ ${Number(c.valor||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
+      <div style="flex-shrink:0">${badge(c)}</div>
+      <div style="display:flex;gap:2px;flex-shrink:0">
+        ${c.status==="pendente"?`<button onclick="pagarConta('${c.id}')" style="background:#22c55e22;border:1px solid #22c55e55;color:#22c55e;border-radius:6px;cursor:pointer;font-size:10px;padding:3px 7px;font-family:var(--font-body)">✓</button>`:""}
+        <button onclick="editarValorInstancia('${c.id}')" style="background:none;border:none;color:#C6A46D;cursor:pointer;font-size:13px;padding:2px 3px">✏</button>
+        <button onclick="excluirConta('${c.id}')" style="background:none;border:none;color:#444;cursor:pointer;font-size:13px;padding:2px 3px">🗑</button>
       </div>
     </div>`;
   }
-  function secaoPagar(titulo,cor,lista){
-    if(!lista.length)return`<div style="color:#333;font-size:12px;padding:12px 0 4px;text-align:center">Nenhuma conta cadastrada.</div>`;
-    var recorr=lista.filter(function(c){return c.recorrente;});
-    var avuls=lista.filter(function(c){return !c.recorrente;});
-    return(recorr.length?`<div style="color:${cor};font-size:10px;font-weight:700;letter-spacing:1px;margin-bottom:5px;text-transform:uppercase">🔄 Recorrentes</div><div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">${recorr.map(rowConta).join("")}</div>`:"")
-      +(avuls.length?`<div style="color:#666;font-size:10px;font-weight:700;letter-spacing:1px;margin-bottom:5px;text-transform:uppercase">📄 Avulsas</div><div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">${avuls.map(rowConta).join("")}</div>`:"");
+  function secaoTipo(tipoStr){
+    var tc=contas.filter(function(c){return(c.tipo||"consultorio")===tipoStr;});
+    var tt=tmpls.filter(function(t){return(t.tipo||"consultorio")===tipoStr&&t.ativo!==false;});
+    var html="";
+    CATS_PAGAR.forEach(function(cat){
+      var ct=tt.filter(function(t){return t.categoria===cat.k;});
+      var ci=tc.filter(function(c){return ct.some(function(t){return t.id===c.templateId;})||(c.categoria===cat.k&&c.templateId);});
+      if(!ct.length&&!ci.length)return;
+      ci.sort(function(a,b){return(b.vencimento||"").localeCompare(a.vencimento||"");});
+      var tmpl=ct[0];
+      html+=`<div style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;flex-wrap:wrap">
+          <span style="font-size:15px">${cat.ic}</span>
+          <span style="color:${cat.c};font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px">${cat.l}</span>
+          ${tmpl?`<span style="color:#444;font-size:10px">· base R$ ${Number(tmpl.valorBase||0).toLocaleString("pt-BR",{minimumFractionDigits:2})} · dia ${tmpl.diaVencimento||10}</span>
+          <button onclick="editarTemplateRecorrente('${tmpl.id}')" style="background:none;border:none;color:#555;cursor:pointer;font-size:11px;padding:1px 4px" title="Editar">⚙️</button>
+          <button onclick="excluirTemplateRecorrente('${tmpl.id}')" style="background:none;border:none;color:#333;cursor:pointer;font-size:11px;padding:1px 4px" title="Remover">🗑</button>`
+          :`<button onclick="abrirNovaContaRecorrenteModal('${tipoStr}','${cat.k}')" style="background:none;border:1px dashed #333;color:#444;cursor:pointer;font-size:9px;padding:2px 7px;border-radius:20px">+ add recorrente</button>`}
+        </div>
+        ${ci.length?`<div class="card" style="padding:0;overflow:hidden">${ci.map(rowInst).join("")}</div>`:`<div style="color:#333;font-size:10px;padding:2px 0 4px">Sem lançamentos este período.</div>`}
+      </div>`;
+    });
+    var avulsas=tc.filter(function(c){return!c.templateId&&!c.recorrente;});
+    if(avulsas.length){
+      html+=`<div style="margin-bottom:8px">
+        <div style="color:#555;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:5px">📄 Avulsas</div>
+        <div class="card" style="padding:0;overflow:hidden">${avulsas.map(rowInst).join("")}</div>
+      </div>`;
+    }
+    if(!html)return`<div style="color:#333;font-size:12px;padding:10px 0;text-align:center">Nenhuma conta cadastrada.</div>`;
+    return html;
   }
-  var cons=contas.filter(function(c){return (c.tipo||"consultorio")==="consultorio";});
-  var pes=contas.filter(function(c){return c.tipo==="pessoal";});
-  return`<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-    <div class="card" style="flex:1;min-width:140px;padding:14px 16px">
-      <div style="color:#ef4444;font-size:22px;font-weight:800">R$ ${totalPendente.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
-      <div style="color:#666;font-size:11px;margin-top:2px">Total pendente</div>
+  return`<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+    <div class="card" style="flex:1;min-width:110px;padding:12px 14px">
+      <div style="color:#ef4444;font-size:18px;font-weight:800">R$ ${totalPendente.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
+      <div style="color:#666;font-size:10px;margin-top:2px">Total pendente</div>
     </div>
-    <div class="card" style="flex:1;min-width:140px;padding:14px 16px">
-      <div style="color:#22c55e;font-size:22px;font-weight:800">R$ ${totalPagoMes.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
-      <div style="color:#666;font-size:11px;margin-top:2px">Pago este mês</div>
+    <div class="card" style="flex:1;min-width:110px;padding:12px 14px">
+      <div style="color:#22c55e;font-size:18px;font-weight:800">R$ ${totalPagoMes.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
+      <div style="color:#666;font-size:10px;margin-top:2px">Pago este mês</div>
     </div>
-    ${vencidas.length?`<div class="card" style="flex:1;min-width:140px;padding:14px 16px;border-color:#ef444444">
-      <div style="color:#ef4444;font-size:22px;font-weight:800">${vencidas.length}</div>
-      <div style="color:#666;font-size:11px;margin-top:2px">Conta(s) vencida(s)</div>
+    ${vencidas.length?`<div class="card" style="flex:1;min-width:80px;padding:12px 14px;border-color:#ef444444">
+      <div style="color:#ef4444;font-size:20px;font-weight:800">${vencidas.length}</div>
+      <div style="color:#666;font-size:10px;margin-top:2px">Vencida(s)</div>
     </div>`:""}
   </div>
-  <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
-    <button onclick="abrirNovaContaModal()" class="bp" style="padding:9px 18px;font-size:13px;font-weight:700">+ Nova Conta</button>
+  <div style="display:flex;gap:8px;margin-bottom:16px">
+    <button onclick="abrirNovaContaRecorrenteModal()" class="bp" style="flex:1;padding:9px;font-size:12px">🔄 + Recorrente</button>
+    <button onclick="abrirNovaContaAvulsaModal()" class="bg" style="flex:1;padding:9px;font-size:12px;color:#C6A46D;border-color:rgba(198,164,109,0.3)">📄 + Avulsa</button>
   </div>
   <div style="border:1px solid rgba(198,164,109,0.18);border-radius:10px;padding:14px;margin-bottom:14px">
-    <div style="color:#C6A46D;font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px">🏥 Consultório</div>
-    ${secaoPagar("Consultório","#C6A46D",cons)}
+    <div style="color:#C6A46D;font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px">🏥 Consultório</div>
+    ${secaoTipo("consultorio")}
   </div>
   <div style="border:1px solid rgba(96,165,250,0.18);border-radius:10px;padding:14px">
-    <div style="color:#60a5fa;font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px">👤 Pessoal</div>
-    ${secaoPagar("Pessoal","#60a5fa",pes)}
+    <div style="color:#60a5fa;font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px">👤 Pessoal</div>
+    ${secaoTipo("pessoal")}
   </div>`;
 }
-window.abrirNovaContaModal=function(){
-  document.getElementById("nova-conta-modal")?.remove();
-  var m=document.createElement("div");m.className="mbg";m.id="nova-conta-modal";
-  m.innerHTML=`<div class="mbx" style="max-width:440px"><div class="mhd">
-    <div class="mhd-title">📋 Nova Conta a Pagar</div>
-    <button onclick="document.getElementById('nova-conta-modal').remove()" style="background:none;border:none;color:#555;cursor:pointer;font-size:22px">✕</button>
+
+// ── Modal: Nova / Editar Conta Recorrente (template) ──
+window.abrirNovaContaRecorrenteModal=function(tipoPresel,catPresel,idEditar){
+  var edit=idEditar?(ST.contasRecorrentes||[]).find(function(t){return t.id===idEditar;}):null;
+  var tipoInit=edit?edit.tipo:(tipoPresel||"consultorio");
+  var catInit=edit?edit.categoria:(catPresel||"");
+  document.getElementById("rec-modal")?.remove();
+  var m=document.createElement("div");m.className="mbg";m.id="rec-modal";
+  var catOpts=CATS_PAGAR.map(function(c){return`<option value="${c.k}"${catInit===c.k?" selected":""}>${c.ic} ${c.l}</option>`;}).join("");
+  m.innerHTML=`<div class="mbx" style="max-width:420px"><div class="mhd">
+    <div class="mhd-title">🔄 ${edit?"Editar":"Nova"} Conta Recorrente</div>
+    <button onclick="document.getElementById('rec-modal').remove()" style="background:none;border:none;color:#555;cursor:pointer;font-size:22px">✕</button>
   </div><div class="mbd">
-    <div style="margin-bottom:10px"><label class="lbl">Tipo *</label>
+    <div style="margin-bottom:10px"><label class="lbl">Tipo</label>
       <div style="display:flex;gap:6px">
-        <button id="nc-tipo-cons" onclick="document.getElementById('nc-tipo-cons').style.background='#C6A46D22';document.getElementById('nc-tipo-cons').style.color='#C6A46D';document.getElementById('nc-tipo-pes').style.background='transparent';document.getElementById('nc-tipo-pes').style.color='#555'" class="bg" style="flex:1;padding:8px;font-size:12px;background:#C6A46D22;color:#C6A46D">🏥 Consultório</button>
-        <button id="nc-tipo-pes" onclick="document.getElementById('nc-tipo-pes').style.background='#60a5fa22';document.getElementById('nc-tipo-pes').style.color='#60a5fa';document.getElementById('nc-tipo-cons').style.background='transparent';document.getElementById('nc-tipo-cons').style.color='#555'" class="bg" style="flex:1;padding:8px;font-size:12px">👤 Pessoal</button>
+        <button id="rec-cons" onclick="document.getElementById('rec-cons').style.background='#C6A46D22';document.getElementById('rec-cons').style.color='#C6A46D';document.getElementById('rec-pes').style.background='transparent';document.getElementById('rec-pes').style.color='#555'" class="bg" style="flex:1;padding:7px;font-size:12px;background:${tipoInit==='consultorio'?'#C6A46D22':'transparent'};color:${tipoInit==='consultorio'?'#C6A46D':'#555'}">🏥 Consultório</button>
+        <button id="rec-pes" onclick="document.getElementById('rec-pes').style.background='#60a5fa22';document.getElementById('rec-pes').style.color='#60a5fa';document.getElementById('rec-cons').style.background='transparent';document.getElementById('rec-cons').style.color='#555'" class="bg" style="flex:1;padding:7px;font-size:12px;background:${tipoInit==='pessoal'?'#60a5fa22':'transparent'};color:${tipoInit==='pessoal'?'#60a5fa':'#555'}">👤 Pessoal</button>
       </div>
     </div>
-    <div style="margin-bottom:10px"><label class="lbl">Descrição *</label><input id="nc-desc" class="inp" placeholder="Ex: Aluguel da sala"/></div>
-    <div style="margin-bottom:10px"><label class="lbl">Fornecedor</label><input id="nc-forn" class="inp" placeholder="Ex: Imobiliária Silva"/></div>
+    <div style="margin-bottom:10px"><label class="lbl">Categoria *</label>
+      <select id="rec-cat" class="inp">${catOpts}</select>
+    </div>
+    <div style="margin-bottom:10px"><label class="lbl">Descrição (opcional)</label>
+      <input id="rec-desc" class="inp" placeholder="Ex: Aluguel sala 2" value="${edit?edit.desc||"":""}"/>
+    </div>
+    <div style="margin-bottom:10px"><label class="lbl">Fornecedor</label>
+      <input id="rec-forn" class="inp" placeholder="Ex: Imobiliária Silva" value="${edit?edit.fornecedor||"":""}"/>
+    </div>
     <div class="g2" style="margin-bottom:10px">
-      <div><label class="lbl">Valor (R$) *</label><input id="nc-valor" type="number" min="0" step="0.01" class="inp" placeholder="0,00"/></div>
-      <div><label class="lbl">Vencimento</label><input id="nc-venc" type="date" class="inp"/></div>
+      <div><label class="lbl">Valor base (R$) *</label>
+        <input id="rec-valor" type="number" min="0" step="0.01" class="inp" placeholder="0,00" value="${edit?edit.valorBase||"":""}"/>
+      </div>
+      <div><label class="lbl">Dia do vencimento</label>
+        <input id="rec-dia" type="number" min="1" max="28" class="inp" placeholder="Ex: 10" value="${edit?edit.diaVencimento||10:10}"/>
+      </div>
     </div>
-    <div style="margin-bottom:10px"><label class="lbl">Status</label>
-      <select id="nc-status" class="inp"><option value="pendente">Pendente</option><option value="pago">Pago</option></select>
-    </div>
-    <div style="margin-bottom:10px;display:flex;align-items:center;gap:10px">
-      <input type="checkbox" id="nc-rec" onchange="document.getElementById('nc-freq-row').style.display=this.checked?'block':'none'" style="width:18px;height:18px;accent-color:#C6A46D"/>
-      <label for="nc-rec" style="color:#aaa;font-size:13px;cursor:pointer">Conta recorrente fixa</label>
-    </div>
-    <div id="nc-freq-row" style="display:none;margin-bottom:10px"><label class="lbl">Frequência</label>
-      <select id="nc-freq" class="inp"><option value="mensal">Mensal</option><option value="anual">Anual</option></select>
-    </div>
-    <div style="display:flex;gap:8px">
-      <button onclick="salvarNovaConta()" class="bp" style="flex:1">✅ Salvar</button>
-      <button onclick="document.getElementById('nova-conta-modal').remove()" class="bg" style="color:#555">Cancelar</button>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button onclick="salvarContaRecorrente(${edit?`'${edit.id}'`:"null"})" class="bp" style="flex:1">✅ Salvar</button>
+      <button onclick="document.getElementById('rec-modal').remove()" class="bg" style="color:#555">Cancelar</button>
     </div>
   </div></div>`;
   document.body.appendChild(m);
-  setTimeout(function(){document.getElementById("nc-desc")?.focus();},100);
+  setTimeout(function(){document.getElementById("rec-valor")?.focus();},100);
 };
-window.salvarNovaConta=function(){
-  var desc=document.getElementById("nc-desc")?.value.trim();
-  var forn=document.getElementById("nc-forn")?.value.trim();
-  var valor=parseFloat(document.getElementById("nc-valor")?.value)||0;
-  var venc=document.getElementById("nc-venc")?.value;
-  var status=document.getElementById("nc-status")?.value||"pendente";
-  var rec=document.getElementById("nc-rec")?.checked||false;
-  var freq=document.getElementById("nc-freq")?.value||"mensal";
+window.salvarContaRecorrente=function(idEditar){
+  var cat=document.getElementById("rec-cat")?.value;
+  var desc=(document.getElementById("rec-desc")?.value||"").trim();
+  var forn=(document.getElementById("rec-forn")?.value||"").trim();
+  var valor=parseFloat(document.getElementById("rec-valor")?.value)||0;
+  var dia=parseInt(document.getElementById("rec-dia")?.value)||10;
+  if(!cat){toast("Selecione a categoria.","warning");return;}
+  if(!valor){toast("Informe o valor base.","warning");return;}
+  var tipo=document.getElementById("rec-pes")?.style.color==="#60a5fa"?"pessoal":"consultorio";
+  var ci=getCatInfo(cat);
+  var tmplDesc=desc||(ci?ci.l:cat);
+  var ns=ST.contasRecorrentes||[];
+  if(idEditar&&idEditar!=="null"){
+    ns=ns.map(function(t){return t.id===idEditar?Object.assign({},t,{categoria:cat,desc:tmplDesc,fornecedor:forn,valorBase:valor,diaVencimento:dia,tipo}):t;});
+  } else {
+    ns=ns.concat([{id:"tmpl_"+Date.now(),categoria:cat,desc:tmplDesc,fornecedor:forn,valorBase:valor,diaVencimento:dia,tipo,ativo:true}]);
+  }
+  save("rof_contas_recorrentes",ns);
+  document.getElementById("rec-modal")?.remove();
+  set({contasRecorrentes:ns});
+  toast("Conta recorrente salva.","success");
+};
+window.editarTemplateRecorrente=function(id){window.abrirNovaContaRecorrenteModal(null,null,id);};
+window.excluirTemplateRecorrente=function(id){
+  rConfirm("Remover esta conta recorrente? Os lançamentos já gerados serão mantidos.",function(){
+    var ns=(ST.contasRecorrentes||[]).filter(function(t){return t.id!==id;});
+    save("rof_contas_recorrentes",ns);set({contasRecorrentes:ns});
+    toast("Recorrente removida.","success");
+  },"Remover");
+};
+
+// ── Modal: Editar valor/vencimento de instância ──
+window.editarValorInstancia=function(id){
+  var c=(ST.contasPagar||[]).find(function(x){return x.id===id;});
+  if(!c)return;
+  document.getElementById("ei-modal")?.remove();
+  var m=document.createElement("div");m.className="mbg";m.id="ei-modal";
+  m.innerHTML=`<div class="mbx" style="max-width:340px"><div class="mhd">
+    <div class="mhd-title">✏ Editar Lançamento</div>
+    <button onclick="document.getElementById('ei-modal').remove()" style="background:none;border:none;color:#555;cursor:pointer;font-size:22px">✕</button>
+  </div><div class="mbd">
+    <div style="color:#888;font-size:12px;margin-bottom:12px">${c.desc||"—"}</div>
+    <div class="g2" style="margin-bottom:10px">
+      <div><label class="lbl">Valor (R$)</label>
+        <input id="ei-valor" type="number" min="0" step="0.01" class="inp" value="${c.valor||""}"/>
+      </div>
+      <div><label class="lbl">Vencimento</label>
+        <input id="ei-venc" type="date" class="inp" value="${c.vencimento||""}"/>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="salvarEdicaoInstancia('${id}')" class="bp" style="flex:1">✅ Salvar</button>
+      <button onclick="document.getElementById('ei-modal').remove()" class="bg" style="color:#555">Cancelar</button>
+    </div>
+  </div></div>`;
+  document.body.appendChild(m);
+  setTimeout(function(){document.getElementById("ei-valor")?.focus();},100);
+};
+window.salvarEdicaoInstancia=function(id){
+  var valor=parseFloat(document.getElementById("ei-valor")?.value)||0;
+  var venc=document.getElementById("ei-venc")?.value;
+  var ns=(ST.contasPagar||[]).map(function(c){return c.id===id?Object.assign({},c,{valor,vencimento:venc}):c;});
+  save("rof_contas_pagar",ns);set({contasPagar:ns});
+  document.getElementById("ei-modal")?.remove();
+  toast("Lançamento atualizado.","success");
+};
+
+// ── Modal: Nova Despesa Avulsa ──
+window.abrirNovaContaAvulsaModal=function(){
+  document.getElementById("av-modal")?.remove();
+  var m=document.createElement("div");m.className="mbg";m.id="av-modal";
+  var catOpts=CATS_PAGAR.map(function(c){return`<option value="${c.k}">${c.ic} ${c.l}</option>`;}).join("");
+  m.innerHTML=`<div class="mbx" style="max-width:420px"><div class="mhd">
+    <div class="mhd-title">📄 Nova Despesa Avulsa</div>
+    <button onclick="document.getElementById('av-modal').remove()" style="background:none;border:none;color:#555;cursor:pointer;font-size:22px">✕</button>
+  </div><div class="mbd">
+    <div style="margin-bottom:10px"><label class="lbl">Tipo</label>
+      <div style="display:flex;gap:6px">
+        <button id="av-cons" onclick="document.getElementById('av-cons').style.background='#C6A46D22';document.getElementById('av-cons').style.color='#C6A46D';document.getElementById('av-pes').style.background='transparent';document.getElementById('av-pes').style.color='#555'" class="bg" style="flex:1;padding:7px;font-size:12px;background:#C6A46D22;color:#C6A46D">🏥 Consultório</button>
+        <button id="av-pes" onclick="document.getElementById('av-pes').style.background='#60a5fa22';document.getElementById('av-pes').style.color='#60a5fa';document.getElementById('av-cons').style.background='transparent';document.getElementById('av-cons').style.color='#555'" class="bg" style="flex:1;padding:7px;font-size:12px">👤 Pessoal</button>
+      </div>
+    </div>
+    <div style="margin-bottom:10px"><label class="lbl">Categoria</label>
+      <select id="av-cat" class="inp"><option value="">— Sem categoria —</option>${catOpts}</select>
+    </div>
+    <div style="margin-bottom:10px"><label class="lbl">Descrição *</label>
+      <input id="av-desc" class="inp" placeholder="Ex: Material dentário extra"/>
+    </div>
+    <div style="margin-bottom:10px"><label class="lbl">Fornecedor</label>
+      <input id="av-forn" class="inp" placeholder="Opcional"/>
+    </div>
+    <div class="g2" style="margin-bottom:10px">
+      <div><label class="lbl">Valor (R$) *</label>
+        <input id="av-valor" type="number" min="0" step="0.01" class="inp" placeholder="0,00"/>
+      </div>
+      <div><label class="lbl">Vencimento</label>
+        <input id="av-venc" type="date" class="inp"/>
+      </div>
+    </div>
+    <div style="margin-bottom:10px"><label class="lbl">Status</label>
+      <select id="av-status" class="inp"><option value="pendente">Pendente</option><option value="pago">Pago</option></select>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="salvarContaAvulsa()" class="bp" style="flex:1">✅ Salvar</button>
+      <button onclick="document.getElementById('av-modal').remove()" class="bg" style="color:#555">Cancelar</button>
+    </div>
+  </div></div>`;
+  document.body.appendChild(m);
+  setTimeout(function(){document.getElementById("av-desc")?.focus();},100);
+};
+window.abrirNovaContaModal=window.abrirNovaContaAvulsaModal; // retrocompatibilidade
+window.salvarContaAvulsa=function(){
+  var desc=(document.getElementById("av-desc")?.value||"").trim();
+  var forn=(document.getElementById("av-forn")?.value||"").trim();
+  var valor=parseFloat(document.getElementById("av-valor")?.value)||0;
+  var venc=document.getElementById("av-venc")?.value;
+  var status=document.getElementById("av-status")?.value||"pendente";
+  var cat=document.getElementById("av-cat")?.value||"";
   if(!desc){toast("Preencha a descrição.","warning");return;}
-  var tipoConta=document.getElementById("nc-tipo-pes")?.style.color==="#60a5fa"?"pessoal":"consultorio";
-  var nc={id:"cp_"+Date.now(),desc,fornecedor:forn,valor,vencimento:venc,status,recorrente:rec,frequencia:rec?freq:"",tipo:tipoConta};
+  if(!valor){toast("Preencha o valor.","warning");return;}
+  var tipo=document.getElementById("av-pes")?.style.color==="#60a5fa"?"pessoal":"consultorio";
+  var nc={id:"cp_"+Date.now(),desc,fornecedor:forn,valor,vencimento:venc,status,tipo,categoria:cat||"outras"};
   var ns=[...ST.contasPagar,nc];
   save("rof_contas_pagar",ns);set({contasPagar:ns});
-  document.getElementById("nova-conta-modal")?.remove();
-  toast("Conta adicionada.","success");
+  document.getElementById("av-modal")?.remove();
+  toast("Despesa avulsa adicionada.","success");
 };
+window.salvarNovaConta=window.salvarContaAvulsa; // retrocompatibilidade
 window.pagarConta=function(id){
   var ns=ST.contasPagar.map(function(c){return c.id===id?Object.assign({},c,{status:"pago"}):c;});
   save("rof_contas_pagar",ns);set({contasPagar:ns});
