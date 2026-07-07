@@ -13598,7 +13598,9 @@ window.openLancamento=function(tipo,area){
   var formasE=["Dinheiro","PIX","Cartão Débito","Cartão Crédito","Transferência","Convênio","Cheque"];
   var formasS=["Dinheiro","PIX","Cartão Débito","Cartão Crédito","Transferência","Boleto","Cheque"];
   var catsE=["Consulta","Procedimento","HOF","Reabilitação","Outros"];
-  var catsS=["Aluguel","Material","Equipamento","Folha de pagamento","Impostos","Serviços","Outros"];
+  var catsS_cons=["Aluguel","Material","Equipamento","Folha de pagamento","Impostos","Serviços","Outros"];
+  var catsS_pes=["Educação","Carro","Saúde","Farmácia","Havan","Lazer","Viagem","Gasolina","Antonella","João Pedro","Pet","Mercado","Padaria","Beleza","iFood","Outros"];
+  var catsS=area==="pessoal"?catsS_pes:catsS_cons;
   var formas=isSaida?formasS:formasE;
   var cats=isSaida?catsS:catsE;
   var areaCor=area==="pessoal"?"#60a5fa":"#C6A46D";
