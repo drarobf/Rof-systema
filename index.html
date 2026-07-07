@@ -4288,7 +4288,7 @@ const ST={
   selTerm:null,tSig:null,tDraSig:null,tDone:null,sigMode:"draw",draSigMode:"draw",
   aiMsgs:[{r:"a",t:"Olá! Sou Júlia, secretária virtual do Método ROF™. Como posso ajudar hoje? 😊"}],
   aiInp:"",aiLoad:false,
-  showApt:false,aptTipo:"particular",aptConv:"",aptDur:60,aptSlot:null,aptCat:"Todos",aptPatId:null,aptPatName:"",hofForm:false,hofType:"botox",hofData:{},planoCat:"Todos",procsFilter:"Todos",procsSearch:"",finFilter:"todos",finTab:"caixa",labsFilter:"todos",relPeriodo:"mes",fotoCat:"Todas",
+  showApt:false,aptTipo:"particular",aptConv:"",aptDur:60,aptSlot:null,aptCat:"Todos",aptPatId:null,aptPatName:"",hofForm:false,hofType:"botox",hofData:{},planoCat:"Todos",procsFilter:"Todos",procsSearch:"",finFilter:"todos",finPeriodo:"mes",finTab:"caixa",labsFilter:"todos",relPeriodo:"mes",relTab:"fin",relFlowView:"12m",fotoCat:"Todas",
 };
 function sameId(a,b){return String(a??"")===String(b??"");}
 function normalizePt(p,i){
@@ -10060,7 +10060,20 @@ window.savePagamento=function(ptId){
   if(!desc||!val||!date){toast("Preencha descrição, valor e data.","warning");return;}
   var pg={id:Date.now(),desc,valor:val,date,forma,tipo};
   var nps=ST.pts.map(function(p){if(!sameId(p.id,ptId))return p;return Object.assign({},p,{pagamentos:(p.pagamentos||[]).concat([pg])});});
-  save("rof_pts",nps);document.getElementById("pag-modal")?.remove();set({pts:nps});
+  save("rof_pts",nps);
+  // Pagamentos recebidos vão diretamente para A Receber
+  var newCR={};
+  if(tipo==="entrada"){
+    var pt=ST.pts.find(function(p){return sameId(p.id,ptId);});
+    newCR={id:"cr_pt_"+Date.now(),paciente:pt?pt.name:"",desc:desc,total:val,pago:val,vencimento:date,status:"quitado",tipo:"consultorio",origem:"pagamento"};
+    var nsCR=(ST.contasReceber||[]).concat([newCR]);
+    save("rof_contas_receber",nsCR);
+    document.getElementById("pag-modal")?.remove();
+    set({pts:nps,contasReceber:nsCR});
+  } else {
+    document.getElementById("pag-modal")?.remove();
+    set({pts:nps});
+  }
 };
 window.delPagamento=function(ptId,pgId){
   rConfirm("Excluir este pagamento?",function(){
@@ -10640,12 +10653,7 @@ function pageFinanceiro(){
     +"<div style='display:flex;gap:4px;flex-wrap:wrap;margin-bottom:14px'>"
     +periodos.map(function(p){
       var active=periodo===p.k;
-      var btn=document.createElement("button");
-      btn.className="bg";
-      btn.style.cssText="padding:5px 12px;font-size:11px;background:"+(active?"#C6A46D22":"transparent")+";color:"+(active?GL:"#555");
-      btn.textContent=p.l;
-      btn.onclick=(function(k){return function(){set({finPeriodo:k});};})(p.k);
-      return btn.outerHTML;
+      return "<button onclick=\"set({finPeriodo:'"+p.k+"'})\" class='bg' style='padding:5px 12px;font-size:11px;background:"+(active?"#C6A46D22":"transparent")+";color:"+(active?GL:"#555")+"'>"+p.l+"</button>";
     }).join("")
     +"</div>"
     +"<div style='display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px'>"
@@ -10680,8 +10688,6 @@ function pageContasPagar(){
   var contas=ST.contasPagar||[];
   var hoje=todayISO();
   var mesAtual=hoje.slice(0,7);
-  var recorrentes=contas.filter(function(c){return c.recorrente;});
-  var avulsas=contas.filter(function(c){return !c.recorrente;});
   var totalPendente=contas.filter(function(c){return c.status==="pendente";}).reduce(function(s,c){return s+(Number(c.valor)||0);},0);
   var totalPagoMes=contas.filter(function(c){return c.status==="pago"&&(c.vencimento||"").slice(0,7)===mesAtual;}).reduce(function(s,c){return s+(Number(c.valor)||0);},0);
   var vencidas=contas.filter(function(c){return c.status==="pendente"&&c.vencimento&&c.vencimento<hoje;});
@@ -10706,6 +10712,15 @@ function pageContasPagar(){
       </div>
     </div>`;
   }
+  function secaoPagar(titulo,cor,lista){
+    if(!lista.length)return`<div style="color:#333;font-size:12px;padding:12px 0 4px;text-align:center">Nenhuma conta cadastrada.</div>`;
+    var recorr=lista.filter(function(c){return c.recorrente;});
+    var avuls=lista.filter(function(c){return !c.recorrente;});
+    return(recorr.length?`<div style="color:${cor};font-size:10px;font-weight:700;letter-spacing:1px;margin-bottom:5px;text-transform:uppercase">🔄 Recorrentes</div><div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">${recorr.map(rowConta).join("")}</div>`:"")
+      +(avuls.length?`<div style="color:#666;font-size:10px;font-weight:700;letter-spacing:1px;margin-bottom:5px;text-transform:uppercase">📄 Avulsas</div><div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">${avuls.map(rowConta).join("")}</div>`:"");
+  }
+  var cons=contas.filter(function(c){return (c.tipo||"consultorio")==="consultorio";});
+  var pes=contas.filter(function(c){return c.tipo==="pessoal";});
   return`<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
     <div class="card" style="flex:1;min-width:140px;padding:14px 16px">
       <div style="color:#ef4444;font-size:22px;font-weight:800">R$ ${totalPendente.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
@@ -10720,14 +10735,17 @@ function pageContasPagar(){
       <div style="color:#666;font-size:11px;margin-top:2px">Conta(s) vencida(s)</div>
     </div>`:""}
   </div>
-  <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+  <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
     <button onclick="abrirNovaContaModal()" class="bp" style="padding:9px 18px;font-size:13px;font-weight:700">+ Nova Conta</button>
   </div>
-  ${recorrentes.length?`<div style="color:${GL};font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:6px;text-transform:uppercase">🔄 Recorrentes Fixas</div>
-  <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">${recorrentes.map(rowConta).join("")}</div>`:""}
-  <div style="color:${GL};font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:6px;text-transform:uppercase">📄 Avulsas</div>
-  ${avulsas.length?`<div class="card" style="padding:0;overflow:hidden">${avulsas.map(rowConta).join("")}</div>`
-    :`<div style="color:#444;text-align:center;padding:24px;font-size:13px">Nenhuma conta avulsa cadastrada.</div>`}`;
+  <div style="border:1px solid rgba(198,164,109,0.18);border-radius:10px;padding:14px;margin-bottom:14px">
+    <div style="color:#C6A46D;font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px">🏥 Consultório</div>
+    ${secaoPagar("Consultório","#C6A46D",cons)}
+  </div>
+  <div style="border:1px solid rgba(96,165,250,0.18);border-radius:10px;padding:14px">
+    <div style="color:#60a5fa;font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px">👤 Pessoal</div>
+    ${secaoPagar("Pessoal","#60a5fa",pes)}
+  </div>`;
 }
 window.abrirNovaContaModal=function(){
   document.getElementById("nova-conta-modal")?.remove();
@@ -10736,6 +10754,12 @@ window.abrirNovaContaModal=function(){
     <div class="mhd-title">📋 Nova Conta a Pagar</div>
     <button onclick="document.getElementById('nova-conta-modal').remove()" style="background:none;border:none;color:#555;cursor:pointer;font-size:22px">✕</button>
   </div><div class="mbd">
+    <div style="margin-bottom:10px"><label class="lbl">Tipo *</label>
+      <div style="display:flex;gap:6px">
+        <button id="nc-tipo-cons" onclick="document.getElementById('nc-tipo-cons').style.background='#C6A46D22';document.getElementById('nc-tipo-cons').style.color='#C6A46D';document.getElementById('nc-tipo-pes').style.background='transparent';document.getElementById('nc-tipo-pes').style.color='#555'" class="bg" style="flex:1;padding:8px;font-size:12px;background:#C6A46D22;color:#C6A46D">🏥 Consultório</button>
+        <button id="nc-tipo-pes" onclick="document.getElementById('nc-tipo-pes').style.background='#60a5fa22';document.getElementById('nc-tipo-pes').style.color='#60a5fa';document.getElementById('nc-tipo-cons').style.background='transparent';document.getElementById('nc-tipo-cons').style.color='#555'" class="bg" style="flex:1;padding:8px;font-size:12px">👤 Pessoal</button>
+      </div>
+    </div>
     <div style="margin-bottom:10px"><label class="lbl">Descrição *</label><input id="nc-desc" class="inp" placeholder="Ex: Aluguel da sala"/></div>
     <div style="margin-bottom:10px"><label class="lbl">Fornecedor</label><input id="nc-forn" class="inp" placeholder="Ex: Imobiliária Silva"/></div>
     <div class="g2" style="margin-bottom:10px">
@@ -10769,7 +10793,8 @@ window.salvarNovaConta=function(){
   var rec=document.getElementById("nc-rec")?.checked||false;
   var freq=document.getElementById("nc-freq")?.value||"mensal";
   if(!desc){toast("Preencha a descrição.","warning");return;}
-  var nc={id:"cp_"+Date.now(),desc,fornecedor:forn,valor,vencimento:venc,status,recorrente:rec,frequencia:rec?freq:""};
+  var tipoConta=document.getElementById("nc-tipo-pes")?.style.color==="#60a5fa"?"pessoal":"consultorio";
+  var nc={id:"cp_"+Date.now(),desc,fornecedor:forn,valor,vencimento:venc,status,recorrente:rec,frequencia:rec?freq:"",tipo:tipoConta};
   var ns=[...ST.contasPagar,nc];
   save("rof_contas_pagar",ns);set({contasPagar:ns});
   document.getElementById("nova-conta-modal")?.remove();
@@ -10829,8 +10854,15 @@ function pageContasReceber(){
       </div>
     </div>`;
   }
-  var pendentes=contas.filter(function(c){return c.status==="pendente"||c.status==="parcial";});
-  var quitadas=contas.filter(function(c){return c.status==="quitado";});
+  function secaoReceber(lista){
+    if(!lista.length)return`<div style="color:#333;font-size:12px;padding:10px 0 2px;text-align:center">Nenhuma conta cadastrada.</div>`;
+    var pend=lista.filter(function(c){return c.status!=="quitado";});
+    var quit=lista.filter(function(c){return c.status==="quitado";});
+    return (pend.length?`<div style="color:${GL};font-size:10px;font-weight:700;letter-spacing:1px;margin-bottom:5px;text-transform:uppercase">⏳ Em Aberto (${pend.length})</div><div class="card" style="padding:0;overflow:hidden;margin-bottom:10px">${pend.map(rowReceber).join("")}</div>`:"")
+      +(quit.length?`<div style="color:#555;font-size:10px;font-weight:700;letter-spacing:1px;margin-bottom:5px;text-transform:uppercase">✓ Quitadas</div><div class="card" style="padding:0;overflow:hidden;margin-bottom:10px">${quit.map(rowReceber).join("")}</div>`:"");
+  }
+  var cons=contas.filter(function(c){return(c.tipo||"consultorio")==="consultorio";});
+  var pes=contas.filter(function(c){return c.tipo==="pessoal";});
   return`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px">
     <div class="card" style="padding:14px 16px;border-top:2px solid #ef4444">
       <div style="color:#ef4444;font-size:20px;font-weight:800">R$ ${totalEmAberto.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
@@ -10845,29 +10877,39 @@ function pageContasReceber(){
       <div style="color:#666;font-size:11px;margin-top:2px">Vencida(s)</div>
     </div>`:""}
   </div>
-  <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+  <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
     <button onclick="abrirNovaContaReceberModal()" class="bp" style="padding:9px 18px;font-size:13px;font-weight:700">+ Nova Conta a Receber</button>
   </div>
-  ${pendentes.length?`<div style="color:${GL};font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:6px;text-transform:uppercase">⏳ Em Aberto (${pendentes.length})</div>
-  <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">${pendentes.map(rowReceber).join("")}</div>`:""}
-  ${quitadas.length?`<div style="color:#555;font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:6px;text-transform:uppercase">✓ Quitadas</div>
-  <div class="card" style="padding:0;overflow:hidden">${quitadas.map(rowReceber).join("")}</div>`:""}
-  ${!contas.length?`<div style="color:#444;text-align:center;padding:32px;font-size:13px">Nenhuma conta a receber cadastrada.</div>`:""}`;
+  <div style="border:1px solid rgba(198,164,109,0.18);border-radius:10px;padding:14px;margin-bottom:14px">
+    <div style="color:#C6A46D;font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px">🏥 Consultório</div>
+    ${secaoReceber(cons)}
+  </div>
+  <div style="border:1px solid rgba(96,165,250,0.18);border-radius:10px;padding:14px">
+    <div style="color:#60a5fa;font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px">👤 Pessoal</div>
+    ${secaoReceber(pes)}
+  </div>`;
 }
 window.abrirNovaContaReceberModal=function(idEditar){
   var edit=idEditar?ST.contasReceber.find(function(c){return c.id===idEditar;}):null;
   document.getElementById("nova-cr-modal")?.remove();
   var m=document.createElement("div");m.className="mbg";m.id="nova-cr-modal";
   var ptOpts=ST.pts.map(function(p){return`<option value="${p.name.replace(/"/g,"&quot;")}"/>`;}).join("");
+  var editTipo=(edit&&edit.tipo)||"consultorio";
   m.innerHTML=`<div class="mbx" style="max-width:420px"><div class="mhd">
     <div class="mhd-title">💳 ${edit?"Editar":"Nova"} Conta a Receber</div>
     <button onclick="document.getElementById('nova-cr-modal').remove()" style="background:none;border:none;color:#555;cursor:pointer;font-size:22px">✕</button>
   </div><div class="mbd">
-    <div style="margin-bottom:10px"><label class="lbl">Paciente *</label>
-      <input id="cr-pac" class="inp" list="cr-pts-list" placeholder="Nome do paciente" value="${edit?edit.paciente:""}"/>
+    <div style="margin-bottom:10px"><label class="lbl">Tipo *</label>
+      <div style="display:flex;gap:6px">
+        <button id="cr-tipo-cons" onclick="document.getElementById('cr-tipo-cons').style.background='#C6A46D22';document.getElementById('cr-tipo-cons').style.color='#C6A46D';document.getElementById('cr-tipo-pes').style.background='transparent';document.getElementById('cr-tipo-pes').style.color='#555'" class="bg" style="flex:1;padding:8px;font-size:12px;background:${editTipo==='consultorio'?'#C6A46D22':'transparent'};color:${editTipo==='consultorio'?'#C6A46D':'#555'}">🏥 Consultório</button>
+        <button id="cr-tipo-pes" onclick="document.getElementById('cr-tipo-pes').style.background='#60a5fa22';document.getElementById('cr-tipo-pes').style.color='#60a5fa';document.getElementById('cr-tipo-cons').style.background='transparent';document.getElementById('cr-tipo-cons').style.color='#555'" class="bg" style="flex:1;padding:8px;font-size:12px;background:${editTipo==='pessoal'?'#60a5fa22':'transparent'};color:${editTipo==='pessoal'?'#60a5fa':'#555'}">👤 Pessoal</button>
+      </div>
+    </div>
+    <div style="margin-bottom:10px"><label class="lbl">Paciente / Origem *</label>
+      <input id="cr-pac" class="inp" list="cr-pts-list" placeholder="Nome do paciente ou origem" value="${edit?edit.paciente:""}"/>
       <datalist id="cr-pts-list">${ptOpts}</datalist>
     </div>
-    <div style="margin-bottom:10px"><label class="lbl">Descrição (tratamento) *</label>
+    <div style="margin-bottom:10px"><label class="lbl">Descrição *</label>
       <input id="cr-desc" class="inp" placeholder="Ex: Prótese total, implante..." value="${edit?edit.desc:""}"/>
     </div>
     <div class="g2" style="margin-bottom:10px">
@@ -10896,11 +10938,12 @@ window.salvarContaReceber=function(idEditar){
   if(!desc){toast("Informe a descrição.","warning");return;}
   if(!total){toast("Informe o valor total.","warning");return;}
   var status=pago<=0?"pendente":pago>=total?"quitado":"parcial";
+  var tipoCR=document.getElementById("cr-tipo-pes")?.style.color==="#60a5fa"?"pessoal":"consultorio";
   var ns;
   if(idEditar&&idEditar!=="null"){
-    ns=ST.contasReceber.map(function(c){return c.id===idEditar?Object.assign({},c,{paciente:pac,desc,total,pago,vencimento:venc,status}):c;});
+    ns=ST.contasReceber.map(function(c){return c.id===idEditar?Object.assign({},c,{paciente:pac,desc,total,pago,vencimento:venc,status,tipo:tipoCR}):c;});
   } else {
-    ns=[...ST.contasReceber,{id:"cr_"+Date.now(),paciente:pac,desc,total,pago,vencimento:venc,status}];
+    ns=[...ST.contasReceber,{id:"cr_"+Date.now(),paciente:pac,desc,total,pago,vencimento:venc,status,tipo:tipoCR}];
   }
   save("rof_contas_receber",ns);set({contasReceber:ns});
   document.getElementById("nova-cr-modal")?.remove();
@@ -11171,28 +11214,155 @@ window.excluirLab=function(id){
 // RELATÓRIOS
 // ═══════════════════════════════════════════════════════════════
 function pageRelatorios(){
-  var pts=ST.pts;
-  var apts=ST.apts;
+  var relTab=ST.relTab||"fin";
+  var tabBar="<div style='display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid rgba(198,164,109,0.15);padding-bottom:8px'>"
+    +[{k:"fin",l:"💹 Financeiro"},{k:"clin",l:"🦷 Clínico"}].map(function(t){
+      return"<button onclick='set({relTab:\""+t.k+"\"})'style='padding:6px 14px;font-size:12px;font-weight:600;border-radius:20px;border:1px solid "+(relTab===t.k?"#C6A46D":"rgba(198,164,109,0.2)")+";background:"+(relTab===t.k?"rgba(198,164,109,0.15)":"transparent")+";color:"+(relTab===t.k?"#C6A46D":"#666")+";cursor:pointer;font-family:var(--font-body)'>"+t.l+"</button>";
+    }).join("")+"</div>";
+
+  if(relTab==="fin"){
+    // ── MONTA MAPAS DE DADOS ──
+    var now=new Date();
+    var mNomes=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+    function ymFmt(ym){var p=ym.split("-");return mNomes[parseInt(p[1])-1]+"/"+p[0].slice(2);}
+    var entMap={},saidaMap={};
+    ST.pts.forEach(function(p){
+      (p.pagamentos||[]).forEach(function(pg){
+        var m=(pg.date||"").slice(0,7);if(!m)return;
+        if(pg.tipo==="entrada")entMap[m]=(entMap[m]||0)+Number(pg.valor||0);
+        else saidaMap[m]=(saidaMap[m]||0)+Number(pg.valor||0);
+      });
+    });
+    (load("rof_caixa",[])||[]).forEach(function(e){
+      var m=(e.date||"").slice(0,7);if(!m)return;
+      if(e.tipo==="entrada")entMap[m]=(entMap[m]||0)+Number(e.valor||0);
+      else saidaMap[m]=(saidaMap[m]||0)+Number(e.valor||0);
+    });
+    (ST.contasPagar||[]).filter(function(c){return c.status==="pago";}).forEach(function(c){
+      var m=(c.vencimento||"").slice(0,7);if(!m)return;
+      saidaMap[m]=(saidaMap[m]||0)+Number(c.valor||0);
+    });
+    (ST.labs||[]).filter(function(l){return l.pagtoLab==="pago";}).forEach(function(l){
+      var m=(l.dtEntrega||l.dtInicio||"").slice(0,7);if(!m)return;
+      saidaMap[m]=(saidaMap[m]||0)+Number(l.custo||0);
+    });
+
+    // ── LISTA DE MESES ──
+    var view=ST.relFlowView||"12m";
+    var mesList=[];
+    if(view==="ano"){
+      for(var mi=0;mi<=now.getMonth();mi++)mesList.push(now.getFullYear()+"-"+String(mi+1).padStart(2,"0"));
+    } else {
+      for(var i=11;i>=0;i--){var d=new Date(now.getFullYear(),now.getMonth()-i,1);mesList.push(d.toISOString().slice(0,7));}
+    }
+    var mesAtualYM=now.toISOString().slice(0,7);
+
+    // ── TOTAIS DO ANO CORRENTE ──
+    var anoStr=String(now.getFullYear());
+    var anoEntradas=0,anoSaidas=0;
+    Object.keys(entMap).forEach(function(m){if(m.startsWith(anoStr))anoEntradas+=entMap[m];});
+    Object.keys(saidaMap).forEach(function(m){if(m.startsWith(anoStr))anoSaidas+=saidaMap[m];});
+    var anoSaldo=anoEntradas-anoSaidas;
+
+    // ── MELHOR E PIOR MES DO ANO ──
+    var mesesAno=mesList.filter(function(m){return m.startsWith(anoStr);});
+    var melhorMes=null,melhorVal=-Infinity,piorMes=null,piorVal=Infinity;
+    mesesAno.forEach(function(m){var s=(entMap[m]||0)-(saidaMap[m]||0);if(s>melhorVal){melhorVal=s;melhorMes=m;}if(s<piorVal){piorVal=s;piorMes=m;}});
+
+    // ── RENDER ──
+    var cards="<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px'>"
+      +"<div class='card' style='padding:14px 16px;border-top:2px solid #22c55e'><div style='color:#22c55e;font-size:18px;font-weight:800'>R$ "+anoEntradas.toLocaleString("pt-BR",{minimumFractionDigits:2})+"</div><div style='color:#666;font-size:11px;margin-top:2px'>Entradas "+anoStr+"</div></div>"
+      +"<div class='card' style='padding:14px 16px;border-top:2px solid #ef4444'><div style='color:#ef4444;font-size:18px;font-weight:800'>R$ "+anoSaidas.toLocaleString("pt-BR",{minimumFractionDigits:2})+"</div><div style='color:#666;font-size:11px;margin-top:2px'>Saídas "+anoStr+"</div></div>"
+      +"<div class='card' style='padding:14px 16px;border-top:2px solid "+(anoSaldo>=0?"#C6A46D":"#ef4444")+"'><div style='color:"+(anoSaldo>=0?"#C6A46D":"#ef4444")+";font-size:18px;font-weight:800'>R$ "+anoSaldo.toLocaleString("pt-BR",{minimumFractionDigits:2})+"</div><div style='color:#666;font-size:11px;margin-top:2px'>Saldo "+anoStr+"</div></div>"
+      +(melhorMes?"<div class='card' style='padding:14px 16px'><div style='color:#22c55e;font-size:14px;font-weight:800'>"+ymFmt(melhorMes)+"</div><div style='color:#666;font-size:10px;margin-top:2px'>Melhor mês (saldo R$ "+melhorVal.toLocaleString("pt-BR",{minimumFractionDigits:0})+")</div></div>":"")
+      +"</div>";
+
+    var toggleBtns="<div style='display:flex;gap:6px;margin-bottom:14px'>"
+      +[{k:"12m",l:"Últimos 12 meses"},{k:"ano",l:"Este ano ("+anoStr+")"}].map(function(v){
+        return"<button onclick='set({relFlowView:\""+v.k+"\"})' class='bg' style='padding:5px 12px;font-size:11px;background:"+(view===v.k?"#C6A46D22":"transparent")+";color:"+(view===v.k?GL:"#555")+"'>"+v.l+"</button>";
+      }).join("")+"</div>";
+
+    // Tabela
+    var tRows=mesList.map(function(m){
+      var ent=entMap[m]||0;var sai=saidaMap[m]||0;var sal=ent-sai;
+      var isCurr=m===mesAtualYM;
+      var bg=isCurr?"rgba(198,164,109,0.06)":"transparent";
+      var salCor=sal>0?"#22c55e":sal<0?"#ef4444":"#555";
+      return"<tr style='background:"+bg+"'>"
+        +"<td style='padding:8px 10px;color:"+(isCurr?"#E2C99A":"#888")+";font-size:12px;font-weight:"+(isCurr?"700":"400")+";white-space:nowrap'>"+ymFmt(m)+(isCurr?" ◀":"")+"</td>"
+        +"<td style='padding:8px 10px;color:#22c55e;font-size:12px;text-align:right;white-space:nowrap'>"+(ent>0?"R$ "+ent.toLocaleString("pt-BR",{minimumFractionDigits:2}):"—")+"</td>"
+        +"<td style='padding:8px 10px;color:#ef4444;font-size:12px;text-align:right;white-space:nowrap'>"+(sai>0?"R$ "+sai.toLocaleString("pt-BR",{minimumFractionDigits:2}):"—")+"</td>"
+        +"<td style='padding:8px 10px;color:"+salCor+";font-size:12px;font-weight:700;text-align:right;white-space:nowrap'>R$ "+sal.toLocaleString("pt-BR",{minimumFractionDigits:2})+"</td>"
+        +"</tr>";
+    }).join("");
+    var totEnt=mesList.reduce(function(s,m){return s+(entMap[m]||0);},0);
+    var totSai=mesList.reduce(function(s,m){return s+(saidaMap[m]||0);},0);
+    var totSal=totEnt-totSai;
+    var totRow="<tr style='background:rgba(198,164,109,0.08);border-top:1px solid rgba(198,164,109,0.3)'>"
+      +"<td style='padding:9px 10px;color:#C6A46D;font-size:12px;font-weight:800'>TOTAL</td>"
+      +"<td style='padding:9px 10px;color:#22c55e;font-size:12px;font-weight:800;text-align:right'>R$ "+totEnt.toLocaleString("pt-BR",{minimumFractionDigits:2})+"</td>"
+      +"<td style='padding:9px 10px;color:#ef4444;font-size:12px;font-weight:800;text-align:right'>R$ "+totSai.toLocaleString("pt-BR",{minimumFractionDigits:2})+"</td>"
+      +"<td style='padding:9px 10px;color:"+(totSal>=0?"#C6A46D":"#ef4444")+";font-size:13px;font-weight:900;text-align:right'>R$ "+totSal.toLocaleString("pt-BR",{minimumFractionDigits:2})+"</td>"
+      +"</tr>";
+    var tabela="<div class='card' style='padding:0;overflow:auto;margin-bottom:16px'>"
+      +"<table style='width:100%;border-collapse:collapse;min-width:320px'>"
+      +"<thead><tr style='background:rgba(198,164,109,0.08)'>"
+      +"<th style='padding:8px 10px;color:#666;font-size:10px;text-transform:uppercase;letter-spacing:1px;text-align:left;font-weight:700'>Mês</th>"
+      +"<th style='padding:8px 10px;color:#22c55e;font-size:10px;text-transform:uppercase;letter-spacing:1px;text-align:right;font-weight:700'>Entradas</th>"
+      +"<th style='padding:8px 10px;color:#ef4444;font-size:10px;text-transform:uppercase;letter-spacing:1px;text-align:right;font-weight:700'>Saídas</th>"
+      +"<th style='padding:8px 10px;color:#C6A46D;font-size:10px;text-transform:uppercase;letter-spacing:1px;text-align:right;font-weight:700'>Saldo</th>"
+      +"</tr></thead>"
+      +"<tbody>"+tRows+totRow+"</tbody>"
+      +"</table></div>";
+
+    // Mini gráfico de barras
+    var maxVal=Math.max.apply(null,mesList.map(function(m){return Math.max(entMap[m]||0,saidaMap[m]||0);}));
+    var barChart=maxVal>0?"<div class='card' style='padding:14px 16px;margin-bottom:16px;overflow:auto'>"
+      +"<div style='color:#C6A46D;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:12px'>Entradas vs Saídas</div>"
+      +"<div style='display:flex;align-items:flex-end;gap:4px;height:80px;min-width:"+(mesList.length*28)+"px'>"
+      +mesList.map(function(m){
+        var ent=entMap[m]||0;var sai=saidaMap[m]||0;
+        var hEnt=maxVal>0?Math.round((ent/maxVal)*72):0;
+        var hSai=maxVal>0?Math.round((sai/maxVal)*72):0;
+        var isCurr=m===mesAtualYM;
+        return"<div style='display:flex;flex-direction:column;align-items:center;gap:1px;flex:1;min-width:20px'>"
+          +"<div style='display:flex;gap:1px;align-items:flex-end;width:100%'>"
+          +"<div style='flex:1;height:"+hEnt+"px;background:#22c55e"+(isCurr?"":"88")+";border-radius:2px 2px 0 0;min-height:"+(ent>0?2:0)+"px'></div>"
+          +"<div style='flex:1;height:"+hSai+"px;background:#ef4444"+(isCurr?"":"88")+";border-radius:2px 2px 0 0;min-height:"+(sai>0?2:0)+"px'></div>"
+          +"</div>"
+          +"<div style='color:#444;font-size:8px;text-align:center;white-space:nowrap;margin-top:2px'>"+ymFmt(m).split("/")[0]+"</div>"
+          +"</div>";
+      }).join("")
+      +"</div>"
+      +"<div style='display:flex;gap:12px;margin-top:8px'>"
+      +"<span style='color:#888;font-size:10px'>■ <span style='color:#22c55e'>Entradas</span></span>"
+      +"<span style='color:#888;font-size:10px'>■ <span style='color:#ef4444'>Saídas</span></span>"
+      +"</div></div>":"";
+
+    return stitle("Relatórios e Indicadores")+tabBar+cards+toggleBtns+barChart+tabela;
+  }
+
+  // ── ABA CLÍNICA ──
   var now=new Date();
+  var pts=ST.pts,apts=ST.apts;
   var mesAtual=apts.filter(function(a){var d=new Date(a.date+"T12:00:00");return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
   var confirmados=mesAtual.filter(function(a){return a.status==="Confirmado";});
   var ativos=pts.filter(function(p){return p.status==="Ativo";});
   var convs=pts.filter(function(p){return p.tipo==="convenio";});
-  var parts=pts.filter(function(p){return (p.tipo||"particular")==="particular";});
+  var parts=pts.filter(function(p){return(p.tipo||"particular")==="particular";});
   var bdays=pts.filter(function(p){if(!p.birthday)return false;var b=new Date(p.birthday);var n=new Date();var nx=new Date(n.getFullYear(),b.getMonth(),b.getDate());if(nx<n)nx.setFullYear(n.getFullYear()+1);return Math.ceil((nx-n)/86400000)<=30;});
-  var retornos=pts.filter(function(p){return (p.evolucao||[]).some(function(e){return e.prox&&new Date(e.prox+"T12:00:00")>=now;});});
+  var retornos=pts.filter(function(p){return(p.evolucao||[]).some(function(e){return e.prox&&new Date(e.prox+"T12:00:00")>=now;});});
   var procCount={};
   apts.forEach(function(a){var pr=PROCS.find(function(p){return p.id===a.procId;});if(pr){procCount[pr.n]=(procCount[pr.n]||0)+1;}});
   var topProcs=Object.entries(procCount).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
   var convCount={};
   pts.filter(function(p){return p.tipo==="convenio"&&p.convenio;}).forEach(function(p){convCount[p.convenio]=(convCount[p.convenio]||0)+1;});
 
-  return stitle("Relatórios e Indicadores")
+  return stitle("Relatórios e Indicadores")+tabBar
     +"<div style='display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px'>"
     +[{e:"🦷",l:"Total de Pacientes",v:pts.length,c:"#C6A46D"},{e:"✅",l:"Pacientes Ativos",v:ativos.length,c:"#22c55e"},{e:"📅",l:"Consultas este mês",v:mesAtual.length,c:"#60a5fa"},{e:"✅",l:"Confirmadas",v:confirmados.length,c:"#86efac"},{e:"💰",l:"Particulares",v:parts.length,c:"#C6A46D"},{e:"🏥",l:"Convênios",v:convs.length,c:"#60a5fa"},{e:"🎂",l:"Aniversários 30 dias",v:bdays.length,c:"#c084fc"},{e:"🔔",l:"Retornos pendentes",v:retornos.length,c:"#f59e0b"}]
     .map(function(c){return "<div class='card' style='border-top:2px solid "+c.c+";cursor:pointer'><div style='font-size:20px;margin-bottom:4px'>"+c.e+"</div><div style='color:#444;font-size:9px;text-transform:uppercase;letter-spacing:1px'>"+c.l+"</div><div style='color:"+c.c+";font-size:26px;font-weight:900'>"+c.v+"</div></div>";}).join("")
     +"</div>"
-    // Procedimentos mais realizados
     +"<div class='card' style='margin-bottom:14px'>"
     +"<div style='color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:12px'>📊 Procedimentos mais realizados</div>"
     +(topProcs.length===0?"<div style='color:#333;text-align:center;padding:12px;font-size:13px'>Sem dados.</div>"
@@ -11204,12 +11374,10 @@ function pageRelatorios(){
         +"</div>";
     }).join(""))
     +"</div>"
-    // Convênios
     +(Object.keys(convCount).length>0?"<div class='card' style='margin-bottom:14px'>"
     +"<div style='color:#C6A46D;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:12px'>🏥 Pacientes por Convênio</div>"
     +Object.entries(convCount).map(function(e){return "<div style='display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #2a1f0a'><span style='color:#bbb;font-size:13px'>"+e[0]+"</span><span style='color:#60a5fa;font-weight:700'>"+e[1]+" paciente"+(e[1]>1?"s":"")+"</span></div>";}).join("")
     +"</div>":"")
-    // Retornos pendentes
     +(retornos.length>0?"<div class='card'>"
     +"<div style='color:#f59e0b;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px'>🔔 Pacientes com retorno agendado</div>"
     +retornos.map(function(p){
