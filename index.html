@@ -10949,7 +10949,7 @@ window.abrirNovaContaRecorrenteModal=function(tipoPresel,catPresel,idEditar){
     </div>
     <div style="margin-bottom:10px"><label class="lbl">Fornecedor</label>
       <input id="rec-forn" class="inp" placeholder="Opcional" list="forn-list" autocomplete="off" value="${edit?edit.fornecedor||"":""}"/>
-      <datalist id="forn-list">${(function(){var cat=edit?edit.categoria:"";var tipo=cat==="laboratorio"?"laboratorio":(cat==="dental"?"dentaria":"todos");var f=(ST.fornecedores||[]).filter(function(x){return tipo==="laboratorio"?(x.tipo==="laboratorio"):(tipo==="dentaria"?(x.tipo!=="laboratorio"):true);}).map(function(x){return'<option value="'+x.nome.replace(/"/g,'&quot;')+'"/>';});var l=(tipo==="laboratorio"||tipo==="todos")?[...new Set((ST.labs||[]).map(function(x){return x.lab||"";}).filter(Boolean))].map(function(n){return'<option value="'+n.replace(/"/g,'&quot;')+'"/>';'}):[];return f.concat(l).join("");})()}</datalist>
+      <datalist id="forn-list">${(function(){var cat=edit?edit.categoria:"";var tipo=cat==="laboratorio"?"laboratorio":(cat==="dental"?"dentaria":"todos");var f=(ST.fornecedores||[]).filter(function(x){return tipo==="laboratorio"?(x.tipo==="laboratorio"):(tipo==="dentaria"?(x.tipo!=="laboratorio"):true);}).map(function(x){return'<option value="'+x.nome.replace(/"/g,"&quot;")+'"/>';});var l=(tipo==="laboratorio"||tipo==="todos")?[...new Set((ST.labs||[]).map(function(x){return x.lab||"";}).filter(Boolean))].map(function(n){return'<option value="'+n.replace(/"/g,"&quot;")+'"/>';}):[];return f.concat(l).join("");})()}</datalist>
     </div>
     <div class="g2" style="margin-bottom:10px">
       <div><label class="lbl">Valor base (R$) *</label>
