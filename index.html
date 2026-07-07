@@ -7829,7 +7829,22 @@ function renderPlano(p){
         +"</tr>";
     }).join("");
 
+  var statusOrc=plano.status||"rascunho";
+  var isAprovado=statusOrc==="aprovado";
+  var statusBadge=isAprovado
+    ?"<span style='background:#22c55e22;color:#22c55e;border:1px solid #22c55e55;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700'>✅ Aprovado</span>"
+    :"<span style='background:#66666622;color:#888;border:1px solid #44444455;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700'>📝 Rascunho</span>";
+  var sigBlock=isAprovado&&plano.assinaturaImg
+    ?"<div style='display:flex;align-items:center;gap:10px;margin-top:6px'><img src='"+plano.assinaturaImg+"' style='height:36px;max-width:120px;border:1px solid #33330055;border-radius:4px;background:#111'/><span style='color:#555;font-size:10px'>Assinado em "+fmtDate(plano.assinaturaData||"")+"</span></div>"
+    :isAprovado?"<div style='color:#22c55e;font-size:11px;margin-top:4px'>✓ Aprovado em "+fmtDate(plano.assinaturaData||"")+"</div>"
+    :"";
   return "<div>"
+    // STATUS
+    +"<div style='display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;padding:10px 14px;background:rgba(255,255,255,0.02);border-radius:8px;border:1px solid rgba(255,255,255,0.06)'>"
+    +"<div>"+statusBadge+sigBlock+"</div>"
+    +(itens.length&&!isAprovado?"<button onclick='aprovarOrcamento("+pid+")' style='background:#22c55e22;border:1px solid #22c55e55;color:#22c55e;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;padding:6px 14px;font-family:var(--font-body)'>✅ Aprovar com Assinatura</button>":"")
+    +(itens.length&&isAprovado?"<button onclick='aprovarOrcamento("+pid+")' style='background:transparent;border:1px solid #44444555;color:#555;border-radius:8px;cursor:pointer;font-size:11px;padding:5px 10px;font-family:var(--font-body)'>↺ Refazer assinatura</button>":"")
+    +"</div>"
     // BOTÃO IMPORTAR DO ODONTOGRAMA
     +"<div style='margin-bottom:14px;padding:12px;background:linear-gradient(135deg,rgba(198,164,109,0.08),rgba(198,164,109,0.02));border-radius:10px;border:1px dashed rgba(198,164,109,0.2);display:flex;align-items:center;gap:10px'>"
     +"<div style='font-size:22px'>🦷</div>"
@@ -7895,6 +7910,7 @@ function renderPlano(p){
     +"<button onclick='importarOrcamentoContrato("+pid+")' class='bg' style='padding:11px;color:#E2C99A;border-color:rgba(198,164,109,0.4)'>📋 Enviar p/ Contrato</button>"
     +"<button onclick='clearPlano("+pid+")' class='bg' style='border-color:#ef444444;color:#ef4444;padding:11px'>🗑 Limpar Orçamento</button>"
     +"</div>"
+    +(itens.length?"<div style='margin-top:8px'><button onclick='enviarOrcamentoFinanceiro("+pid+")' style='width:100%;padding:12px;font-size:13px;font-weight:700;background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.35);color:#60a5fa;border-radius:10px;cursor:pointer;font-family:var(--font-body)'>💳 Enviar para Financeiro (Contas a Receber)</button></div>":"")
     +"</div>";
 }
 
@@ -7986,7 +8002,160 @@ window.planoEntrada=function(ptId,v){updPlano(ptId,function(pl){return Object.as
 window.planoParcelas=function(ptId,v){updPlano(ptId,function(pl){return Object.assign({},pl,{parcelas:Number(v)||1});});};
 window.planoValidade=function(ptId,v){updPlano(ptId,function(pl){return Object.assign({},pl,{validade:v});});};
 window.planoObs=function(ptId,v){updPlano(ptId,function(pl){return Object.assign({},pl,{obs:v});},{render:false,refresh:false});};
-window.clearPlano=function(ptId){rConfirm("Limpar todo o orçamento?",function(){updPlano(ptId,function(){return{itens:[],obs:"",desconto:0,parcelas:1,validade:""};});toast("Orçamento limpo.","success");},"Limpar Orçamento");};
+window.clearPlano=function(ptId){rConfirm("Limpar todo o orçamento?",function(){updPlano(ptId,function(pl){return{itens:[],obs:"",desconto:0,parcelas:1,validade:"",status:"rascunho",assinaturaData:"",assinaturaImg:""};});toast("Orçamento limpo.","success");},"Limpar Orçamento");};
+
+// ── APROVAÇÃO DO ORÇAMENTO ─────────────────────────────────────────
+window.aprovarOrcamento=function(ptId){
+  var p=ST.pts.find(function(x){return sameId(x.id,ptId);});
+  if(!p)return;
+  var plano=p.plano||{};
+  var t=calcPlanoTotals(plano);
+  var desc="Total: R$ "+t.totalDesc.toLocaleString("pt-BR",{minimumFractionDigits:2});
+  if(t.entrada>0)desc+=" | Entrada: R$ "+t.entrada.toLocaleString("pt-BR",{minimumFractionDigits:2});
+  if(t.parcelas>1)desc+=" | "+t.parcelas+"x de R$ "+t.vlrParcela.toLocaleString("pt-BR",{minimumFractionDigits:2});
+  document.getElementById("apr-orc-modal")?.remove();
+  var m=document.createElement("div");m.className="mbg";m.id="apr-orc-modal";
+  m.innerHTML=`<div class="mbx" style="max-width:420px"><div class="mhd">
+    <div class="mhd-title">✅ Aprovar Orçamento</div>
+    <button onclick="document.getElementById('apr-orc-modal').remove()" style="background:none;border:none;color:#555;cursor:pointer;font-size:22px">✕</button>
+  </div><div class="mbd">
+    <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.2);border-radius:8px;padding:10px 14px;margin-bottom:14px">
+      <div style="color:#ccc;font-size:12px;font-weight:700;margin-bottom:2px">Paciente: ${p.name}</div>
+      <div style="color:#888;font-size:11px">${desc}</div>
+    </div>
+    <div style="color:#888;font-size:11px;margin-bottom:12px">Ao assinar abaixo, o paciente confirma que leu e concorda com este orçamento e plano de pagamento.</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <button id="apr-mode-draw" onclick="document.getElementById('apr-draw-wrap').style.display='block';document.getElementById('apr-type-wrap').style.display='none';this.style.color='#C6A46D';this.style.borderColor='rgba(198,164,109,0.4)';document.getElementById('apr-mode-type').style.color='#555';document.getElementById('apr-mode-type').style.borderColor='rgba(255,255,255,0.1)'" class="bg" style="padding:4px 12px;font-size:11px;border-radius:50px">✍️ Desenhar</button>
+      <button id="apr-mode-type" onclick="document.getElementById('apr-draw-wrap').style.display='none';document.getElementById('apr-type-wrap').style.display='block';this.style.color='#C6A46D';this.style.borderColor='rgba(198,164,109,0.4)';document.getElementById('apr-mode-draw').style.color='#555';document.getElementById('apr-mode-draw').style.borderColor='rgba(255,255,255,0.1)'" class="bg" style="padding:4px 12px;font-size:11px;border-radius:50px">⌨️ Digitar nome</button>
+    </div>
+    <div id="apr-draw-wrap">
+      <canvas id="apr-sig-canvas" width="340" height="100" style="width:100%;border:1px solid #333;border-radius:8px;background:#111;display:block;touch-action:none"></canvas>
+      <button id="apr-sig-confirm-btn" onclick="confirmarAssinaturaOrc(${typeof ptId==="number"?ptId:"'"+String(ptId).replace(/'/g,"\\'")+"'"})" class="bp" style="width:100%;margin-top:10px">✅ Confirmar Aprovação</button>
+      <button onclick="(function(){var c=document.getElementById('apr-sig-canvas');var ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);})()" class="bg" style="width:100%;margin-top:6px;font-size:11px;color:#555">↺ Limpar assinatura</button>
+    </div>
+    <div id="apr-type-wrap" style="display:none">
+      <input id="apr-sig-text" class="inp" placeholder="Digite o nome do paciente" style="margin-bottom:10px"/>
+      <button onclick="confirmarAssinaturaOrcTexto(${typeof ptId==="number"?ptId:"'"+String(ptId).replace(/'/g,"\\'")+"'"})" class="bp" style="width:100%">✅ Confirmar Aprovação</button>
+    </div>
+  </div></div>`;
+  document.body.appendChild(m);
+  initSigCanvas("apr-sig-canvas","apr-sig-confirm-btn","#C6A46D");
+};
+window.confirmarAssinaturaOrc=function(ptId){
+  var c=document.getElementById("apr-sig-canvas");
+  if(!c)return;
+  var img=c.toDataURL();
+  updPlano(ptId,function(pl){return Object.assign({},pl,{status:"aprovado",assinaturaData:todayISO(),assinaturaImg:img});});
+  document.getElementById("apr-orc-modal")?.remove();
+  toast("Orçamento aprovado com assinatura ✓","success");
+};
+window.confirmarAssinaturaOrcTexto=function(ptId){
+  var v=document.getElementById("apr-sig-text")?.value.trim();
+  if(!v){toast("Digite o nome para confirmar.","warning");return;}
+  var canvas=document.createElement("canvas");
+  canvas.width=340;canvas.height=80;
+  var ctx=canvas.getContext("2d");
+  ctx.fillStyle="#111";ctx.fillRect(0,0,340,80);
+  ctx.font="italic 32px Georgia,serif";ctx.fillStyle="#C6A46D";
+  ctx.textAlign="center";ctx.textBaseline="middle";
+  ctx.fillText(v,170,40);
+  var img=canvas.toDataURL();
+  updPlano(ptId,function(pl){return Object.assign({},pl,{status:"aprovado",assinaturaData:todayISO(),assinaturaImg:img});});
+  document.getElementById("apr-orc-modal")?.remove();
+  toast("Orçamento aprovado ✓","success");
+};
+
+// ── ENVIAR ORÇAMENTO PARA FINANCEIRO ──────────────────────────────
+window.enviarOrcamentoFinanceiro=function(ptId){
+  var p=ST.pts.find(function(x){return sameId(x.id,ptId);});
+  if(!p)return;
+  var plano=p.plano||{};
+  var t=calcPlanoTotals(plano);
+  if(t.totalDesc<=0){toast("Orçamento sem valor. Adicione procedimentos.","warning");return;}
+  var itens=plano.itens||[];
+  var resumoProcs=itens.slice(0,3).map(function(it){
+    var pr=PROCS.find(function(x){return x.id===it.procId;})||{n:it.name||"?"};
+    return pr.n;
+  }).join(", ")+(itens.length>3?" +mais":"");
+  document.getElementById("fin-orc-modal")?.remove();
+  var m=document.createElement("div");m.className="mbg";m.id="fin-orc-modal";
+  var pid2=typeof ptId==="number"?ptId:"'"+String(ptId).replace(/'/g,"\\'")+"'";
+  var parcelasInfo=t.parcelas>1
+    ?"<div style='color:#888;font-size:11px;margin-top:2px'>"+(t.entrada>0?"Entrada R$ "+t.entrada.toLocaleString("pt-BR",{minimumFractionDigits:2})+" + ":"")+t.parcelas+"x de R$ "+t.vlrParcela.toLocaleString("pt-BR",{minimumFractionDigits:2})+"</div>"
+    :(t.entrada>0?"<div style='color:#888;font-size:11px;margin-top:2px'>Entrada R$ "+t.entrada.toLocaleString("pt-BR",{minimumFractionDigits:2})+" + restante à vista</div>":"<div style='color:#888;font-size:11px;margin-top:2px'>Pagamento à vista</div>");
+  m.innerHTML=`<div class="mbx" style="max-width:440px"><div class="mhd">
+    <div class="mhd-title">💳 Enviar para Financeiro</div>
+    <button onclick="document.getElementById('fin-orc-modal').remove()" style="background:none;border:none;color:#555;cursor:pointer;font-size:22px">✕</button>
+  </div><div class="mbd">
+    <div style="background:rgba(96,165,250,0.06);border:1px solid rgba(96,165,250,0.2);border-radius:8px;padding:12px 14px;margin-bottom:16px">
+      <div style="color:#ccc;font-size:13px;font-weight:700">${p.name}</div>
+      <div style="color:#60a5fa;font-size:20px;font-weight:800;margin:4px 0">R$ ${t.totalDesc.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
+      ${parcelasInfo}
+      <div style="color:#555;font-size:10px;margin-top:6px">${resumoProcs}</div>
+    </div>
+    <div style="margin-bottom:12px">
+      <label class="lbl" style="margin-bottom:8px;display:block">Como gerar as contas a receber?</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px;border-radius:8px;border:1px solid rgba(198,164,109,0.2);margin-bottom:6px">
+        <input type="radio" name="fin-modo" value="parcelas" checked style="accent-color:#C6A46D"/>
+        <div><div style="color:#ddd;font-size:12px;font-weight:600">Por vencimento (uma entrada por parcela)</div>
+        <div style="color:#666;font-size:10px">Gera ${(t.entrada>0?1:0)+t.parcelas} conta(s) com datas de vencimento individuais</div></div>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06)">
+        <input type="radio" name="fin-modo" value="unica" style="accent-color:#C6A46D"/>
+        <div><div style="color:#ddd;font-size:12px;font-weight:600">Conta única</div>
+        <div style="color:#666;font-size:10px">Uma só conta com total R$ ${t.totalDesc.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div></div>
+      </label>
+    </div>
+    <div style="margin-bottom:14px">
+      <label class="lbl">Data do 1º vencimento</label>
+      <input id="fin-dt-inicio" type="date" class="inp" value="${todayISO()}"/>
+      <div style="color:#555;font-size:10px;margin-top:4px">Intervalo entre parcelas: 30 dias</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="confirmarEnvioFinanceiro(${pid2})" class="bp" style="flex:1;padding:11px;font-size:13px">💳 Criar Contas a Receber</button>
+      <button onclick="document.getElementById('fin-orc-modal').remove()" class="bg" style="color:#555">Cancelar</button>
+    </div>
+  </div></div>`;
+  document.body.appendChild(m);
+};
+window.confirmarEnvioFinanceiro=function(ptId){
+  var p=ST.pts.find(function(x){return sameId(x.id,ptId);});
+  if(!p)return;
+  var plano=p.plano||{};
+  var t=calcPlanoTotals(plano);
+  var itens=plano.itens||[];
+  var resumoProcs=itens.slice(0,3).map(function(it){
+    var pr=PROCS.find(function(x){return x.id===it.procId;})||{n:it.name||"?"};
+    return pr.n;
+  }).join(", ")+(itens.length>3?" +mais":"");
+  var modo=document.querySelector('input[name="fin-modo"]:checked')?.value||"parcelas";
+  var dtInicio=document.getElementById("fin-dt-inicio")?.value||todayISO();
+  function addDias(iso,dias){
+    var d=new Date(iso+"T12:00:00");d.setDate(d.getDate()+dias);return d.toISOString().slice(0,10);
+  }
+  var novas=[];
+  var base=dtInicio;
+  if(modo==="unica"){
+    novas.push({id:"cr_"+Date.now()+"_0",paciente:p.name,desc:resumoProcs,total:t.totalDesc,pago:0,vencimento:base,status:"pendente"});
+  } else {
+    var offset=0;
+    if(t.entrada>0){
+      novas.push({id:"cr_"+Date.now()+"_e",paciente:p.name,desc:"Entrada — "+resumoProcs,total:t.entrada,pago:0,vencimento:base,status:"pendente"});
+      offset=30;
+    }
+    if(t.parcelas===1){
+      novas.push({id:"cr_"+Date.now()+"_1",paciente:p.name,desc:"À vista — "+resumoProcs,total:t.restante,pago:0,vencimento:addDias(base,offset),status:"pendente"});
+    } else {
+      for(var i=0;i<t.parcelas;i++){
+        novas.push({id:"cr_"+Date.now()+"_"+i,paciente:p.name,desc:"Parcela "+(i+1)+"/"+t.parcelas+" — "+resumoProcs,total:t.vlrParcela,pago:0,vencimento:addDias(base,offset+i*30),status:"pendente"});
+      }
+    }
+  }
+  var ns=[...ST.contasReceber,...novas];
+  save("rof_contas_receber",ns);set({contasReceber:ns});
+  document.getElementById("fin-orc-modal")?.remove();
+  toast(novas.length+" conta(s) criada(s) em Financeiro → A Receber ✓","success");
+};
 
 window.printPlano=function(ptId){
   var p=ST.pts.find(function(x){return sameId(x.id,ptId);});
