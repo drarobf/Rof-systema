@@ -10942,14 +10942,14 @@ window.abrirNovaContaRecorrenteModal=function(tipoPresel,catPresel,idEditar){
       </div>
     </div>
     <div style="margin-bottom:10px"><label class="lbl">Categoria *</label>
-      <select id="rec-cat" class="inp">${catOpts}</select>
+      <select id="rec-cat" class="inp" onchange="atualizarFornList('rec-cat','forn-list')">${catOpts}</select>
     </div>
     <div style="margin-bottom:10px"><label class="lbl">Descrição (opcional)</label>
       <input id="rec-desc" class="inp" placeholder="Ex: Aluguel sala 2" value="${edit?edit.desc||"":""}"/>
     </div>
     <div style="margin-bottom:10px"><label class="lbl">Fornecedor</label>
-      <input id="rec-forn" class="inp" placeholder="Ex: Imobiliária Silva" list="forn-list" autocomplete="off" value="${edit?edit.fornecedor||"":""}"/>
-      <datalist id="forn-list">${(function(){var f=(ST.fornecedores||[]).map(function(x){return'<option value="'+x.nome.replace(/"/g,'&quot;')+'"/>';});var l=[...new Set((ST.labs||[]).map(function(x){return x.lab||"";}).filter(Boolean))].map(function(n){return'<option value="'+n.replace(/"/g,'&quot;')+'"/>';});return f.concat(l).join("");})()}</datalist>
+      <input id="rec-forn" class="inp" placeholder="Opcional" list="forn-list" autocomplete="off" value="${edit?edit.fornecedor||"":""}"/>
+      <datalist id="forn-list">${(function(){var cat=edit?edit.categoria:"";var tipo=cat==="laboratorio"?"laboratorio":(cat==="dental"?"dentaria":"todos");var f=(ST.fornecedores||[]).filter(function(x){return tipo==="laboratorio"?(x.tipo==="laboratorio"):(tipo==="dentaria"?(x.tipo!=="laboratorio"):true);}).map(function(x){return'<option value="'+x.nome.replace(/"/g,'&quot;')+'"/>';});var l=(tipo==="laboratorio"||tipo==="todos")?[...new Set((ST.labs||[]).map(function(x){return x.lab||"";}).filter(Boolean))].map(function(n){return'<option value="'+n.replace(/"/g,'&quot;')+'"/>';'}):[];return f.concat(l).join("");})()}</datalist>
     </div>
     <div class="g2" style="margin-bottom:10px">
       <div><label class="lbl">Valor base (R$) *</label>
@@ -11051,14 +11051,14 @@ window.abrirNovaContaAvulsaModal=function(){
       </div>
     </div>
     <div style="margin-bottom:10px"><label class="lbl">Categoria</label>
-      <select id="av-cat" class="inp"><option value="">— Sem categoria —</option>${catOpts}</select>
+      <select id="av-cat" class="inp" onchange="atualizarFornList('av-cat','forn-list2')"><option value="">— Sem categoria —</option>${catOpts}</select>
     </div>
     <div style="margin-bottom:10px"><label class="lbl">Descrição *</label>
       <input id="av-desc" class="inp" placeholder="Ex: Material dentário extra"/>
     </div>
     <div style="margin-bottom:10px"><label class="lbl">Fornecedor</label>
       <input id="av-forn" class="inp" placeholder="Opcional" list="forn-list2" autocomplete="off"/>
-      <datalist id="forn-list2">${(function(){var f=(ST.fornecedores||[]).map(function(x){return'<option value="'+x.nome.replace(/"/g,'&quot;')+'"/>';});var l=[...new Set((ST.labs||[]).map(function(x){return x.lab||"";}).filter(Boolean))].map(function(n){return'<option value="'+n.replace(/"/g,'&quot;')+'"/>';});return f.concat(l).join("");})()}</datalist>
+      <datalist id="forn-list2">${(function(){var f=(ST.fornecedores||[]).filter(function(x){return x.tipo!=="laboratorio";}).map(function(x){return'<option value="'+x.nome.replace(/"/g,'&quot;')+'"/>';});return f.join("");})()}</datalist>
     </div>
     <div class="g2" style="margin-bottom:10px">
       <div><label class="lbl">Valor (R$) *</label>
@@ -11119,63 +11119,97 @@ window.excluirConta=function(id){
   },"Excluir");
 };
 
-// ── Fornecedores & Laboratórios ────────────────────────────────
-window.abrirFornecedoresModal=function(){
-  document.getElementById("forn-mgr-modal")?.remove();
-  function renderLista(){
-    var forns=ST.fornecedores||[];
+// ── Fornecedores — Dentárias | Laboratórios ────────────────────
+function _fornListOpts(tipo){
+  var forns=(ST.fornecedores||[]).filter(function(f){
+    return tipo==="laboratorio"?(f.tipo==="laboratorio"):(f.tipo!=="laboratorio");
+  });
+  return forns.map(function(f){return'<option value="'+f.nome.replace(/"/g,'&quot;')+'"/>';}).join("");
+}
+function atualizarFornList(catSelectId,datalistId){
+  var cat=document.getElementById(catSelectId)?.value||"";
+  var tipo=cat==="laboratorio"?"laboratorio":(cat==="dental"?"dentaria":"todos");
+  var forns=ST.fornecedores||[];
+  var opts=forns.filter(function(f){
+    if(tipo==="laboratorio")return f.tipo==="laboratorio";
+    if(tipo==="dentaria")return f.tipo!=="laboratorio";
+    return true;
+  }).map(function(f){return'<option value="'+f.nome.replace(/"/g,'&quot;')+'"/>';});
+  if(tipo==="laboratorio"||tipo==="todos"){
     var labNomes=[...new Set((ST.labs||[]).map(function(l){return l.lab||"";}).filter(Boolean))];
-    var linhas=forns.map(function(f){
-      var cor=f.tipo==="laboratorio"?"#a78bfa":"#C6A46D";
-      var ic=f.tipo==="laboratorio"?"🧪":"🏭";
+    opts=opts.concat(labNomes.map(function(n){return'<option value="'+n.replace(/"/g,'&quot;')+'"/>';}));
+  }
+  var dl=document.getElementById(datalistId);
+  if(dl)dl.innerHTML=opts.join("");
+}
+window.abrirFornecedoresModal=function(abaInicial){
+  document.getElementById("forn-mgr-modal")?.remove();
+  var _abaAtiva=abaInicial||"dentaria";
+  function renderLista(tipo){
+    var items=(ST.fornecedores||[]).filter(function(f){
+      return tipo==="laboratorio"?(f.tipo==="laboratorio"):(f.tipo!=="laboratorio");
+    });
+    if(!items.length)return`<div style="color:#444;font-size:12px;padding:16px;text-align:center">Nenhum cadastrado.</div>`;
+    return items.map(function(f){
+      var cor=tipo==="laboratorio"?"#a78bfa":"#e879f9";
       return`<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.05)">
-        <span style="font-size:14px">${ic}</span>
         <div style="flex:1;min-width:0">
           <div style="color:#ddd;font-size:13px;font-weight:600">${f.nome}</div>
-          ${f.telefone?`<div style="color:#555;font-size:10px">${f.telefone}${f.email?" · "+f.email:""}</div>`:(f.email?`<div style="color:#555;font-size:10px">${f.email}</div>`:"")}
+          ${f.telefone?`<div style="color:#555;font-size:10px">${f.telefone}${f.email?" · "+f.email:""}</div>`:""}
           ${f.obs?`<div style="color:#444;font-size:10px;font-style:italic">${f.obs}</div>`:""}
         </div>
-        <span style="color:${cor};font-size:9px;font-weight:700;text-transform:uppercase;padding:2px 7px;border:1px solid ${cor}44;border-radius:20px">${f.tipo==="laboratorio"?"Lab":"Forn."}</span>
-        <button onclick="abrirEditFornecedor('${f.id}')" style="background:none;border:none;color:#C6A46D;cursor:pointer;font-size:13px;padding:2px">✏</button>
-        <button onclick="excluirFornecedor('${f.id}')" style="background:none;border:none;color:#444;cursor:pointer;font-size:13px;padding:2px">🗑</button>
+        <button onclick="abrirEditFornecedor('${f.id}')" style="background:none;border:none;color:#C6A46D;cursor:pointer;font-size:14px;padding:2px" title="Editar">✏</button>
+        <button onclick="excluirFornecedor('${f.id}')" style="background:none;border:none;color:#444;cursor:pointer;font-size:14px;padding:2px" title="Remover">🗑</button>
       </div>`;
     }).join("");
-    var labLinhas=labNomes.map(function(n){
-      return`<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid rgba(255,255,255,0.03)">
-        <span style="font-size:13px">🧪</span>
-        <div style="flex:1;color:#666;font-size:12px">${n}</div>
-        <span style="color:#444;font-size:9px;font-weight:700;text-transform:uppercase;padding:2px 7px;border:1px solid #33333388;border-radius:20px">Labs</span>
-      </div>`;
-    }).join("");
-    return(linhas||`<div style="color:#444;font-size:12px;padding:12px;text-align:center">Nenhum fornecedor cadastrado.</div>`)
-      +(labNomes.length?`<div style="color:#555;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:10px 14px 4px">Laboratórios (Trabalhos)</div>`+labLinhas:"");
   }
-  var m=document.createElement("div");m.className="mbg";m.id="forn-mgr-modal";
-  m.innerHTML=`<div class="mbx" style="max-width:480px"><div class="mhd">
-    <div class="mhd-title">🏭 Fornecedores & Laboratórios</div>
-    <button onclick="document.getElementById('forn-mgr-modal').remove()" style="background:none;border:none;color:#555;cursor:pointer;font-size:22px">✕</button>
-  </div><div class="mbd" style="padding:0">
-    <div id="forn-lista" style="max-height:300px;overflow-y:auto">${renderLista()}</div>
+  function formSection(tipo){
+    var isDent=tipo==="dentaria";
+    return`<div id="forn-lista" style="max-height:240px;overflow-y:auto">${renderLista(tipo)}</div>
     <div style="padding:14px;border-top:1px solid rgba(255,255,255,0.07)">
-      <div style="color:#aaa;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">+ Novo</div>
-      <div style="display:flex;gap:6px;margin-bottom:8px">
-        <button id="fntp-forn" onclick="document.getElementById('fntp-forn').style.background='#C6A46D22';document.getElementById('fntp-forn').style.color='#C6A46D';document.getElementById('fntp-lab').style.background='transparent';document.getElementById('fntp-lab').style.color='#555'" class="bg" style="flex:1;padding:6px;font-size:12px;background:#C6A46D22;color:#C6A46D">🏭 Fornecedor</button>
-        <button id="fntp-lab" onclick="document.getElementById('fntp-lab').style.background='#a78bfa22';document.getElementById('fntp-lab').style.color='#a78bfa';document.getElementById('fntp-forn').style.background='transparent';document.getElementById('fntp-forn').style.color='#555'" class="bg" style="flex:1;padding:6px;font-size:12px">🧪 Laboratório</button>
-      </div>
+      <div style="color:#aaa;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">+ ${isDent?"Nova Dentária":"Novo Laboratório"}</div>
+      <input type="hidden" id="fn-tipo-val" value="${tipo}"/>
       <div class="g2" style="margin-bottom:8px">
-        <div><label class="lbl">Nome *</label><input id="fn-nome" class="inp" placeholder="Nome do fornecedor"/></div>
+        <div><label class="lbl">Nome *</label><input id="fn-nome" class="inp" placeholder="${isDent?"Ex: DentBras, SS White...":"Ex: Lab Sorriso..."}"/></div>
         <div><label class="lbl">Telefone</label><input id="fn-tel" class="inp" placeholder="(47) 9..."/></div>
       </div>
       <div class="g2" style="margin-bottom:8px">
         <div><label class="lbl">E-mail / CNPJ</label><input id="fn-email" class="inp" placeholder="Opcional"/></div>
         <div><label class="lbl">Observação</label><input id="fn-obs" class="inp" placeholder="Opcional"/></div>
       </div>
-      <button onclick="salvarFornecedor(null)" class="bp" style="width:100%;padding:9px;font-size:12px">✅ Adicionar</button>
-    </div>
-  </div></div>`;
+      <button id="fn-salvar-btn" onclick="salvarFornecedor(null)" class="bp" style="width:100%;padding:9px;font-size:12px">✅ Adicionar</button>
+    </div>`;
+  }
+  var m=document.createElement("div");m.className="mbg";m.id="forn-mgr-modal";
+  m.innerHTML=`<div class="mbx" style="max-width:460px"><div class="mhd">
+    <div class="mhd-title">🦷 Dentárias & Laboratórios</div>
+    <button onclick="document.getElementById('forn-mgr-modal').remove()" style="background:none;border:none;color:#555;cursor:pointer;font-size:22px">✕</button>
+  </div>
+  <div style="display:flex;border-bottom:1px solid rgba(255,255,255,0.08)">
+    <button id="forn-tab-dent" onclick="window._mudarAbaForn('dentaria')" style="flex:1;padding:11px;background:${_abaAtiva==='dentaria'?'rgba(232,121,249,0.08)':'transparent'};border:none;border-bottom:2px solid ${_abaAtiva==='dentaria'?'#e879f9':'transparent'};color:${_abaAtiva==='dentaria'?'#e879f9':'#555'};cursor:pointer;font-size:12px;font-weight:700;font-family:var(--font-body)">🦷 Dentárias</button>
+    <button id="forn-tab-lab" onclick="window._mudarAbaForn('laboratorio')" style="flex:1;padding:11px;background:${_abaAtiva==='laboratorio'?'rgba(167,139,250,0.08)':'transparent'};border:none;border-bottom:2px solid ${_abaAtiva==='laboratorio'?'#a78bfa':'transparent'};color:${_abaAtiva==='laboratorio'?'#a78bfa':'#555'};cursor:pointer;font-size:12px;font-weight:700;font-family:var(--font-body)">🧪 Laboratórios</button>
+  </div>
+  <div class="mbd" style="padding:0" id="forn-content">${formSection(_abaAtiva)}</div>
+  </div>`;
   document.body.appendChild(m);
+  window._mudarAbaForn=function(tipo){
+    _abaAtiva=tipo;
+    document.getElementById("forn-content").innerHTML=formSection(tipo);
+    var isDent2=tipo==="dentaria";
+    var td=document.getElementById("forn-tab-dent"),tl=document.getElementById("forn-tab-lab");
+    td.style.background=isDent2?"rgba(232,121,249,0.08)":"transparent";
+    td.style.color=isDent2?"#e879f9":"#555";
+    td.style.borderBottom="2px solid "+(isDent2?"#e879f9":"transparent");
+    tl.style.background=!isDent2?"rgba(167,139,250,0.08)":"transparent";
+    tl.style.color=!isDent2?"#a78bfa":"#555";
+    tl.style.borderBottom="2px solid "+(!isDent2?"#a78bfa":"transparent");
+    setTimeout(function(){document.getElementById("fn-nome")?.focus();},50);
+  };
+  window._refreshFornLista=function(){
+    var tipo=document.getElementById("fn-tipo-val")?.value||"dentaria";
+    document.getElementById("forn-lista").innerHTML=renderLista(tipo);
+  };
   setTimeout(function(){document.getElementById("fn-nome")?.focus();},100);
-  window._refreshFornLista=function(){document.getElementById("forn-lista").innerHTML=renderLista();};
 };
 window.salvarFornecedor=function(idEditar){
   var nome=(document.getElementById("fn-nome")?.value||"").trim();
@@ -11183,9 +11217,9 @@ window.salvarFornecedor=function(idEditar){
   var tel=(document.getElementById("fn-tel")?.value||"").trim();
   var email=(document.getElementById("fn-email")?.value||"").trim();
   var obs=(document.getElementById("fn-obs")?.value||"").trim();
-  var tipo=document.getElementById("fntp-lab")?.style.color==="#a78bfa"?"laboratorio":"fornecedor";
+  var tipo=document.getElementById("fn-tipo-val")?.value||"dentaria";
   var ns=ST.fornecedores||[];
-  if(idEditar){
+  if(idEditar&&idEditar!=="null"){
     ns=ns.map(function(f){return f.id===idEditar?Object.assign({},f,{nome,telefone:tel,email,obs,tipo}):f;});
   } else {
     ns=ns.concat([{id:"fn_"+Date.now(),nome,telefone:tel,email,obs,tipo}]);
@@ -11196,33 +11230,33 @@ window.salvarFornecedor=function(idEditar){
   document.getElementById("fn-tel").value="";
   document.getElementById("fn-email").value="";
   document.getElementById("fn-obs").value="";
+  var btn=document.getElementById("fn-salvar-btn");
+  if(btn){btn.textContent="✅ Adicionar";btn.onclick=function(){salvarFornecedor(null);};}
   if(window._refreshFornLista)window._refreshFornLista();
-  toast(idEditar?"Fornecedor atualizado.":"Fornecedor adicionado.","success");
+  toast(idEditar&&idEditar!=="null"?"Atualizado.":"Adicionado.","success");
 };
 window.abrirEditFornecedor=function(id){
   var f=(ST.fornecedores||[]).find(function(x){return x.id===id;});
   if(!f)return;
-  document.getElementById("fn-nome").value=f.nome||"";
-  document.getElementById("fn-tel").value=f.telefone||"";
-  document.getElementById("fn-email").value=f.email||"";
-  document.getElementById("fn-obs").value=f.obs||"";
-  if(f.tipo==="laboratorio"){
-    document.getElementById("fntp-lab").click();
-  } else {
-    document.getElementById("fntp-forn").click();
-  }
-  var btn=document.querySelector("#forn-mgr-modal .bp");
-  if(btn){
-    btn.textContent="✅ Salvar alterações";
-    btn.onclick=function(){salvarFornecedor(id);btn.textContent="✅ Adicionar";btn.onclick=function(){salvarFornecedor(null);};};
-  }
+  var tipo=f.tipo==="laboratorio"?"laboratorio":"dentaria";
+  if(window._mudarAbaForn)window._mudarAbaForn(tipo);
+  setTimeout(function(){
+    document.getElementById("fn-nome").value=f.nome||"";
+    document.getElementById("fn-tel").value=f.telefone||"";
+    document.getElementById("fn-email").value=f.email||"";
+    document.getElementById("fn-obs").value=f.obs||"";
+    document.getElementById("fn-tipo-val").value=tipo;
+    var btn=document.getElementById("fn-salvar-btn");
+    if(btn){btn.textContent="✅ Salvar alterações";btn.onclick=function(){salvarFornecedor(id);};}
+    document.getElementById("fn-nome")?.focus();
+  },60);
 };
 window.excluirFornecedor=function(id){
-  rConfirm("Remover este fornecedor?",function(){
+  rConfirm("Remover este cadastro?",function(){
     var ns=(ST.fornecedores||[]).filter(function(f){return f.id!==id;});
     save("rof_fornecedores",ns);set({fornecedores:ns});
     if(window._refreshFornLista)window._refreshFornLista();
-    toast("Fornecedor removido.","success");
+    toast("Removido.","success");
   },"Remover");
 };
 
