@@ -11203,8 +11203,8 @@ function pageContasReceber(){
     </div>`;
   }
   function secaoTipoRec(tipoStr){
-    var tc=contas.filter(function(c){return(c.tipo||"pessoal")===tipoStr;});
-    var tt=tmpls.filter(function(t){return(t.tipo||"pessoal")===tipoStr&&t.ativo!==false;});
+    var tc=contas.filter(function(c){return(c.tipo||"consultorio")===tipoStr;});
+    var tt=tmpls.filter(function(t){return(t.tipo||"consultorio")===tipoStr&&t.ativo!==false;});
     var html="";
     CATS_RECEBER.forEach(function(cat){
       var ct=tt.filter(function(t){return t.categoria===cat.k;});
