@@ -10753,7 +10753,7 @@ function pageFinClinico(){
   }
   var secsHTML=SECS.map(function(sec){
     var ct=tmpls.filter(function(t){return t.categoria===sec.k&&t.ativo!==false;});
-    var ci=contas.filter(function(c){return c.categoria===sec.k;});
+    var ci=contas.filter(function(c){return c.categoria===sec.k&&!c.excluida;});
     ci.sort(function(a,b){return(b.vencimento||"").localeCompare(a.vencimento||"");});
     var pendentes=ci.filter(function(c){return c.status!=="pago";});
     var pagos=ci.filter(function(c){return c.status==="pago";});
@@ -10861,7 +10861,7 @@ function pageContasPagar(){
     </div>`;
   }
   function secaoTipo(tipoStr){
-    var tc=contas.filter(function(c){return(c.tipo||"consultorio")===tipoStr;});
+    var tc=contas.filter(function(c){return(c.tipo||"consultorio")===tipoStr&&!c.excluida;});
     var tt=tmpls.filter(function(t){return(t.tipo||"consultorio")===tipoStr&&t.ativo!==false;});
     var html="";
     CATS_PAGAR.forEach(function(cat){
@@ -10882,7 +10882,7 @@ function pageContasPagar(){
         ${ci.length?`<div class="card" style="padding:0;overflow:hidden">${ci.map(rowInst).join("")}</div>`:`<div style="color:#333;font-size:10px;padding:2px 0 4px">Sem lançamentos este período.</div>`}
       </div>`;
     });
-    var avulsas=tc.filter(function(c){return!c.templateId&&!c.recorrente;});
+    var avulsas=tc.filter(function(c){return!c.templateId&&!c.recorrente&&!c.excluida;});
     if(avulsas.length){
       html+=`<div style="margin-bottom:8px">
         <div style="color:#555;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:5px">📄 Avulsas</div>
@@ -10935,8 +10935,9 @@ window.abrirNovaContaRecorrenteModal=function(tipoPresel,catPresel,idEditar){
   </div><div class="mbd">
     <div style="margin-bottom:10px"><label class="lbl">Tipo</label>
       <div style="display:flex;gap:6px">
-        <button id="rec-cons" onclick="document.getElementById('rec-cons').style.background='#C6A46D22';document.getElementById('rec-cons').style.color='#C6A46D';document.getElementById('rec-pes').style.background='transparent';document.getElementById('rec-pes').style.color='#555'" class="bg" style="flex:1;padding:7px;font-size:12px;background:${tipoInit==='consultorio'?'#C6A46D22':'transparent'};color:${tipoInit==='consultorio'?'#C6A46D':'#555'}">🏥 Consultório</button>
-        <button id="rec-pes" onclick="document.getElementById('rec-pes').style.background='#60a5fa22';document.getElementById('rec-pes').style.color='#60a5fa';document.getElementById('rec-cons').style.background='transparent';document.getElementById('rec-cons').style.color='#555'" class="bg" style="flex:1;padding:7px;font-size:12px;background:${tipoInit==='pessoal'?'#60a5fa22':'transparent'};color:${tipoInit==='pessoal'?'#60a5fa':'#555'}">👤 Pessoal</button>
+        <input type="hidden" id="rec-tipo-val" value="${tipoInit}"/>
+        <button id="rec-cons" onclick="document.getElementById('rec-tipo-val').value='consultorio';document.getElementById('rec-cons').style.background='#C6A46D22';document.getElementById('rec-cons').style.color='#C6A46D';document.getElementById('rec-pes').style.background='transparent';document.getElementById('rec-pes').style.color='#555'" class="bg" style="flex:1;padding:7px;font-size:12px;background:${tipoInit==='consultorio'?'#C6A46D22':'transparent'};color:${tipoInit==='consultorio'?'#C6A46D':'#555'}">🏥 Consultório</button>
+        <button id="rec-pes" onclick="document.getElementById('rec-tipo-val').value='pessoal';document.getElementById('rec-pes').style.background='#60a5fa22';document.getElementById('rec-pes').style.color='#60a5fa';document.getElementById('rec-cons').style.background='transparent';document.getElementById('rec-cons').style.color='#555'" class="bg" style="flex:1;padding:7px;font-size:12px;background:${tipoInit==='pessoal'?'#60a5fa22':'transparent'};color:${tipoInit==='pessoal'?'#60a5fa':'#555'}">👤 Pessoal</button>
       </div>
     </div>
     <div style="margin-bottom:10px"><label class="lbl">Categoria *</label>
@@ -10973,7 +10974,7 @@ window.salvarContaRecorrente=function(idEditar){
   var dia=parseInt(document.getElementById("rec-dia")?.value)||10;
   if(!cat){toast("Selecione a categoria.","warning");return;}
   if(!valor){toast("Informe o valor base.","warning");return;}
-  var tipo=document.getElementById("rec-pes")?.style.color==="#60a5fa"?"pessoal":"consultorio";
+  var tipo=document.getElementById("rec-tipo-val")?.value||"consultorio";
   var ci=getCatInfo(cat);
   var tmplDesc=desc||(ci?ci.l:cat);
   var ns=ST.contasRecorrentes||[];
@@ -11043,8 +11044,9 @@ window.abrirNovaContaAvulsaModal=function(){
   </div><div class="mbd">
     <div style="margin-bottom:10px"><label class="lbl">Tipo</label>
       <div style="display:flex;gap:6px">
-        <button id="av-cons" onclick="document.getElementById('av-cons').style.background='#C6A46D22';document.getElementById('av-cons').style.color='#C6A46D';document.getElementById('av-pes').style.background='transparent';document.getElementById('av-pes').style.color='#555'" class="bg" style="flex:1;padding:7px;font-size:12px;background:#C6A46D22;color:#C6A46D">🏥 Consultório</button>
-        <button id="av-pes" onclick="document.getElementById('av-pes').style.background='#60a5fa22';document.getElementById('av-pes').style.color='#60a5fa';document.getElementById('av-cons').style.background='transparent';document.getElementById('av-cons').style.color='#555'" class="bg" style="flex:1;padding:7px;font-size:12px">👤 Pessoal</button>
+        <input type="hidden" id="av-tipo-val" value="consultorio"/>
+        <button id="av-cons" onclick="document.getElementById('av-tipo-val').value='consultorio';document.getElementById('av-cons').style.background='#C6A46D22';document.getElementById('av-cons').style.color='#C6A46D';document.getElementById('av-pes').style.background='transparent';document.getElementById('av-pes').style.color='#555'" class="bg" style="flex:1;padding:7px;font-size:12px;background:#C6A46D22;color:#C6A46D">🏥 Consultório</button>
+        <button id="av-pes" onclick="document.getElementById('av-tipo-val').value='pessoal';document.getElementById('av-pes').style.background='#60a5fa22';document.getElementById('av-pes').style.color='#60a5fa';document.getElementById('av-cons').style.background='transparent';document.getElementById('av-cons').style.color='#555'" class="bg" style="flex:1;padding:7px;font-size:12px">👤 Pessoal</button>
       </div>
     </div>
     <div style="margin-bottom:10px"><label class="lbl">Categoria</label>
@@ -11086,7 +11088,7 @@ window.salvarContaAvulsa=function(){
   var cat=document.getElementById("av-cat")?.value||"";
   if(!desc){toast("Preencha a descrição.","warning");return;}
   if(!valor){toast("Preencha o valor.","warning");return;}
-  var tipo=document.getElementById("av-pes")?.style.color==="#60a5fa"?"pessoal":"consultorio";
+  var tipo=document.getElementById("av-tipo-val")?.value||"consultorio";
   var nc={id:"cp_"+Date.now(),desc,fornecedor:forn,valor,vencimento:venc,status,tipo,categoria:cat||"outras"};
   var ns=[...ST.contasPagar,nc];
   save("rof_contas_pagar",ns);set({contasPagar:ns});
@@ -11101,7 +11103,16 @@ window.pagarConta=function(id){
 };
 window.excluirConta=function(id){
   rConfirm("Excluir esta conta?",function(){
-    var ns=ST.contasPagar.filter(function(c){return c.id!==id;});
+    var c=(ST.contasPagar||[]).find(function(x){return x.id===id;});
+    var ns;
+    if(c&&c.templateId&&c.mesRef){
+      // Tombstone: mantém registro para que autoGerar não recrie no mesmo mês
+      ns=(ST.contasPagar||[]).map(function(x){
+        return x.id===id?Object.assign({},x,{excluida:true,status:"cancelado"}):x;
+      });
+    } else {
+      ns=(ST.contasPagar||[]).filter(function(x){return x.id!==id;});
+    }
     save("rof_contas_pagar",ns);set({contasPagar:ns});
     toast("Conta removida.","success");
   },"Excluir");
@@ -11362,8 +11373,9 @@ window.abrirNovaContaRecorrenteReceberModal=function(tipoPresel,catPresel,idEdit
   </div><div class="mbd">
     <div style="margin-bottom:10px"><label class="lbl">Tipo</label>
       <div style="display:flex;gap:6px">
-        <button id="rcr-cons" onclick="document.getElementById('rcr-cons').style.background='#C6A46D22';document.getElementById('rcr-cons').style.color='#C6A46D';document.getElementById('rcr-pes').style.background='transparent';document.getElementById('rcr-pes').style.color='#555'" class="bg" style="flex:1;padding:7px;font-size:12px;background:${tipoInit==='consultorio'?'#C6A46D22':'transparent'};color:${tipoInit==='consultorio'?'#C6A46D':'#555'}">🏥 Consultório</button>
-        <button id="rcr-pes" onclick="document.getElementById('rcr-pes').style.background='#60a5fa22';document.getElementById('rcr-pes').style.color='#60a5fa';document.getElementById('rcr-cons').style.background='transparent';document.getElementById('rcr-cons').style.color='#555'" class="bg" style="flex:1;padding:7px;font-size:12px;background:${tipoInit==='pessoal'?'#60a5fa22':'transparent'};color:${tipoInit==='pessoal'?'#60a5fa':'#555'}">👤 Pessoal</button>
+        <input type="hidden" id="rcr-tipo-val" value="${tipoInit}"/>
+        <button id="rcr-cons" onclick="document.getElementById('rcr-tipo-val').value='consultorio';document.getElementById('rcr-cons').style.background='#C6A46D22';document.getElementById('rcr-cons').style.color='#C6A46D';document.getElementById('rcr-pes').style.background='transparent';document.getElementById('rcr-pes').style.color='#555'" class="bg" style="flex:1;padding:7px;font-size:12px;background:${tipoInit==='consultorio'?'#C6A46D22':'transparent'};color:${tipoInit==='consultorio'?'#C6A46D':'#555'}">🏥 Consultório</button>
+        <button id="rcr-pes" onclick="document.getElementById('rcr-tipo-val').value='pessoal';document.getElementById('rcr-pes').style.background='#60a5fa22';document.getElementById('rcr-pes').style.color='#60a5fa';document.getElementById('rcr-cons').style.background='transparent';document.getElementById('rcr-cons').style.color='#555'" class="bg" style="flex:1;padding:7px;font-size:12px;background:${tipoInit==='pessoal'?'#60a5fa22':'transparent'};color:${tipoInit==='pessoal'?'#60a5fa':'#555'}">👤 Pessoal</button>
       </div>
     </div>
     <div style="margin-bottom:10px"><label class="lbl">Categoria *</label>
@@ -11399,7 +11411,7 @@ window.salvarContaRecorrenteReceber=function(idEditar){
   var dia=parseInt(document.getElementById("rcr-dia")?.value)||5;
   if(!cat){toast("Selecione a categoria.","warning");return;}
   if(!valor){toast("Informe o valor base.","warning");return;}
-  var tipo=document.getElementById("rcr-pes")?.style.color==="#60a5fa"?"pessoal":"consultorio";
+  var tipo=document.getElementById("rcr-tipo-val")?.value||"pessoal";
   var ci=getCatReceberInfo(cat);
   var tmplDesc=desc||(ci?ci.l:cat);
   var ns=ST.recorrentesReceber||[];
@@ -11434,8 +11446,9 @@ window.abrirNovaContaReceberModal=function(idEditar){
   </div><div class="mbd">
     <div style="margin-bottom:10px"><label class="lbl">Tipo *</label>
       <div style="display:flex;gap:6px">
-        <button id="cr-tipo-cons" onclick="document.getElementById('cr-tipo-cons').style.background='#C6A46D22';document.getElementById('cr-tipo-cons').style.color='#C6A46D';document.getElementById('cr-tipo-pes').style.background='transparent';document.getElementById('cr-tipo-pes').style.color='#555'" class="bg" style="flex:1;padding:8px;font-size:12px;background:${editTipo==='consultorio'?'#C6A46D22':'transparent'};color:${editTipo==='consultorio'?'#C6A46D':'#555'}">🏥 Consultório</button>
-        <button id="cr-tipo-pes" onclick="document.getElementById('cr-tipo-pes').style.background='#60a5fa22';document.getElementById('cr-tipo-pes').style.color='#60a5fa';document.getElementById('cr-tipo-cons').style.background='transparent';document.getElementById('cr-tipo-cons').style.color='#555'" class="bg" style="flex:1;padding:8px;font-size:12px;background:${editTipo==='pessoal'?'#60a5fa22':'transparent'};color:${editTipo==='pessoal'?'#60a5fa':'#555'}">👤 Pessoal</button>
+        <input type="hidden" id="cr-tipo-val" value="${editTipo}"/>
+        <button id="cr-tipo-cons" onclick="document.getElementById('cr-tipo-val').value='consultorio';document.getElementById('cr-tipo-cons').style.background='#C6A46D22';document.getElementById('cr-tipo-cons').style.color='#C6A46D';document.getElementById('cr-tipo-pes').style.background='transparent';document.getElementById('cr-tipo-pes').style.color='#555'" class="bg" style="flex:1;padding:8px;font-size:12px;background:${editTipo==='consultorio'?'#C6A46D22':'transparent'};color:${editTipo==='consultorio'?'#C6A46D':'#555'}">🏥 Consultório</button>
+        <button id="cr-tipo-pes" onclick="document.getElementById('cr-tipo-val').value='pessoal';document.getElementById('cr-tipo-pes').style.background='#60a5fa22';document.getElementById('cr-tipo-pes').style.color='#60a5fa';document.getElementById('cr-tipo-cons').style.background='transparent';document.getElementById('cr-tipo-cons').style.color='#555'" class="bg" style="flex:1;padding:8px;font-size:12px;background:${editTipo==='pessoal'?'#60a5fa22':'transparent'};color:${editTipo==='pessoal'?'#60a5fa':'#555'}">👤 Pessoal</button>
       </div>
     </div>
     <div style="margin-bottom:10px"><label class="lbl">Paciente / Origem *</label>
@@ -11471,7 +11484,7 @@ window.salvarContaReceber=function(idEditar){
   if(!desc){toast("Informe a descrição.","warning");return;}
   if(!total){toast("Informe o valor total.","warning");return;}
   var status=pago<=0?"pendente":pago>=total?"quitado":"parcial";
-  var tipoCR=document.getElementById("cr-tipo-pes")?.style.color==="#60a5fa"?"pessoal":"consultorio";
+  var tipoCR=document.getElementById("cr-tipo-val")?.value||"consultorio";
   var ns;
   if(idEditar&&idEditar!=="null"){
     ns=ST.contasReceber.map(function(c){return c.id===idEditar?Object.assign({},c,{paciente:pac,desc,total,pago,vencimento:venc,status,tipo:tipoCR}):c;});
