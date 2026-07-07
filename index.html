@@ -10980,38 +10980,48 @@ function pageLabs(){
   var todosConcluidos=labs.filter(function(l){return l.status==="concluido";});
   var lucroTotal=todosConcluidos.reduce(function(s,l){return s+((Number(l.valorPaciente)||0)-(Number(l.custo)||0));},0);
   var laboriosAndamento=labs.filter(function(l){return l.status!=="concluido";});
-  var aReceberLab=laboriosAndamento.reduce(function(s,l){return s+(Number(l.valorPaciente)||0);},0);
   var lucroEsperado=laboriosAndamento.reduce(function(s,l){return s+((Number(l.valorPaciente)||0)-(Number(l.custo)||0));},0);
+  var aPagarLab=labs.filter(function(l){return l.pagtoLab!=="pago";}).reduce(function(s,l){return s+(Number(l.custo)||0);},0);
+  var jaPageiLab=labs.filter(function(l){return l.pagtoLab==="pago";}).reduce(function(s,l){return s+(Number(l.custo)||0);},0);
   var ptOpts=ST.pts.map(function(p){return`<option value="${p.name.replace(/"/g,"&quot;")}"/>`}).join("");
   var labTipos=["Emax (dissilicato de lítio)","Zircônia","Coroa acrílica provisória","Enceramento diagnóstico","Muralha / Mockup","Table top","Inlay","Onlay","Vonlay","Overlay","Placa miorrelaxante","Placa clareamento por arcada","Coroa sob implante"];
-  function badgeLab(s){
-    if(s==="concluido")return`<span style="background:#22c55e22;color:#22c55e;border:1px solid #22c55e55;border-radius:20px;padding:2px 10px;font-size:10px;font-weight:700">✓ Concluído</span>`;
-    if(s==="andamento")return`<span style="background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b55;border-radius:20px;padding:2px 10px;font-size:10px;font-weight:700">⚙ Em Andamento</span>`;
-    return`<span style="background:#60a5fa22;color:#60a5fa;border:1px solid #60a5fa55;border-radius:20px;padding:2px 10px;font-size:10px;font-weight:700">🔵 Iniciado</span>`;
+  function stBtn(id,st,cur){
+    var cfg={iniciado:{c:"#60a5fa",l:"🔵 Iniciado"},andamento:{c:"#f59e0b",l:"⚙ Andamento"},concluido:{c:"#22c55e",l:"✓ Concluído"}};
+    var on=cur===st;var c=cfg[st];
+    return`<button onclick="setLabStatus('${id}','${st}')" style="flex:1;padding:4px 0;font-size:10px;background:${on?c.c+"22":"transparent"};border:1px solid ${on?c.c+"66":"rgba(255,255,255,0.07)"};color:${on?c.c:"#444"};border-radius:6px;cursor:pointer;font-family:var(--font-body);font-weight:${on?"700":"400"}">${c.l}</button>`;
   }
-  function nextStatus(s){return s==="iniciado"?"andamento":s==="andamento"?"concluido":null;}
-  function nextLabel(s){return s==="iniciado"?"→ Andamento":s==="andamento"?"→ Concluído":null;}
   var rows=filtrados.map(function(l){
-    var margem=(Number(l.valorPaciente)||0)-(Number(l.custo)||0);
-    var ns=nextStatus(l.status);
+    var custo=Number(l.custo||0);
+    var vpac=Number(l.valorPaciente||0);
+    var margem=vpac-custo;
+    var labPago=l.pagtoLab==="pago";
     return`<div style="padding:14px 16px;border-bottom:1px solid rgba(198,164,109,0.08)">
       <div style="display:flex;align-items:flex-start;gap:10px">
         <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px">
             <span style="color:#E2C99A;font-weight:800;font-size:14px">${l.lab||"—"}</span>
-            ${badgeLab(l.status)}
           </div>
-          <div style="color:#ccc;font-size:13px;margin-bottom:2px">${l.trabalho||"—"}</div>
-          <div style="color:#666;font-size:11px">👤 ${l.paciente||"—"}${l.dtInicio?" · Início: "+fmtDate(l.dtInicio):""}${l.dtEntrega?" · Entrega: "+fmtDate(l.dtEntrega):""}</div>
-          <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap">
-            <span style="color:#888;font-size:12px">Lab: <strong style="color:#ddd">R$ ${Number(l.custo||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</strong></span>
-            <span style="color:#888;font-size:12px">Paciente: <strong style="color:#ddd">R$ ${Number(l.valorPaciente||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</strong></span>
-            <span style="color:#888;font-size:12px">Margem: <strong style="color:${margem>=0?"#22c55e":"#ef4444"}">R$ ${margem.toLocaleString("pt-BR",{minimumFractionDigits:2})}</strong></span>
+          <div style="color:#ccc;font-size:13px;margin-bottom:4px">${l.trabalho||"—"}</div>
+          <div style="color:#666;font-size:11px;margin-bottom:8px">👤 ${l.paciente||"—"}${l.dtInicio?" · Início: "+fmtDate(l.dtInicio):""}${l.dtEntrega?" · Entrega: "+fmtDate(l.dtEntrega):""}</div>
+          <div style="display:flex;gap:3px;margin-bottom:10px">
+            ${stBtn(l.id,"iniciado",l.status)}
+            ${stBtn(l.id,"andamento",l.status)}
+            ${stBtn(l.id,"concluido",l.status)}
           </div>
-          ${l.obs?`<div style="color:#555;font-size:11px;margin-top:4px;font-style:italic">${l.obs}</div>`:""}
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="color:#888;font-size:12px">A pagar ao lab:</span>
+              <strong style="color:${labPago?"#555":"#ef4444"};font-size:14px;text-decoration:${labPago?"line-through":"none"}">R$ ${custo.toLocaleString("pt-BR",{minimumFractionDigits:2})}</strong>
+              ${labPago
+                ?`<span style="background:#22c55e22;color:#22c55e;border:1px solid #22c55e55;border-radius:20px;padding:1px 8px;font-size:10px;font-weight:700">✓ Pago</span>`
+                :`<button onclick="marcarLabPago('${l.id}')" style="background:#22c55e22;border:1px solid #22c55e55;color:#22c55e;border-radius:6px;cursor:pointer;font-size:10px;padding:2px 8px;font-family:var(--font-body)">✓ Pagar lab</button>`}
+            </div>
+            ${vpac?`<span style="color:#555;font-size:11px">Paciente: R$ ${vpac.toLocaleString("pt-BR",{minimumFractionDigits:2})}</span>`:""}
+            ${vpac?`<span style="color:#555;font-size:11px">Margem: <strong style="color:${margem>=0?"#22c55e":"#ef4444"}">R$ ${margem.toLocaleString("pt-BR",{minimumFractionDigits:2})}</strong></span>`:""}
+          </div>
+          ${l.obs?`<div style="color:#555;font-size:11px;margin-top:6px;font-style:italic">${l.obs}</div>`:""}
         </div>
         <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;align-items:flex-end">
-          ${ns?`<button onclick="avancarLab('${l.id}')" style="background:#C6A46D22;border:1px solid #C6A46D55;color:${GL};border-radius:6px;cursor:pointer;font-size:11px;padding:4px 10px;font-family:var(--font-body);white-space:nowrap">${nextLabel(l.status)}</button>`:""}
           <button onclick="editarLab('${l.id}')" style="background:none;border:none;color:#C6A46D;cursor:pointer;font-size:14px;padding:2px" title="Editar">✏</button>
           <button onclick="excluirLab('${l.id}')" style="background:none;border:none;color:#555;cursor:pointer;font-size:16px;padding:2px">🗑</button>
         </div>
@@ -11023,6 +11033,14 @@ function pageLabs(){
       <div style="color:#f59e0b;font-size:28px;font-weight:800">${emAndamento}</div>
       <div style="color:#666;font-size:11px;margin-top:2px">Em andamento</div>
     </div>
+    <div class="card" style="padding:14px 16px;border-top:2px solid #ef4444">
+      <div style="color:#ef4444;font-size:18px;font-weight:800">R$ ${aPagarLab.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
+      <div style="color:#666;font-size:11px;margin-top:2px">A pagar ao lab</div>
+    </div>
+    <div class="card" style="padding:14px 16px;border-top:2px solid #22c55e">
+      <div style="color:#22c55e;font-size:18px;font-weight:800">R$ ${jaPageiLab.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
+      <div style="color:#666;font-size:11px;margin-top:2px">Já pago ao lab</div>
+    </div>
     <div class="card" style="padding:14px 16px">
       <div style="color:#22c55e;font-size:28px;font-weight:800">${concluidosMes.length}</div>
       <div style="color:#666;font-size:11px;margin-top:2px">Concluídos este mês</div>
@@ -11031,15 +11049,11 @@ function pageLabs(){
       <div style="color:${lucroMes>=0?"#22c55e":"#ef4444"};font-size:18px;font-weight:800">R$ ${lucroMes.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
       <div style="color:#666;font-size:11px;margin-top:2px">Lucro este mês</div>
     </div>
-    <div class="card" style="padding:14px 16px;border-top:2px solid #22c55e">
+    <div class="card" style="padding:14px 16px">
       <div style="color:${lucroTotal>=0?"#22c55e":"#ef4444"};font-size:18px;font-weight:800">R$ ${lucroTotal.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
-      <div style="color:#666;font-size:11px;margin-top:2px">Lucro total (concluídos)</div>
+      <div style="color:#666;font-size:11px;margin-top:2px">Lucro total concluídos</div>
     </div>
-    <div class="card" style="padding:14px 16px;border-top:2px solid #C6A46D">
-      <div style="color:${GL};font-size:18px;font-weight:800">R$ ${aReceberLab.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
-      <div style="color:#666;font-size:11px;margin-top:2px">A receber (andamento)</div>
-    </div>
-    <div class="card" style="padding:14px 16px;border-top:2px solid #60a5fa">
+    <div class="card" style="padding:14px 16px">
       <div style="color:${lucroEsperado>=0?"#60a5fa":"#ef4444"};font-size:18px;font-weight:800">R$ ${lucroEsperado.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
       <div style="color:#666;font-size:11px;margin-top:2px">Lucro esperado (andamento)</div>
     </div>
@@ -11071,18 +11085,23 @@ window.abrirNovoLabModal=function(idEditar){
       <input id="nl-trab" class="inp" list="lab-trabalho-list" placeholder="Ex: Emax, Zircônia..." value="${edit?edit.trabalho:""}"/>
     </div>
     <div class="g2" style="margin-bottom:10px">
-      <div><label class="lbl">Status</label>
+      <div><label class="lbl">Status do trabalho</label>
         <select id="nl-status" class="inp">
           <option value="iniciado"${(!edit||edit.status==="iniciado")?" selected":""}>🔵 Iniciado</option>
           <option value="andamento"${edit&&edit.status==="andamento"?" selected":""}>⚙ Em Andamento</option>
           <option value="concluido"${edit&&edit.status==="concluido"?" selected":""}>✓ Concluído</option>
         </select>
       </div>
-      <div></div>
+      <div><label class="lbl">Pagamento ao lab</label>
+        <select id="nl-pagto" class="inp">
+          <option value="pendente"${(!edit||edit.pagtoLab!=="pago")?" selected":""}>⏳ Pendente</option>
+          <option value="pago"${edit&&edit.pagtoLab==="pago"?" selected":""}>✓ Pago</option>
+        </select>
+      </div>
     </div>
     <div class="g2" style="margin-bottom:10px">
-      <div><label class="lbl">Custo Lab (R$)</label><input id="nl-custo" type="number" min="0" step="0.01" class="inp" placeholder="0,00" value="${edit?edit.custo:""}"/></div>
-      <div><label class="lbl">Valor Paciente (R$)</label><input id="nl-vpac" type="number" min="0" step="0.01" class="inp" placeholder="0,00" value="${edit?edit.valorPaciente:""}"/></div>
+      <div><label class="lbl">Custo Lab (R$) — o que pago ao lab</label><input id="nl-custo" type="number" min="0" step="0.01" class="inp" placeholder="0,00" value="${edit?edit.custo:""}"/></div>
+      <div><label class="lbl">Valor Paciente (R$) — o que cobro</label><input id="nl-vpac" type="number" min="0" step="0.01" class="inp" placeholder="0,00" value="${edit?edit.valorPaciente:""}"/></div>
     </div>
     <div class="g2" style="margin-bottom:10px">
       <div><label class="lbl">Data Início</label><input id="nl-dtini" type="date" class="inp" value="${edit?edit.dtInicio:""}"/></div>
@@ -11107,11 +11126,12 @@ window.salvarLab=function(idEditar){
   var status=document.getElementById("nl-status")?.value||"iniciado";
   var custo=parseFloat(document.getElementById("nl-custo")?.value)||0;
   var vpac=parseFloat(document.getElementById("nl-vpac")?.value)||0;
+  var pagtoLab=document.getElementById("nl-pagto")?.value||"pendente";
   var dtini=document.getElementById("nl-dtini")?.value;
   var dtent=document.getElementById("nl-dtent")?.value;
   var obs=document.getElementById("nl-obs")?.value.trim();
   if(!lab||!trab){toast("Preencha laboratório e tipo de trabalho.","warning");return;}
-  var item={id:idEditar||"lab_"+Date.now(),lab,paciente:pac,trabalho:trab,status,custo,valorPaciente:vpac,dtInicio:dtini,dtEntrega:dtent,obs};
+  var item={id:idEditar||"lab_"+Date.now(),lab,paciente:pac,trabalho:trab,status,custo,valorPaciente:vpac,pagtoLab,dtInicio:dtini,dtEntrega:dtent,obs};
   var ns=idEditar?ST.labs.map(function(l){return l.id===idEditar?item:l;}):([...ST.labs,item]);
   save("rof_labs",ns);set({labs:ns});
   document.getElementById("novo-lab-modal")?.remove();
@@ -11124,6 +11144,20 @@ window.avancarLab=function(id){
   var ns=ST.labs.map(function(x){return x.id===id?Object.assign({},x,{status:prox,dtEntrega:prox==="concluido"?todayISO():x.dtEntrega}):x;});
   save("rof_labs",ns);set({labs:ns});
   toast("Status atualizado.","success");
+};
+window.setLabStatus=function(id,status){
+  var ns=ST.labs.map(function(x){
+    if(x.id!==id)return x;
+    var upd={status:status};
+    if(status==="concluido"&&!x.dtEntrega)upd.dtEntrega=todayISO();
+    return Object.assign({},x,upd);
+  });
+  save("rof_labs",ns);set({labs:ns});
+};
+window.marcarLabPago=function(id){
+  var ns=ST.labs.map(function(x){return x.id===id?Object.assign({},x,{pagtoLab:"pago"}):x;});
+  save("rof_labs",ns);set({labs:ns});
+  toast("Pagamento ao laboratório registrado.","success");
 };
 window.excluirLab=function(id){
   rConfirm("Excluir este trabalho de laboratório?",function(){
