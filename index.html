@@ -10645,11 +10645,11 @@ function pageFinanceiro(){
   var todos=[];
   ST.pts.forEach(function(p){
     (p.pagamentos||[]).forEach(function(pg){
-      todos.push(Object.assign({},pg,{paciente:p.name}));
+      todos.push(Object.assign({},pg,{paciente:p.name,area:"consultorio"}));
     });
   });
   (load("rof_caixa",[])||[]).forEach(function(e){
-    todos.push({id:e.id,desc:e.descricao||e.desc||"Lançamento",valor:Number(e.valor||0),date:e.date||todayISO(),forma:e.formaPag||e.forma||"",tipo:e.tipo==="despesa"?"saida":(e.tipo||"entrada"),paciente:e.paciente||"Caixa"});
+    todos.push({id:e.id,desc:e.descricao||e.desc||"Lançamento",valor:Number(e.valor||0),date:e.date||todayISO(),forma:e.formaPag||e.forma||"",tipo:e.tipo==="despesa"?"saida":(e.tipo||"entrada"),paciente:e.paciente||"",area:e.area||"consultorio"});
   });
   todos.sort(function(a,b){return (b.date||"").localeCompare(a.date||"");});
   var periodo=ST.finPeriodo||"mes";
@@ -10662,27 +10662,40 @@ function pageFinanceiro(){
     if(periodo==="ano")return d.getFullYear()===now.getFullYear();
     return true;
   });
-  var entradas=filtered.filter(function(x){return x.tipo==="entrada";}).reduce(function(s,x){return s+x.valor;},0);
-  var saidas=filtered.filter(function(x){return x.tipo==="saida";}).reduce(function(s,x){return s+x.valor;},0);
-  var saldo=entradas-saidas;
-  var _mesHoje=todayISO().slice(0,7);
-  var _recMes=0;
-  ST.pts.forEach(function(p){(p.pagamentos||[]).forEach(function(pg){if(pg.tipo==="entrada"&&(pg.date||"").slice(0,7)===_mesHoje)_recMes+=Number(pg.valor||0);});});
-  var _caixaEntradas=load("rof_caixa",[]).filter(function(e){return e.tipo==="entrada"&&(e.date||"").slice(0,7)===_mesHoje;}).reduce(function(s,e){return s+Number(e.valor||0);},0);
-  _recMes+=_caixaEntradas;
-  var _pagContasMes=(ST.contasPagar||[]).filter(function(c){return c.status==="pago"&&(c.vencimento||"").slice(0,7)===_mesHoje;}).reduce(function(s,c){return s+Number(c.valor||0);},0);
-  var _caixaSaidas=load("rof_caixa",[]).filter(function(e){return e.tipo==="saida"&&(e.date||"").slice(0,7)===_mesHoje;}).reduce(function(s,e){return s+Number(e.valor||0);},0);
-  var _pagMes=_pagContasMes+_caixaSaidas;
-  var _saldoMes=_recMes-_pagMes;
+  var filtCons=filtered.filter(function(x){return(x.area||"consultorio")==="consultorio";});
+  var filtPes=filtered.filter(function(x){return x.area==="pessoal";});
+  function calcSec(arr){var e=arr.filter(function(x){return x.tipo==="entrada";}).reduce(function(s,x){return s+x.valor;},0);var s=arr.filter(function(x){return x.tipo!=="entrada";}).reduce(function(s,x){return s+x.valor;},0);return{e:e,s:s,saldo:e-s};}
+  var stCons=calcSec(filtCons),stPes=calcSec(filtPes);
+  var saldoTotal=stCons.saldo+stPes.saldo;
   var periodos=[{k:"hoje",l:"Hoje"},{k:"semana",l:"7 dias"},{k:"mes",l:"Este mês"},{k:"ano",l:"Este ano"},{k:"todos",l:"Tudo"}];
+  function rowCaixa(pg){
+    var isEnt=pg.tipo==="entrada";
+    var cor=isEnt?(pg.area==="pessoal"?"#06b6d4":"#22c55e"):(pg.area==="pessoal"?"#f97316":"#ef4444");
+    var sinal=isEnt?"+":"−";
+    var sub=[pg.paciente,fmtDate(pg.date),pg.forma].filter(Boolean).join(" · ");
+    var del=pg.id?"<button onclick='delLancamento(\""+pg.id+"\")' style='background:none;border:none;color:#333;cursor:pointer;font-size:12px;padding:2px 4px' title='Excluir'>🗑</button>":"";
+    return "<div style='display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04)'>"
+      +"<div style='width:3px;align-self:stretch;border-radius:2px;background:"+cor+";flex-shrink:0'></div>"
+      +"<div style='flex:1;min-width:0'>"
+      +"<div style='color:#ddd;font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>"+pg.desc+"</div>"
+      +(sub?"<div style='color:#555;font-size:10px;margin-top:1px'>"+sub+"</div>":"")
+      +"</div>"
+      +"<div style='color:"+cor+";font-size:14px;font-weight:800;flex-shrink:0'>"+sinal+" R$ "+pg.valor.toLocaleString("pt-BR",{minimumFractionDigits:2})+"</div>"
+      +del+"</div>";
+  }
+  function secaoCard(titulo,corH,arr,stats){
+    var rows=arr.length?arr.map(rowCaixa).join("")
+      :"<div style='color:#444;font-size:12px;padding:14px;text-align:center'>Sem lançamentos.</div>";
+    return "<div style='border:1px solid "+corH+"33;border-radius:10px;margin-bottom:14px;overflow:hidden'>"
+      +"<div style='background:"+corH+"11;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px'>"
+      +"<span style='color:"+corH+";font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px'>"+titulo+"</span>"
+      +"<div style='display:flex;gap:12px;font-size:11px'>"
+      +"<span style='color:#22c55e;font-weight:700'>↑ R$ "+stats.e.toLocaleString("pt-BR",{minimumFractionDigits:2})+"</span>"
+      +"<span style='color:#ef4444;font-weight:700'>↓ R$ "+stats.s.toLocaleString("pt-BR",{minimumFractionDigits:2})+"</span>"
+      +"<span style='color:"+(stats.saldo>=0?"#E2C99A":"#ef4444")+";font-weight:800'>= R$ "+stats.saldo.toLocaleString("pt-BR",{minimumFractionDigits:2})+"</span>"
+      +"</div></div>"+rows+"</div>";
+  }
   return stitle("Financeiro")+tabBar
-    +"<div style='background:rgba(198,164,109,0.05);border:1px solid rgba(198,164,109,0.18);border-radius:10px;padding:14px 16px;margin-bottom:16px'>"
-    +"<div style='color:#888;font-size:10px;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:10px;font-weight:700'>📅 Resumo do Mês Atual</div>"
-    +"<div style='display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center'>"
-    +"<div><div style='color:#22c55e;font-size:16px;font-weight:800'>R$ "+_recMes.toLocaleString("pt-BR",{minimumFractionDigits:2})+"</div><div style='color:#555;font-size:10px;margin-top:2px'>Recebido</div></div>"
-    +"<div><div style='color:#ef4444;font-size:16px;font-weight:800'>R$ "+_pagMes.toLocaleString("pt-BR",{minimumFractionDigits:2})+"</div><div style='color:#555;font-size:10px;margin-top:2px'>Pago (contas+despesas)</div></div>"
-    +"<div><div style='color:"+(_saldoMes>=0?"#C6A46D":"#ef4444")+";font-size:16px;font-weight:800'>R$ "+_saldoMes.toLocaleString("pt-BR",{minimumFractionDigits:2})+"</div><div style='color:#555;font-size:10px;margin-top:2px'>Saldo do mês</div></div>"
-    +"</div></div>"
     +financialChart(todos)
     +"<div style='display:flex;gap:4px;flex-wrap:wrap;margin-bottom:14px'>"
     +periodos.map(function(p){
@@ -10690,28 +10703,20 @@ function pageFinanceiro(){
       return "<button onclick=\"set({finPeriodo:'"+p.k+"'})\" class='bg' style='padding:5px 12px;font-size:11px;background:"+(active?"#C6A46D22":"transparent")+";color:"+(active?GL:"#555")+"'>"+p.l+"</button>";
     }).join("")
     +"</div>"
-    +"<div style='display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px'>"
-    +"<div class='card' style='text-align:center;border-top:2px solid #22c55e'><div style='color:#444;font-size:9px;text-transform:uppercase;letter-spacing:1px'>Entradas</div><div style='color:#22c55e;font-size:20px;font-weight:900;margin-top:4px'>R$ "+entradas.toLocaleString("pt-BR")+"</div></div>"
-    +"<div class='card' style='text-align:center;border-top:2px solid #ef4444'><div style='color:#444;font-size:9px;text-transform:uppercase;letter-spacing:1px'>Descontos</div><div style='color:#ef4444;font-size:20px;font-weight:900;margin-top:4px'>R$ "+saidas.toLocaleString("pt-BR")+"</div></div>"
-    +"<div class='card' style='text-align:center;border-top:2px solid #C6A46D'><div style='color:#444;font-size:9px;text-transform:uppercase;letter-spacing:1px'>Saldo líquido</div><div style='color:#E2C99A;font-size:20px;font-weight:900;margin-top:4px'>R$ "+saldo.toLocaleString("pt-BR")+"</div></div>"
+    +"<div style='display:flex;gap:8px;margin-bottom:14px'>"
+    +"<button onclick='openLancamento(\"entrada\",\"consultorio\")' class='bg' style='flex:1;padding:9px;font-size:12px;color:#22c55e;border-color:rgba(34,197,94,0.35)'>+ Entrada</button>"
+    +"<button onclick='openLancamento(\"saida\",\"consultorio\")' class='bg' style='flex:1;padding:9px;font-size:12px;color:#ef4444;border-color:rgba(239,68,68,0.35)'>&#8722; Despesa Cl&#237;nica</button>"
+    +"<button onclick='openLancamento(\"saida\",\"pessoal\")' class='bg' style='flex:1;padding:9px;font-size:12px;color:#f97316;border-color:rgba(249,115,22,0.35)'>&#8722; Despesa Pessoal</button>"
     +"</div>"
-    +"<div class='card' style='padding:0;overflow:hidden'>"
-    +(filtered.length===0?emptyState("💵","Nenhum lançamento no período","Registre receitas e despesas para visualizar o fluxo de caixa.")
-    :filtered.map(function(pg,i){
-      var cor=pg.tipo==="entrada"?"#22c55e":"#ef4444";
-      return "<div style='display:flex;align-items:center;gap:10px;padding:11px 14px;border-top:1px solid #2a1f0a;background:"+(i%2===0?"transparent":"#0e0e0e44")+"'>"
-        +"<div style='width:4px;height:36px;border-radius:2px;background:"+cor+";flex-shrink:0'></div>"
-        +"<div style='flex:1;min-width:0'>"
-        +"<div style='color:#ddd;font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>"+pg.desc+"</div>"
-        +"<div style='color:#555;font-size:10px'>"+pg.paciente+" · "+fmtDate(pg.date)+(pg.forma?" · "+pg.forma:"")+"</div>"
-        +"</div>"
-        +"<div style='color:"+cor+";font-size:14px;font-weight:800;flex-shrink:0'>"+(pg.tipo==="entrada"?"+":"−")+" R$ "+pg.valor.toLocaleString("pt-BR")+"</div>"
-        +"</div>";
-    }).join(""))
+    +secaoCard("🏥 Consultório","#C6A46D",filtCons,stCons)
+    +secaoCard("👤 Pessoal","#60a5fa",filtPes,stPes)
+    +"<div style='border:1px solid #333;border-radius:10px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px'>"
+    +"<span style='color:#888;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px'>Saldo Total</span>"
+    +"<span style='font-size:18px;font-weight:900;color:"+(saldoTotal>=0?"#E2C99A":"#ef4444")+"'>R$ "+saldoTotal.toLocaleString("pt-BR",{minimumFractionDigits:2})+"</span>"
     +"</div>"
-    +"<div style='display:flex;gap:8px;margin-top:14px'>"
-    +"<button onclick='exportFinanceiroCSV()' class='bg' style='flex:1;padding:9px;font-size:12px;color:#C6A46D;border-color:rgba(198,164,109,0.3)'>⬇ Exportar CSV Financeiro</button>"
-    +"<button onclick='exportPatientsCSV()' class='bg' style='flex:1;padding:9px;font-size:12px;color:#60a5fa;border-color:rgba(96,165,250,0.3)'>⬇ Exportar CSV Pacientes</button>"
+    +"<div style='display:flex;gap:8px;margin-top:4px'>"
+    +"<button onclick='exportFinanceiroCSV()' class='bg' style='flex:1;padding:9px;font-size:12px;color:#C6A46D;border-color:rgba(198,164,109,0.3)'>&#11015; Exportar CSV Financeiro</button>"
+    +"<button onclick='exportPatientsCSV()' class='bg' style='flex:1;padding:9px;font-size:12px;color:#60a5fa;border-color:rgba(96,165,250,0.3)'>&#11015; Exportar CSV Pacientes</button>"
     +"</div>";
 }
 
@@ -10865,7 +10870,9 @@ function pageContasPagar(){
     var tc=contas.filter(function(c){return(c.tipo||"consultorio")===tipoStr&&!c.excluida;});
     var tt=tmpls.filter(function(t){return(t.tipo||"consultorio")===tipoStr&&t.ativo!==false;});
     var html="";
+    var CATS_SO_CLINICO=["laboratorio","dental","imagens"];
     CATS_PAGAR.forEach(function(cat){
+      if(CATS_SO_CLINICO.indexOf(cat.k)!==-1)return;
       var ct=tt.filter(function(t){return t.categoria===cat.k;});
       var ci=tc.filter(function(c){return ct.some(function(t){return t.id===c.templateId;})||(c.categoria===cat.k&&c.templateId);});
       if(!ct.length&&!ci.length)return;
@@ -11331,6 +11338,13 @@ function pageContasReceber(){
       </div>
     </div>`;
   }
+  function calcRecStats(tipoStr){
+    var tc=contas.filter(function(c){return(c.tipo||"consultorio")===tipoStr&&!c.excluida;});
+    var aberto=tc.filter(function(c){return c.status!=="quitado";}).reduce(function(s,c){return s+((Number(c.total)||0)-(Number(c.pago)||0));},0);
+    var recebidoMes=tc.filter(function(c){return(c.vencimento||"").slice(0,7)===mesAtual;}).reduce(function(s,c){return s+(Number(c.pago)||0);},0);
+    return{aberto:aberto,recebidoMes:recebidoMes};
+  }
+  var statCons=calcRecStats("consultorio"),statPes=calcRecStats("pessoal");
   function secaoTipoRec(tipoStr){
     var tc=contas.filter(function(c){return(c.tipo||"consultorio")===tipoStr&&!c.excluida;});
     var tt=tmpls.filter(function(t){return(t.tipo||"consultorio")===tipoStr&&t.ativo!==false;});
@@ -11385,11 +11399,11 @@ function pageContasReceber(){
   return`<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
     <div class="card" style="flex:1;min-width:110px;padding:12px 14px;border-top:2px solid #ef4444">
       <div style="color:#ef4444;font-size:18px;font-weight:800">R$ ${totalEmAberto.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
-      <div style="color:#666;font-size:10px;margin-top:2px">Total em aberto</div>
+      <div style="color:#666;font-size:10px;margin-top:2px">Total em aberto (geral)</div>
     </div>
     <div class="card" style="flex:1;min-width:110px;padding:12px 14px;border-top:2px solid #22c55e">
       <div style="color:#22c55e;font-size:18px;font-weight:800">R$ ${totalRecebidoMes.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
-      <div style="color:#666;font-size:10px;margin-top:2px">Recebido este mês</div>
+      <div style="color:#666;font-size:10px;margin-top:2px">Recebido este mês (geral)</div>
     </div>
     ${vencidas.length?`<div class="card" style="flex:1;min-width:80px;padding:12px 14px;border-top:2px solid #ef4444">
       <div style="color:#ef4444;font-size:20px;font-weight:800">${vencidas.length}</div>
@@ -11401,11 +11415,23 @@ function pageContasReceber(){
     <button onclick="abrirNovaContaReceberModal()" class="bg" style="flex:1;padding:9px;font-size:12px;color:#22c55e;border-color:rgba(34,197,94,0.3)">💳 + Avulsa</button>
   </div>
   <div style="border:1px solid rgba(198,164,109,0.18);border-radius:10px;padding:14px;margin-bottom:14px">
-    <div style="color:#C6A46D;font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px">🏥 Consultório</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:14px">
+      <span style="color:#C6A46D;font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase">🏥 Consultório</span>
+      <div style="display:flex;gap:12px;font-size:11px">
+        <span style="color:#ef4444;font-weight:700">Aberto: R$ ${statCons.aberto.toLocaleString("pt-BR",{minimumFractionDigits:2})}</span>
+        <span style="color:#22c55e;font-weight:700">Recebido: R$ ${statCons.recebidoMes.toLocaleString("pt-BR",{minimumFractionDigits:2})}</span>
+      </div>
+    </div>
     ${secaoTipoRec("consultorio")}
   </div>
   <div style="border:1px solid rgba(96,165,250,0.18);border-radius:10px;padding:14px">
-    <div style="color:#60a5fa;font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px">👤 Pessoal</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:14px">
+      <span style="color:#60a5fa;font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase">👤 Pessoal</span>
+      <div style="display:flex;gap:12px;font-size:11px">
+        <span style="color:#ef4444;font-weight:700">Aberto: R$ ${statPes.aberto.toLocaleString("pt-BR",{minimumFractionDigits:2})}</span>
+        <span style="color:#22c55e;font-weight:700">Recebido: R$ ${statPes.recebidoMes.toLocaleString("pt-BR",{minimumFractionDigits:2})}</span>
+      </div>
+    </div>
     ${secaoTipoRec("pessoal")}
   </div>`;
 }
@@ -13565,34 +13591,40 @@ window.procSelect=function(el){
   if(hid)hid.value=id;
   if(drop)drop.style.display="none";
 };
-window.openLancamento=function(tipo){
+window.openLancamento=function(tipo,area){
+  area=area||"consultorio";
+  var isSaida=(tipo==="saida"||tipo==="despesa");
   var ptOpts=ST.pts.map(function(p){return "<option value='"+p.name.replace(/'/g,"&#39;")+"'>"+p.name+"</option>";}).join("");
   var formasE=["Dinheiro","PIX","Cartão Débito","Cartão Crédito","Transferência","Convênio","Cheque"];
   var formasS=["Dinheiro","PIX","Cartão Débito","Cartão Crédito","Transferência","Boleto","Cheque"];
   var catsE=["Consulta","Procedimento","HOF","Reabilitação","Outros"];
   var catsS=["Aluguel","Material","Equipamento","Folha de pagamento","Impostos","Serviços","Outros"];
-  var formas=tipo==="entrada"?formasE:formasS;
-  var cats=tipo==="entrada"?catsE:catsS;
+  var formas=isSaida?formasS:formasE;
+  var cats=isSaida?catsS:catsE;
+  var areaCor=area==="pessoal"?"#60a5fa":"#C6A46D";
+  var areaLabel=area==="pessoal"?"👤 Pessoal":"🏥 Consultório";
   var m=document.createElement("div");m.className="mbg";m.id="lanc-modal";
   m.innerHTML="<div class='mbx' style='max-width:460px'><div class='mhd'>"
-    +"<div class='mhd-title'>"+(tipo==="entrada"?"💚 Nova Entrada":"🔴 Nova Despesa")+"</div>"
+    +"<div class='mhd-title'>"+(isSaida?"🔴 Nova Despesa":"💚 Nova Entrada")
+    +" <span style='font-size:11px;background:"+areaCor+"22;color:"+areaCor+";border:1px solid "+areaCor+"44;border-radius:20px;padding:2px 8px;font-weight:700;vertical-align:middle'>"+areaLabel+"</span></div>"
     +"<button onclick='document.getElementById(\"lanc-modal\").remove()' style='background:none;border:none;color:#555;cursor:pointer;font-size:22px'>✕</button>"
     +"</div><div class='mbd'>"
+    +"<input type='hidden' id='lanc-area-val' value='"+area+"'/>"
     +"<div style='display:grid;grid-template-columns:1fr 1fr;gap:10px'>"
     +"<div style='grid-column:1/-1'><label class='lbl'>Descrição *</label>"
-    +"<input id='lanc-desc' class='inp' placeholder='"+(tipo==="entrada"?"Ex: Consulta ROF Osseum™":"Ex: Aluguel sala")+"'/></div>"
+    +"<input id='lanc-desc' class='inp' placeholder='"+(isSaida?"Ex: Aluguel sala":"Ex: Consulta ROF Osseum™")+"'/></div>"
     +"<div><label class='lbl'>Valor (R$) *</label>"
     +"<input id='lanc-valor' type='number' step='0.01' class='inp' placeholder='0,00'/></div>"
     +"<div><label class='lbl'>Data</label>"
     +"<input id='lanc-date' type='date' value='"+todayISO()+"' class='inp'/></div>"
-    +(tipo==="despesa"?"<div style='grid-column:1/-1'><label class='lbl'>Vencimento (para boletos)</label><input id='lanc-venc' type='date' value='"+todayISO()+"' class='inp'/></div>":"")
+    +(isSaida?"<div style='grid-column:1/-1'><label class='lbl'>Vencimento (para boletos)</label><input id='lanc-venc' type='date' value='"+todayISO()+"' class='inp'/></div>":"")
     +"<div><label class='lbl'>Forma de Pagamento</label>"
     +"<select id='lanc-forma' class='inp'>"+formas.map(function(f){return "<option>"+f+"</option>";}).join("")+"</select></div>"
     +"<div><label class='lbl'>Categoria</label>"
     +"<select id='lanc-cat' class='inp'>"+cats.map(function(c){return "<option>"+c+"</option>";}).join("")+"</select></div>"
-    +(tipo==="entrada"?"<div style='grid-column:1/-1'><label class='lbl'>Paciente (opcional)</label>"
+    +(!isSaida?"<div style='grid-column:1/-1'><label class='lbl'>Paciente (opcional)</label>"
     +"<select id='lanc-pt' class='inp'><option value=''>— Sem vínculo —</option>"+ptOpts+"</select></div>":"")
-    +(tipo==="despesa"?"<div style='grid-column:1/-1'><label style='display:flex;align-items:center;gap:8px;cursor:pointer'>"
+    +(isSaida?"<div style='grid-column:1/-1'><label style='display:flex;align-items:center;gap:8px;cursor:pointer'>"
     +"<input type='checkbox' id='lanc-rec' style='width:16px;height:16px;accent-color:#C6A46D'/>"
     +"<span style='color:#888;font-size:12px'>Despesa fixa mensal (recorrente)</span></label></div>":"")
     +"<div style='grid-column:1/-1'><label class='lbl'>Observação</label>"
@@ -13617,14 +13649,17 @@ window.salvarLancamento=function(tipo){
   var paciente=document.getElementById("lanc-pt")?.value||"";
   var obs=(document.getElementById("lanc-obs")?.value||"").trim();
   var rec=document.getElementById("lanc-rec")?.checked||false;
+  var area=document.getElementById("lanc-area-val")?.value||"consultorio";
+  var isSaida=(tipo==="saida"||tipo==="despesa");
+  var tipoNorm=isSaida?"saida":"entrada";
   if(!desc){toast("Preencha a descrição.","warning");return;}
   if(!valor||valor<=0){toast("Preencha o valor corretamente.","warning");return;}
   var caixa=load("rof_caixa")||[];
-  caixa.push({id:"lc"+Date.now(),tipo:tipo,descricao:desc,valor:valor,
-    date:date,vencimento:tipo==="despesa"?venc:null,
+  caixa.push({id:"lc"+Date.now(),tipo:tipoNorm,descricao:desc,valor:valor,
+    date:date,vencimento:isSaida?venc:null,
     formaPag:forma==="Convênio"?"convenio":forma,
-    categoria:cat,paciente:paciente,obs:obs,
-    pago:tipo==="entrada",recorrente:rec,criadoEm:todayISO()});
+    categoria:cat,paciente:paciente,obs:obs,area:area,
+    pago:tipoNorm==="entrada",recorrente:rec,criadoEm:todayISO()});
   save("rof_caixa",caixa);
   document.getElementById("lanc-modal")?.remove();
   var t=document.createElement("div");
