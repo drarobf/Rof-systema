@@ -1636,7 +1636,7 @@ const _sb=(()=>{
 
 // rof_pt_xrays fica FORA do sync — RX em base64 são grandes demais para o Supabase free tier
 // rof_pt_photos retornou ao sync — fotos de perfil são comprimidas para ~15-25KB cada (seguro)
-const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_stk','rof_procs','rof_caixa','rof_whats_templates','rof_orientacoes','rof_bloqueios','rof_pt_photos']);
+const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_procs','rof_caixa','rof_whats_templates','rof_orientacoes','rof_bloqueios','rof_pt_photos','rof_contas_pagar','rof_labs']);
 const _syncQ = (()=>{try{return JSON.parse(localStorage.getItem("rof_sync_q")||"[]");}catch{return[];}})();
 // Remove imediatamente quaisquer syncs de RX já enfileirados (xrays são grandes demais)
 (function(){const heavy=new Set(['rof_pt_xrays']);let c=false;for(let i=_syncQ.length-1;i>=0;i--){if(_syncQ[i]&&heavy.has(_syncQ[i].k)){_syncQ.splice(i,1);c=true;}}if(c)try{localStorage.setItem("rof_sync_q",JSON.stringify(_syncQ));}catch{}})();
@@ -1739,7 +1739,8 @@ function _applyCloudData(k,v){
     // ── Atualiza o estado em memória conforme o tipo ──
     if(k==='rof_apts'&&Array.isArray(v))ST.apts=v;
     else if(k==='rof_bloqueios'&&Array.isArray(v))ST.bloqueios=v;
-    else if(k==='rof_stk'&&Array.isArray(v))ST.stk=v;
+    else if(k==='rof_contas_pagar'&&Array.isArray(v))ST.contasPagar=v;
+    else if(k==='rof_labs'&&Array.isArray(v))ST.labs=v;
     else if(k==='rof_procs'&&Array.isArray(v))PROCS=applyDefFlags(v);
     else if(k==='rof_caixa'&&Array.isArray(v))ST.caixa=v;
     // (rof_whats_templates e rof_orientacoes são lidos sob demanda do localStorage)
@@ -1781,7 +1782,7 @@ window.forceCloudSync=forceCloudSync;
 
 // ── BACKUP EXPORT / IMPORT ────────────────────────────────────────
 window.exportarBackup=function(){
-  const keys=["rof_pts","rof_apts","rof_stk","rof_procs","rof_caixa","rof_whats_templates","rof_orientacoes","rof_pt_photos"];
+  const keys=["rof_pts","rof_apts","rof_procs","rof_caixa","rof_whats_templates","rof_orientacoes","rof_pt_photos","rof_contas_pagar","rof_labs"];
   const backup={_v:1,_ts:new Date().toISOString(),_app:"Sistema ROF"};
   keys.forEach(k=>{try{backup[k]=JSON.parse(localStorage.getItem(k)||"null");}catch{backup[k]=null;}});
   const blob=new Blob([JSON.stringify(backup,null,2)],{type:"application/json"});
@@ -1805,7 +1806,7 @@ window.importarBackup=function(){
       try{
         const data=JSON.parse(ev.target.result);
         if(!data||!data._app||data._app!=="Sistema ROF")throw new Error("Arquivo inválido — não é um backup do Sistema ROF.");
-        const keys=["rof_pts","rof_apts","rof_stk","rof_procs","rof_caixa","rof_whats_templates","rof_orientacoes","rof_pt_photos"];
+        const keys=["rof_pts","rof_apts","rof_procs","rof_caixa","rof_whats_templates","rof_orientacoes","rof_pt_photos","rof_contas_pagar","rof_labs"];
         keys.forEach(k=>{
           if(data[k]!==null&&data[k]!==undefined){
             localStorage.setItem(k,JSON.stringify(data[k]));
@@ -1817,7 +1818,8 @@ window.importarBackup=function(){
         ST.pts=(Array.isArray(data["rof_pts"])?data["rof_pts"]:[]).map(normalizePt);
         ST.pts=mergePtPhotos(ST.pts);
         ST.apts=Array.isArray(data["rof_apts"])?data["rof_apts"]:[];
-        ST.stk=Array.isArray(data["rof_stk"])?data["rof_stk"]:[];
+        ST.contasPagar=Array.isArray(data["rof_contas_pagar"])?data["rof_contas_pagar"]:[];
+        ST.labs=Array.isArray(data["rof_labs"])?data["rof_labs"]:[];
         ST.caixa=Array.isArray(data["rof_caixa"])?data["rof_caixa"]:[];
         if(Array.isArray(data["rof_procs"])&&data["rof_procs"].length)PROCS=applyDefFlags(data["rof_procs"]);
         set({});
@@ -4270,162 +4272,22 @@ let PROCS=sortProcsAlpha(applyDefFlags(load("rof_procs",DEF_PROCS)));
 // ── DADOS INICIAIS ──────────────────────────────────────────────────
 const DEFPTS=[]
 const DEFAPTS=[];
-const DEFSTK=[
-  // ── ANESTÉSICOS ──
-  {id:1,item:"Anestésico Articaína 4% c/ epi 1:100.000",cat:"Anestésicos",qty:45,min:20,unit:"tubete"},
-  {id:2,item:"Anestésico Lidocaína 2% c/ epi 1:100.000",cat:"Anestésicos",qty:30,min:15,unit:"tubete"},
-  {id:3,item:"Anestésico Mepivacaína 3% sem vaso",cat:"Anestésicos",qty:20,min:10,unit:"tubete"},
-  {id:4,item:"Anestésico Tópico em gel (Benzotop)",cat:"Anestésicos",qty:5,min:2,unit:"pote"},
-  {id:5,item:"Agulha gengival curta 30G",cat:"Anestésicos",qty:100,min:50,unit:"un"},
-  {id:6,item:"Agulha gengival longa 27G",cat:"Anestésicos",qty:80,min:40,unit:"un"},
-
-  // ── DENTÍSTICA / RESTAURADOR ──
-  {id:10,item:"Resina Composta A1",cat:"Dentística",qty:6,min:4,unit:"seringa"},
-  {id:11,item:"Resina Composta A2",cat:"Dentística",qty:8,min:6,unit:"seringa"},
-  {id:12,item:"Resina Composta A3",cat:"Dentística",qty:7,min:5,unit:"seringa"},
-  {id:13,item:"Resina Composta A3,5",cat:"Dentística",qty:4,min:3,unit:"seringa"},
-  {id:14,item:"Resina Composta B1 (Estética)",cat:"Dentística",qty:5,min:3,unit:"seringa"},
-  {id:15,item:"Adesivo Universal (Single Bond)",cat:"Dentística",qty:3,min:2,unit:"frasco"},
-  {id:16,item:"Ácido Fosfórico 37%",cat:"Dentística",qty:8,min:4,unit:"seringa"},
-  {id:17,item:"Ionômero de vidro restaurador",cat:"Dentística",qty:4,min:2,unit:"kit"},
-  {id:18,item:"Matriz metálica 0,05mm",cat:"Dentística",qty:50,min:20,unit:"un"},
-  {id:19,item:"Cunha de madeira (sortida)",cat:"Dentística",qty:100,min:30,unit:"un"},
-
-  // ── ENDODONTIA ──
-  {id:30,item:"Lima manual K-File #15-40 (kit)",cat:"Endodontia",qty:6,min:3,unit:"kit"},
-  {id:31,item:"Lima rotatória ProTaper Gold (Set)",cat:"Endodontia",qty:3,min:2,unit:"kit"},
-  {id:32,item:"Hipoclorito de Sódio 2,5%",cat:"Endodontia",qty:4,min:2,unit:"frasco"},
-  {id:33,item:"EDTA Trissódico 17%",cat:"Endodontia",qty:3,min:2,unit:"frasco"},
-  {id:34,item:"Cones de Guta-Percha (kit)",cat:"Endodontia",qty:5,min:3,unit:"caixa"},
-  {id:35,item:"Cimento endodôntico AH Plus",cat:"Endodontia",qty:2,min:1,unit:"kit"},
-  {id:36,item:"Hidróxido de Cálcio PA",cat:"Endodontia",qty:2,min:1,unit:"pote"},
-  {id:37,item:"Curativo Otosporin",cat:"Endodontia",qty:3,min:2,unit:"frasco"},
-
-  // ── PERIODONTIA / PROFILAXIA ──
-  {id:40,item:"Cureta Gracey 5/6",cat:"Periodontia",qty:3,min:2,unit:"un"},
-  {id:41,item:"Cureta Gracey 7/8",cat:"Periodontia",qty:3,min:2,unit:"un"},
-  {id:42,item:"Cureta Gracey 11/12",cat:"Periodontia",qty:3,min:2,unit:"un"},
-  {id:43,item:"Cureta Gracey 13/14",cat:"Periodontia",qty:3,min:2,unit:"un"},
-  {id:44,item:"Sonda periodontal Williams",cat:"Periodontia",qty:4,min:2,unit:"un"},
-  {id:45,item:"Pasta profilática (Herjos-F)",cat:"Periodontia",qty:3,min:2,unit:"pote"},
-  {id:46,item:"Taça de borracha p/ profilaxia",cat:"Periodontia",qty:30,min:15,unit:"un"},
-  {id:47,item:"Escova Robinson",cat:"Periodontia",qty:25,min:10,unit:"un"},
-  {id:48,item:"Bicarbonato sódio (Jet)",cat:"Periodontia",qty:3,min:2,unit:"pote"},
-
-  // ── CIRURGIA / IMPLANTES ──
-  {id:60,item:"Fio de sutura Nylon 4-0",cat:"Cirurgia",qty:10,min:5,unit:"un"},
-  {id:61,item:"Fio de sutura Seda 3-0",cat:"Cirurgia",qty:8,min:4,unit:"un"},
-  {id:62,item:"Fio de sutura Vicryl 4-0 (absorvível)",cat:"Cirurgia",qty:6,min:3,unit:"un"},
-  {id:63,item:"Lâmina de bisturi nº 15",cat:"Cirurgia",qty:30,min:15,unit:"un"},
-  {id:64,item:"Implante Neodent Drive 4.0x10mm",cat:"Implantes",qty:4,min:2,unit:"un"},
-  {id:65,item:"Implante Neodent Drive 4.0x11,5mm",cat:"Implantes",qty:4,min:2,unit:"un"},
-  {id:66,item:"Implante Neodent Drive 3.5x10mm",cat:"Implantes",qty:3,min:2,unit:"un"},
-  {id:67,item:"Cicatrizador 4.0x4mm",cat:"Implantes",qty:6,min:3,unit:"un"},
-  {id:68,item:"Cicatrizador 4.0x5mm",cat:"Implantes",qty:6,min:3,unit:"un"},
-  {id:69,item:"Pilar protético reto",cat:"Implantes",qty:4,min:2,unit:"un"},
-  {id:70,item:"Enxerto Bio-Oss 0,5g (Geistlich)",cat:"Implantes",qty:2,min:1,unit:"frasco"},
-  {id:71,item:"Membrana Bio-Gide 13x25mm",cat:"Implantes",qty:2,min:1,unit:"un"},
-
-  // ── PRÓTESE ──
-  {id:80,item:"Silicone de adição leve (Express)",cat:"Prótese",qty:3,min:2,unit:"tubo"},
-  {id:81,item:"Silicone de adição pesado (Express)",cat:"Prótese",qty:3,min:2,unit:"tubo"},
-  {id:82,item:"Alginato (Hydrogum 5)",cat:"Prótese",qty:4,min:2,unit:"pacote"},
-  {id:83,item:"Cimento resinoso RelyX U200",cat:"Prótese",qty:3,min:2,unit:"seringa"},
-  {id:84,item:"Cimento provisório (RelyX Temp)",cat:"Prótese",qty:2,min:1,unit:"tubo"},
-  {id:85,item:"Coroa provisória bisacrílica",cat:"Prótese",qty:3,min:2,unit:"cartucho"},
-  {id:86,item:"Moldeira inferior parcial (sortida)",cat:"Prótese",qty:10,min:5,unit:"un"},
-  {id:87,item:"Moldeira superior parcial (sortida)",cat:"Prótese",qty:10,min:5,unit:"un"},
-
-  // ── CLAREAMENTO / ESTÉTICA ──
-  {id:100,item:"Peróxido de Hidrogênio 35% (Whiteness HP)",cat:"Estética",qty:3,min:2,unit:"kit"},
-  {id:101,item:"Peróxido de Carbamida 16% (caseiro)",cat:"Estética",qty:5,min:3,unit:"seringa"},
-  {id:102,item:"Moldeira individual termoplástica",cat:"Estética",qty:10,min:5,unit:"un"},
-  {id:103,item:"Barreira gengival fotopolimerizável",cat:"Estética",qty:3,min:2,unit:"seringa"},
-  {id:104,item:"Dessensibilizante pós-clareamento",cat:"Estética",qty:3,min:2,unit:"frasco"},
-
-  // ── HARMONIZAÇÃO FACIAL ──
-  {id:120,item:"Toxina Botulínica 100U (Botox)",cat:"Harmonização",qty:3,min:2,unit:"frasco"},
-  {id:121,item:"Toxina Botulínica 50U (Dysport)",cat:"Harmonização",qty:2,min:1,unit:"frasco"},
-  {id:122,item:"Ácido Hialurônico 1ml (Juvederm Volift)",cat:"Harmonização",qty:4,min:3,unit:"seringa"},
-  {id:123,item:"Ácido Hialurônico 1ml (Restylane Lyft)",cat:"Harmonização",qty:3,min:2,unit:"seringa"},
-  {id:124,item:"Ácido Hialurônico labial (Juvederm Volbella)",cat:"Harmonização",qty:3,min:2,unit:"seringa"},
-  {id:125,item:"Hialuronidase 2000UTR (Hyalozima)",cat:"Harmonização",qty:2,min:2,unit:"ampola"},
-  {id:126,item:"Cânula 22G x 50mm",cat:"Harmonização",qty:20,min:10,unit:"un"},
-  {id:127,item:"Cânula 25G x 40mm",cat:"Harmonização",qty:20,min:10,unit:"un"},
-  {id:128,item:"Cânula 27G x 38mm",cat:"Harmonização",qty:20,min:10,unit:"un"},
-  {id:129,item:"Agulha hipodérmica 13x4,5",cat:"Harmonização",qty:50,min:25,unit:"un"},
-  {id:130,item:"Anestésico Lidocaína 2% tópico (Emla)",cat:"Harmonização",qty:3,min:2,unit:"tubo"},
-
-  // ── BIOESTIMULADORES E SKIN ──
-  {id:140,item:"Bioestimulador Sculptra (PLLA)",cat:"Skin/Bio",qty:2,min:2,unit:"frasco"},
-  {id:141,item:"Bioestimulador Radiesse 1,5ml (HA-CaHA)",cat:"Skin/Bio",qty:2,min:1,unit:"seringa"},
-  {id:142,item:"Bioestimulador Ellansé M",cat:"Skin/Bio",qty:1,min:1,unit:"seringa"},
-  {id:143,item:"PDRN injetável (Plinest)",cat:"Skin/Bio",qty:3,min:2,unit:"seringa"},
-  {id:144,item:"Skinbooster Profhilo 2ml",cat:"Skin/Bio",qty:3,min:2,unit:"seringa"},
-  {id:145,item:"Skinbooster Restylane Vital",cat:"Skin/Bio",qty:2,min:1,unit:"seringa"},
-  {id:146,item:"Microagulhamento (Dermapen) - cartucho",cat:"Skin/Bio",qty:20,min:10,unit:"un"},
-
-  // ── EPI / BIOSSEGURANÇA ──
-  {id:160,item:"Luvas procedimento M (caixa 100)",cat:"EPI",qty:8,min:4,unit:"caixa"},
-  {id:161,item:"Luvas procedimento P (caixa 100)",cat:"EPI",qty:6,min:3,unit:"caixa"},
-  {id:162,item:"Luvas cirúrgicas estéreis 7,5",cat:"EPI",qty:30,min:15,unit:"par"},
-  {id:163,item:"Máscara N95 (PFF2)",cat:"EPI",qty:50,min:20,unit:"un"},
-  {id:164,item:"Máscara descartável tripla",cat:"EPI",qty:200,min:100,unit:"un"},
-  {id:165,item:"Touca descartável",cat:"EPI",qty:200,min:100,unit:"un"},
-  {id:166,item:"Avental descartável",cat:"EPI",qty:100,min:50,unit:"un"},
-  {id:167,item:"Óculos de proteção",cat:"EPI",qty:5,min:3,unit:"un"},
-  {id:168,item:"Campo cirúrgico estéril",cat:"EPI",qty:30,min:15,unit:"un"},
-
-  // ── HIGIENE / DESINFECÇÃO ──
-  {id:180,item:"Álcool 70% 1L",cat:"Higiene",qty:10,min:5,unit:"frasco"},
-  {id:181,item:"Clorexidina 0,12% (solução bucal)",cat:"Higiene",qty:5,min:3,unit:"frasco"},
-  {id:182,item:"Clorexidina 2% (desinfetante)",cat:"Higiene",qty:3,min:2,unit:"frasco"},
-  {id:183,item:"Glutaraldeído 2%",cat:"Higiene",qty:2,min:1,unit:"galão"},
-  {id:184,item:"Detergente enzimático",cat:"Higiene",qty:3,min:2,unit:"frasco"},
-  {id:185,item:"Sabonete antisséptico",cat:"Higiene",qty:5,min:3,unit:"frasco"},
-  {id:186,item:"Papel toalha",cat:"Higiene",qty:20,min:10,unit:"pacote"},
-
-  // ── DESCARTÁVEIS ──
-  {id:200,item:"Sugador descartável",cat:"Descartáveis",qty:200,min:100,unit:"un"},
-  {id:201,item:"Babador descartável",cat:"Descartáveis",qty:300,min:100,unit:"un"},
-  {id:202,item:"Copo descartável 50ml",cat:"Descartáveis",qty:500,min:200,unit:"un"},
-  {id:203,item:"Rolo de algodão",cat:"Descartáveis",qty:10,min:5,unit:"pacote"},
-  {id:204,item:"Gaze estéril 7,5x7,5",cat:"Descartáveis",qty:30,min:15,unit:"pacote"},
-  {id:205,item:"Cotonete (haste flexível)",cat:"Descartáveis",qty:5,min:2,unit:"caixa"},
-
-  // ── RX / RADIOGRAFIA ──
-  {id:220,item:"Filme radiográfico periapical adulto",cat:"Radiologia",qty:30,min:15,unit:"un"},
-  {id:221,item:"Filme radiográfico oclusal",cat:"Radiologia",qty:10,min:5,unit:"un"},
-  {id:222,item:"Posicionador radiográfico (kit)",cat:"Radiologia",qty:1,min:1,unit:"kit"},
-
-  // ── BROCAS E PONTAS ──
-  {id:240,item:"Broca diamantada esférica (sortida)",cat:"Brocas",qty:20,min:10,unit:"un"},
-  {id:241,item:"Broca diamantada tronco-cônica",cat:"Brocas",qty:15,min:8,unit:"un"},
-  {id:242,item:"Broca Carbide cirúrgica longa",cat:"Brocas",qty:5,min:3,unit:"un"},
-  {id:243,item:"Ponta diamantada acabamento",cat:"Brocas",qty:15,min:8,unit:"un"},
-  {id:244,item:"Disco de polimento (kit)",cat:"Brocas",qty:5,min:3,unit:"kit"},
-
-  // ── MEDICAMENTOS / RECEITUÁRIO ──
-  {id:260,item:"Amoxicilina 500mg (referência)",cat:"Medicamentos",qty:1,min:1,unit:"caixa"},
-  {id:261,item:"Nimesulida 100mg (referência)",cat:"Medicamentos",qty:1,min:1,unit:"caixa"},
-  {id:262,item:"Dipirona 500mg (referência)",cat:"Medicamentos",qty:1,min:1,unit:"caixa"},
-  {id:263,item:"Ibuprofeno 600mg (referência)",cat:"Medicamentos",qty:1,min:1,unit:"caixa"}
-];
 
 // ── STATE ─────────────────────────────────────────────────────────────
 const ST={
   page:"dashboard",
   pts:load("rof_pts",DEFPTS),
   apts:load("rof_apts",DEFAPTS),
-  stk:load("rof_stk",DEFSTK),
   bloqueios:load("rof_bloqueios",[]),
+  contasPagar:load("rof_contas_pagar",[]),
+  labs:load("rof_labs",[]),
   selPt:null,ptTab:"info",
   agDate:todayISO(),agCat:"Todos",
   ptSrc:"",odSel:"carie",odFaces:["O"],
   selTerm:null,tSig:null,tDraSig:null,tDone:null,sigMode:"draw",draSigMode:"draw",
   aiMsgs:[{r:"a",t:"Olá! Sou Júlia, secretária virtual do Método ROF™. Como posso ajudar hoje? 😊"}],
   aiInp:"",aiLoad:false,
-  showApt:false,aptTipo:"particular",aptConv:"",aptDur:60,aptSlot:null,aptCat:"Todos",aptPatId:null,aptPatName:"",hofForm:false,hofType:"botox",hofData:{},planoCat:"Todos",procsFilter:"Todos",procsSearch:"",finFilter:"todos",relPeriodo:"mes",stkFilter:"Todos",fotoCat:"Todas",
+  showApt:false,aptTipo:"particular",aptConv:"",aptDur:60,aptSlot:null,aptCat:"Todos",aptPatId:null,aptPatName:"",hofForm:false,hofType:"botox",hofData:{},planoCat:"Todos",procsFilter:"Todos",procsSearch:"",finFilter:"todos",finTab:"caixa",labsFilter:"todos",relPeriodo:"mes",fotoCat:"Todas",
 };
 function sameId(a,b){return String(a??"")===String(b??"");}
 function normalizePt(p,i){
@@ -4500,11 +4362,11 @@ function applySB(){
     });
   }
 }
-const NAV=[{id:"dashboard",e:"◈",l:"Dashboard"},{id:"agenda",e:"📅",l:"Agenda"},{id:"ai",e:"💬",l:"Secretária Júlia"},{id:"patients",e:"🦷",l:"Pacientes"},{id:"financeiro",e:"💵",l:"Financeiro"},{id:"stock",e:"📦",l:"Estoque"},{id:"procs",e:"🗂️",l:"Procedimentos"},{id:"orientacoes",e:"📋",l:"Orientações Pós"},{id:"relatorios",e:"📊",l:"Relatórios"},{id:"terms",e:"📜",l:"Termos ROF™"}];
+const NAV=[{id:"dashboard",e:"◈",l:"Dashboard"},{id:"agenda",e:"📅",l:"Agenda"},{id:"ai",e:"💬",l:"Secretária Júlia"},{id:"patients",e:"🦷",l:"Pacientes"},{id:"financeiro",e:"💵",l:"Financeiro"},{id:"procs",e:"🗂️",l:"Procedimentos"},{id:"orientacoes",e:"📋",l:"Orientações Pós"},{id:"relatorios",e:"📊",l:"Relatórios"},{id:"terms",e:"📜",l:"Termos ROF™"}];
 function buildNav(){
   const grps=[
     {sec:"Principal",ids:["dashboard","agenda","ai","patients"]},
-    {sec:"Gestão",ids:["financeiro","stock","procs","orientacoes","relatorios"]},
+    {sec:"Gestão",ids:["financeiro","procs","orientacoes","relatorios"]},
     {sec:"Documentos",ids:["terms"]},
   ];
   const cl=document.getElementById("sidebar")?.classList.contains("closed");
@@ -4534,13 +4396,11 @@ function pageDashboard(){
   {
     const ptsDash=ST.pts||[];
     const aptsDash=[...(ST.apts||[])];
-    const stockDash=ST.stk||[];
     const todayDash=todayISO();
     const nowDash=new Date();
     const hourDash=nowDash.getHours();
     const greetDash=hourDash<12?"Bom dia":hourDash<18?"Boa tarde":"Boa noite";
     const safeDash=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-    const lowDash=stockDash.filter(s=>(Number(s.qty)||0)<=(Number(s.min)||0));
     const todayAptsDash=aptsDash.filter(a=>String(a.date||"")===todayDash);
     const upcomingDash=aptsDash
       .filter(a=>String(a.date||"")>=todayDash)
@@ -4563,7 +4423,7 @@ function pageDashboard(){
     const metricsDash=[
       {ic:"🦷",lbl:"Pacientes ativos",val:activePtsDash,meta:`${ptsDash.length} fichas no total`,accent:"var(--gold)",page:"patients"},
       {ic:"📅",lbl:"Hoje",val:todayAptsDash.length,meta:heroStatusDash,accent:"var(--green)",page:"agenda"},
-      {ic:"⚠️",lbl:"Estoque alerta",val:lowDash.length,meta:lowDash.length?"Itens abaixo do mínimo":"Tudo dentro do limite",accent:"var(--amber)",page:"stock"},
+      {ic:"🧪",lbl:"Laboratórios",val:ST.labs?ST.labs.filter(l=>l.status!=="concluido").length:0,meta:"Trabalhos em andamento",accent:"var(--amber)",page:"financeiro"},
       {ic:"📈",lbl:"Movimento mensal",val:monthAptsDash,meta:"Consultas registradas no mês",accent:"var(--blue)",page:"relatorios"}
     ];
     const upcomingHtmlDash=upcomingDash.map(a=>{
@@ -4659,8 +4519,7 @@ function pageDashboard(){
       </div>
     </div>`;
   }
-  const{pts,apts,stk}=ST;
-  const low=stk.filter(s=>s.qty<=s.min);
+  const{pts,apts}=ST;
   const today=todayISO();const ta=apts.filter(a=>a.date===today);
   const bdays=pts.filter(p=>p.birthday).map(p=>{
     const b=new Date(p.birthday),n=new Date();
@@ -4668,11 +4527,11 @@ function pageDashboard(){
     if(nx<n)nx.setFullYear(n.getFullYear()+1);
     return{...p,diff:Math.ceil((nx-n)/86400000)};
   }).sort((a,b)=>a.diff-b.diff).slice(0,5);
-  const cards=[{e:"🦷",l:"Pacientes",v:pts.length,c:"#C6A46D"},{e:"📅",l:"Hoje",v:ta.length,c:"#22c55e"},{e:"⚠️",l:"Estoque Alerta",v:low.length,c:"#f59e0b"},{e:"🎂",l:"Aniversários 7d",v:bdays.filter(b=>b.diff<=7).length,c:"#c084fc"}];
+  const cards=[{e:"🦷",l:"Pacientes",v:pts.length,c:"#C6A46D"},{e:"📅",l:"Hoje",v:ta.length,c:"#22c55e"},{e:"🧪",l:"Laboratórios",v:ST.labs?ST.labs.filter(l=>l.status!=="concluido").length:0,c:"#f59e0b"},{e:"🎂",l:"Aniversários 7d",v:bdays.filter(b=>b.diff<=7).length,c:"#c084fc"}];
   const nextApts=apts.sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time)).slice(0,6);
   return`${stitle("Visão Geral")}
   <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px">
-    ${cards.map(c=>`<div class="sc" style="--c:${c.c}" onclick="go('${c.l==="Hoje"?"agenda":c.l==="Pacientes"?"patients":c.l==="Estoque Alerta"?"stock":"dashboard"}')">
+    ${cards.map(c=>`<div class="sc" style="--c:${c.c}" onclick="go('${c.l==="Hoje"?"agenda":c.l==="Pacientes"?"patients":c.l==="Laboratórios"?"financeiro":"dashboard"}')">
       <div class="sc-icon">${c.e}</div>
       <div class="sc-num">${c.v}</div>
       <div class="sc-lbl">${c.l}</div>
@@ -9484,166 +9343,6 @@ window.ynClick=btn=>{
   btn.dataset.ynSelected="1";btn.style.background="#C6A46D22";btn.style.color=GL;
 };
 
-// ═══════════════════════════════════════════════════════════════════
-// ESTOQUE
-// ═══════════════════════════════════════════════════════════════════
-function pageStock(){
-  const{stk}=ST;const low=stk.filter(s=>s.qty<=s.min);
-  const allCats=["Todos",...new Set(stk.map(s=>s.cat))];
-  const fcat=ST.stkFilter||"Todos";
-  const filtered=fcat==="Todos"?stk:stk.filter(s=>s.cat===fcat);
-  return`${stitle("Controle de Estoque")}
-  ${stk.length<15?`<div style="background:linear-gradient(135deg,rgba(198,164,109,0.15),rgba(198,164,109,0.05));border:1px solid #C6A46D55;border-radius:12px;padding:16px;margin-bottom:14px">
-    <div style="color:${GL};font-weight:700;font-size:13px;margin-bottom:6px">💎 Estoque ROF™ — Sugestão</div>
-    <div style="color:#aaa;font-size:11px;line-height:1.6;margin-bottom:10px">
-      Posso popular o estoque com mais de 90 itens organizados por especialidade: Anestésicos, Dentística, Endodontia, Periodontia, Cirurgia, Implantes, Prótese, Estética, Harmonização Facial, Skin/Bio (bioestimuladores e PDRN), EPI, Higiene, Descartáveis, Radiologia, Brocas e Medicamentos.
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button onclick="popularEstoquePadrao()" class="bp" style="padding:10px 16px;font-size:12px;font-weight:700">📦 Popular com produtos ROF™</button>
-      <button onclick="popularEstoquePadrao(true)" class="bg" style="padding:10px 16px;font-size:12px">📦 Adicionar SEM apagar atuais</button>
-    </div>
-  </div>`:""}
-  ${low.length>0?`<div style="background:#f59e0b10;border:1px solid #f59e0b44;border-radius:10px;padding:10px 14px;margin-bottom:12px;color:#f59e0b;font-size:12px">⚠️ <strong>${low.length} item(ns) abaixo do mínimo:</strong> ${low.map(i=>i.item).join(", ")}</div>`:""}
-  <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-    <div style="display:flex;gap:4px;flex-wrap:wrap;flex:1">
-      ${allCats.map(c=>`<button onclick="set({stkFilter:'${c}'})" class="bg" style="padding:3px 9px;font-size:10px;background:${fcat===c?"#C6A46D22":"transparent"};color:${fcat===c?GL:"#555"}">${c}</button>`).join("")}
-    </div>
-    <button onclick="openNewStk()" class="bp" style="padding:8px 14px;font-size:12px;flex-shrink:0">+ Novo Item</button>
-  </div>
-  <div class="card" style="padding:0;overflow:hidden">
-    ${filtered.map((s,i)=>{const lo=s.qty<=s.min;return`
-    <div style="padding:12px 14px;border-top:1px solid rgba(198,164,109,0.12);background:${lo?"#f59e0b05":i%2===0?"transparent":BG2+"44"}">
-      <div style="display:flex;align-items:center;gap:10px">
-        <div style="flex:1;min-width:0">
-          <div style="color:#ddd;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.item}${lo?` <span style="color:#f59e0b;font-size:10px">⚠️ baixo</span>`:""}</div>
-          <div style="color:#555;font-size:10px">${s.cat} · ${s.unit}${s.validade?` · val: ${fmtDate(s.validade)}`:""}</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-          <button onclick="chStk(${s.id},-1)" style="background:rgba(198,164,109,0.12);border:none;color:#888;width:30px;height:30px;border-radius:6px;cursor:pointer;font-size:18px;font-weight:700;line-height:1">−</button>
-          <span style="color:${lo?"#f59e0b":GL};font-weight:800;font-size:18px;min-width:32px;text-align:center">${s.qty}</span>
-          <button onclick="chStk(${s.id},1)" style="background:rgba(198,164,109,0.12);border:none;color:#888;width:30px;height:30px;border-radius:6px;cursor:pointer;font-size:18px;font-weight:700;line-height:1">+</button>
-        </div>
-        <button onclick="editStk(${s.id})" style="background:none;border:none;color:#C6A46D;cursor:pointer;font-size:16px;flex-shrink:0;padding:4px" title="Editar">✏️</button>
-        <button onclick="delStk(${s.id})" style="background:none;border:none;color:#333;cursor:pointer;font-size:16px;flex-shrink:0;padding:4px" title="Excluir">🗑</button>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
-        <span style="color:#555;font-size:10px">Mínimo:</span>
-        <input type="number" min="0" value="${s.min}"
-          onchange="updStkMin(${s.id},this.value)"
-          style="width:52px;background:#0e0e0e;border:1px solid #2a1f0a;border-radius:5px;padding:2px 7px;color:#888;font-size:11px;text-align:center;font-family:Georgia,serif"/>
-        <span style="color:#555;font-size:10px">${s.unit}</span>
-      </div>
-    </div>`;}).join("")}
-  </div>`;
-}
-window.chStk=(id,d)=>{const ns=ST.stk.map(x=>x.id===id?{...x,qty:Math.max(0,x.qty+d)}:x);save("rof_stk",ns);set({stk:ns});};
-window.updStkMin=(id,v)=>{const ns=ST.stk.map(x=>x.id===id?{...x,min:Math.max(0,Number(v))}:x);save("rof_stk",ns);set({stk:ns});};
-window.delStk=id=>{rConfirm("Excluir este item do estoque?",()=>{const ns=ST.stk.filter(x=>x.id!==id);save("rof_stk",ns);set({stk:ns});toast("Item removido do estoque.","success");},"Excluir Item");};
-
-// Popular estoque com produtos padrão ROF™
-window.popularEstoquePadrao=function(adicionar){
-  if(adicionar){
-    const existingIds=new Set(ST.stk.map(s=>s.id));
-    const existingNames=new Set(ST.stk.map(s=>s.item.toLowerCase().trim()));
-    const novos=DEFSTK.filter(d=>!existingIds.has(d.id)&&!existingNames.has(d.item.toLowerCase().trim()));
-    if(novos.length===0){toast("Nenhum item novo para adicionar.","info");return;}
-    const ns=[...ST.stk,...novos];
-    save("rof_stk",ns);set({stk:ns});
-    toast("✓ "+novos.length+" produtos ROF\u2122 adicionados ao estoque!","success");
-  } else {
-    rConfirm(
-      "Substituir o estoque atual ("+ST.stk.length+" "+(ST.stk.length===1?"item":"itens")+") pelos "+DEFSTK.length+" produtos do catálogo ROF\u2122?\n\nVocê pode editar quantidades e mínimos depois.",
-      function(){
-        const ns=DEFSTK.slice();
-        save("rof_stk",ns);set({stk:ns});
-        toast("✓ Estoque populado com "+ns.length+" produtos ROF\u2122!","success");
-      },
-      "Substituir estoque"
-    );
-  }
-};
-window.editStk=id=>{
-  const s=ST.stk.find(x=>x.id===id);if(!s)return;
-  const cats=[...new Set(ST.stk.map(x=>x.cat))];
-  const m=document.createElement("div");m.className="mbg";m.id="stk-modal";
-  m.innerHTML=`<div class="mbx" style="max-width:440px"><div class="mhd">
-    <div style="color:#E2C99A;font-weight:800;font-size:14px">✏️ Editar Item de Estoque</div>
-    <button onclick="document.getElementById('stk-modal').remove()" style="background:none;border:none;color:#555;cursor:pointer;font-size:22px">✕</button>
-  </div><div class="mbd">
-    <div style="margin-bottom:10px"><label class="lbl">Nome do item</label>
-      <input id="si-nome" value="${s.item.replace(/"/g,"&quot;")}" class="inp"/></div>
-    <div class="g2" style="margin-bottom:10px">
-      <div><label class="lbl">Categoria</label>
-        <input id="si-cat" value="${s.cat}" class="inp" list="scat-list"/>
-        <datalist id="scat-list">${cats.map(c=>`<option value="${c}"/>`).join("")}</datalist></div>
-      <div><label class="lbl">Unidade</label>
-        <input id="si-unit" value="${s.unit}" class="inp" placeholder="ampola, caixa, un..."/></div>
-      <div><label class="lbl">Qtd atual</label>
-        <input id="si-qty" type="number" min="0" value="${s.qty}" class="inp"/></div>
-      <div><label class="lbl">Qtd mínima</label>
-        <input id="si-min" type="number" min="0" value="${s.min}" class="inp"/></div>
-      <div style="grid-column:1/-1"><label class="lbl">Validade (opcional)</label>
-        <input id="si-val" type="date" value="${s.validade||""}" class="inp"/></div>
-    </div>
-    <div style="display:flex;gap:8px">
-      <button onclick="saveStkEdit(${s.id})" class="bp" style="flex:1">✅ Salvar</button>
-      <button onclick="document.getElementById('stk-modal').remove()" class="bg" style="color:#555">Cancelar</button>
-    </div>
-  </div></div>`;
-  document.getElementById("stk-modal")?.remove();document.body.appendChild(m);
-};
-window.saveStkEdit=id=>{
-  const nome=document.getElementById("si-nome")?.value.trim();
-  const cat=document.getElementById("si-cat")?.value.trim();
-  const unit=document.getElementById("si-unit")?.value.trim()||"un";
-  const qty=Number(document.getElementById("si-qty")?.value||0);
-  const min=Number(document.getElementById("si-min")?.value||0);
-  const validade=document.getElementById("si-val")?.value||"";
-  if(!nome||!cat){toast("Preencha nome e categoria.","warning");return;}
-  const ns=ST.stk.map(x=>x.id===id?{...x,item:nome,cat,unit,qty,min,validade}:x);
-  save("rof_stk",ns);document.getElementById("stk-modal")?.remove();set({stk:ns});
-};
-window.openNewStk=()=>{
-  const cats=[...new Set(ST.stk.map(x=>x.cat))];
-  const m=document.createElement("div");m.className="mbg";m.id="stk-modal";
-  m.innerHTML=`<div class="mbx" style="max-width:440px"><div class="mhd">
-    <div style="color:#E2C99A;font-weight:800;font-size:14px">➕ Novo Item de Estoque</div>
-    <button onclick="document.getElementById('stk-modal').remove()" style="background:none;border:none;color:#555;cursor:pointer;font-size:22px">✕</button>
-  </div><div class="mbd">
-    <div style="margin-bottom:10px"><label class="lbl">Nome do item</label>
-      <input id="ni-nome" class="inp" placeholder="Ex: Resina A3"/></div>
-    <div class="g2" style="margin-bottom:10px">
-      <div><label class="lbl">Categoria</label>
-        <input id="ni-cat" class="inp" list="ncat-list" placeholder="Ex: Resinas"/>
-        <datalist id="ncat-list">${cats.map(c=>`<option value="${c}"/>`).join("")}</datalist></div>
-      <div><label class="lbl">Unidade</label>
-        <input id="ni-unit" class="inp" placeholder="seringa, caixa, un..."/></div>
-      <div><label class="lbl">Qtd inicial</label>
-        <input id="ni-qty" type="number" min="0" value="0" class="inp"/></div>
-      <div><label class="lbl">Qtd mínima</label>
-        <input id="ni-min" type="number" min="0" value="1" class="inp"/></div>
-      <div style="grid-column:1/-1"><label class="lbl">Validade (opcional)</label>
-        <input id="ni-val" type="date" class="inp"/></div>
-    </div>
-    <div style="display:flex;gap:8px">
-      <button onclick="saveNewStk()" class="bp" style="flex:1">✅ Adicionar</button>
-      <button onclick="document.getElementById('stk-modal').remove()" class="bg" style="color:#555">Cancelar</button>
-    </div>
-  </div></div>`;
-  document.getElementById("stk-modal")?.remove();document.body.appendChild(m);
-};
-window.saveNewStk=()=>{
-  const nome=document.getElementById("ni-nome")?.value.trim();
-  const cat=document.getElementById("ni-cat")?.value.trim();
-  const unit=document.getElementById("ni-unit")?.value.trim()||"un";
-  const qty=Number(document.getElementById("ni-qty")?.value||0);
-  const min=Number(document.getElementById("ni-min")?.value||1);
-  const validade=document.getElementById("ni-val")?.value||"";
-  if(!nome||!cat){toast("Preencha nome e categoria.","warning");return;}
-  const newId=Math.max(...ST.stk.map(s=>s.id),0)+1;
-  const ns=[...ST.stk,{id:newId,item:nome,cat,qty,min,unit,validade}];
-  save("rof_stk",ns);document.getElementById("stk-modal")?.remove();set({stk:ns});
-};
 
 // ═══════════════════════════════════════════════════════════════════
 // TERMOS ROF™ — COM TODOS OS PROCEDIMENTOS DETALHADOS
@@ -10722,6 +10421,12 @@ window.sendWhats=function(ptId,tipo,docId){
 // FINANCEIRO GERAL
 // ═══════════════════════════════════════════════════════════════
 function pageFinanceiro(){
+  const finTab=ST.finTab||"caixa";
+  const tabBar=`<div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid rgba(198,164,109,0.15);padding-bottom:8px">
+  ${[{k:"caixa",l:"💰 Caixa"},{k:"pagar",l:"📋 Contas a Pagar"},{k:"labs",l:"🧪 Laboratórios"}].map(t=>`<button onclick="set({finTab:'${t.k}'})" style="padding:6px 14px;font-size:12px;font-weight:600;border-radius:20px;border:1px solid ${finTab===t.k?'#C6A46D':'rgba(198,164,109,0.2)'};background:${finTab===t.k?'rgba(198,164,109,0.15)':'transparent'};color:${finTab===t.k?'#C6A46D':'#666'};cursor:pointer;font-family:var(--font-body)">${t.l}</button>`).join("")}
+</div>`;
+  if(finTab==="pagar")return stitle("Financeiro")+tabBar+pageContasPagar();
+  if(finTab==="labs")return stitle("Financeiro")+tabBar+pageLabs();
   var todos=[];
   ST.pts.forEach(function(p){
     (p.pagamentos||[]).forEach(function(pg){
@@ -10743,7 +10448,7 @@ function pageFinanceiro(){
   var saidas=filtered.filter(function(x){return x.tipo==="saida";}).reduce(function(s,x){return s+x.valor;},0);
   var saldo=entradas-saidas;
   var periodos=[{k:"hoje",l:"Hoje"},{k:"semana",l:"7 dias"},{k:"mes",l:"Este mês"},{k:"ano",l:"Este ano"},{k:"todos",l:"Tudo"}];
-  return stitle("Financeiro")
+  return stitle("Financeiro")+tabBar
     +financialChart(todos)
     +"<div style='display:flex;gap:4px;flex-wrap:wrap;margin-bottom:14px'>"
     +periodos.map(function(p){
@@ -10780,6 +10485,271 @@ function pageFinanceiro(){
     +"<button onclick='exportPatientsCSV()' class='bg' style='flex:1;padding:9px;font-size:12px;color:#60a5fa;border-color:rgba(96,165,250,0.3)'>⬇ Exportar CSV Pacientes</button>"
     +"</div>";
 }
+
+// ═══════════════════════════════════════════════════════════════
+// CONTAS A PAGAR
+// ═══════════════════════════════════════════════════════════════
+function pageContasPagar(){
+  var contas=ST.contasPagar||[];
+  var hoje=todayISO();
+  var mesAtual=hoje.slice(0,7);
+  var recorrentes=contas.filter(function(c){return c.recorrente;});
+  var avulsas=contas.filter(function(c){return !c.recorrente;});
+  var totalPendente=contas.filter(function(c){return c.status==="pendente";}).reduce(function(s,c){return s+(Number(c.valor)||0);},0);
+  var totalPagoMes=contas.filter(function(c){return c.status==="pago"&&(c.vencimento||"").slice(0,7)===mesAtual;}).reduce(function(s,c){return s+(Number(c.valor)||0);},0);
+  var vencidas=contas.filter(function(c){return c.status==="pendente"&&c.vencimento&&c.vencimento<hoje;});
+  function badgeStatus(c){
+    if(c.status==="pago")return`<span style="background:#22c55e22;color:#22c55e;border:1px solid #22c55e55;border-radius:20px;padding:2px 10px;font-size:10px;font-weight:700">✓ Pago</span>`;
+    if(c.vencimento&&c.vencimento<hoje)return`<span style="background:#ef444422;color:#ef4444;border:1px solid #ef444455;border-radius:20px;padding:2px 10px;font-size:10px;font-weight:700">⚠ Vencida</span>`;
+    return`<span style="background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b55;border-radius:20px;padding:2px 10px;font-size:10px;font-weight:700">⏳ Pendente</span>`;
+  }
+  function rowConta(c){
+    return`<div style="padding:12px 14px;border-bottom:1px solid rgba(198,164,109,0.08);display:flex;align-items:center;gap:10px">
+      <div style="flex:1;min-width:0">
+        <div style="color:#ddd;font-size:13px;font-weight:600">${c.recorrente?"🔄 ":""}${c.desc||"—"}</div>
+        <div style="color:#666;font-size:11px;margin-top:2px">${c.fornecedor||""}${c.vencimento?" · Vence: "+fmtDate(c.vencimento):""}${c.recorrente?" · "+((c.frequencia||"mensal").charAt(0).toUpperCase()+(c.frequencia||"mensal").slice(1)):""}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="color:${GL};font-weight:800;font-size:14px">R$ ${Number(c.valor||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
+        <div style="margin-top:4px">${badgeStatus(c)}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+        ${c.status==="pendente"?`<button onclick="pagarConta('${c.id}')" style="background:#22c55e22;border:1px solid #22c55e55;color:#22c55e;border-radius:6px;cursor:pointer;font-size:11px;padding:4px 8px;font-family:var(--font-body)">✓ Pagar</button>`:""}
+        <button onclick="excluirConta('${c.id}')" style="background:none;border:none;color:#555;cursor:pointer;font-size:16px;padding:2px">🗑</button>
+      </div>
+    </div>`;
+  }
+  return`<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+    <div class="card" style="flex:1;min-width:140px;padding:14px 16px">
+      <div style="color:#ef4444;font-size:22px;font-weight:800">R$ ${totalPendente.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
+      <div style="color:#666;font-size:11px;margin-top:2px">Total pendente</div>
+    </div>
+    <div class="card" style="flex:1;min-width:140px;padding:14px 16px">
+      <div style="color:#22c55e;font-size:22px;font-weight:800">R$ ${totalPagoMes.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
+      <div style="color:#666;font-size:11px;margin-top:2px">Pago este mês</div>
+    </div>
+    ${vencidas.length?`<div class="card" style="flex:1;min-width:140px;padding:14px 16px;border-color:#ef444444">
+      <div style="color:#ef4444;font-size:22px;font-weight:800">${vencidas.length}</div>
+      <div style="color:#666;font-size:11px;margin-top:2px">Conta(s) vencida(s)</div>
+    </div>`:""}
+  </div>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+    <button onclick="abrirNovaContaModal()" class="bp" style="padding:9px 18px;font-size:13px;font-weight:700">+ Nova Conta</button>
+  </div>
+  ${recorrentes.length?`<div style="color:${GL};font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:6px;text-transform:uppercase">🔄 Recorrentes Fixas</div>
+  <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">${recorrentes.map(rowConta).join("")}</div>`:""}
+  <div style="color:${GL};font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:6px;text-transform:uppercase">📄 Avulsas</div>
+  ${avulsas.length?`<div class="card" style="padding:0;overflow:hidden">${avulsas.map(rowConta).join("")}</div>`
+    :`<div style="color:#444;text-align:center;padding:24px;font-size:13px">Nenhuma conta avulsa cadastrada.</div>`}`;
+}
+window.abrirNovaContaModal=function(){
+  document.getElementById("nova-conta-modal")?.remove();
+  var m=document.createElement("div");m.className="mbg";m.id="nova-conta-modal";
+  m.innerHTML=`<div class="mbx" style="max-width:440px"><div class="mhd">
+    <div class="mhd-title">📋 Nova Conta a Pagar</div>
+    <button onclick="document.getElementById('nova-conta-modal').remove()" style="background:none;border:none;color:#555;cursor:pointer;font-size:22px">✕</button>
+  </div><div class="mbd">
+    <div style="margin-bottom:10px"><label class="lbl">Descrição *</label><input id="nc-desc" class="inp" placeholder="Ex: Aluguel da sala"/></div>
+    <div style="margin-bottom:10px"><label class="lbl">Fornecedor</label><input id="nc-forn" class="inp" placeholder="Ex: Imobiliária Silva"/></div>
+    <div class="g2" style="margin-bottom:10px">
+      <div><label class="lbl">Valor (R$) *</label><input id="nc-valor" type="number" min="0" step="0.01" class="inp" placeholder="0,00"/></div>
+      <div><label class="lbl">Vencimento</label><input id="nc-venc" type="date" class="inp"/></div>
+    </div>
+    <div style="margin-bottom:10px"><label class="lbl">Status</label>
+      <select id="nc-status" class="inp"><option value="pendente">Pendente</option><option value="pago">Pago</option></select>
+    </div>
+    <div style="margin-bottom:10px;display:flex;align-items:center;gap:10px">
+      <input type="checkbox" id="nc-rec" onchange="document.getElementById('nc-freq-row').style.display=this.checked?'block':'none'" style="width:18px;height:18px;accent-color:#C6A46D"/>
+      <label for="nc-rec" style="color:#aaa;font-size:13px;cursor:pointer">Conta recorrente fixa</label>
+    </div>
+    <div id="nc-freq-row" style="display:none;margin-bottom:10px"><label class="lbl">Frequência</label>
+      <select id="nc-freq" class="inp"><option value="mensal">Mensal</option><option value="anual">Anual</option></select>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="salvarNovaConta()" class="bp" style="flex:1">✅ Salvar</button>
+      <button onclick="document.getElementById('nova-conta-modal').remove()" class="bg" style="color:#555">Cancelar</button>
+    </div>
+  </div></div>`;
+  document.body.appendChild(m);
+  setTimeout(function(){document.getElementById("nc-desc")?.focus();},100);
+};
+window.salvarNovaConta=function(){
+  var desc=document.getElementById("nc-desc")?.value.trim();
+  var forn=document.getElementById("nc-forn")?.value.trim();
+  var valor=parseFloat(document.getElementById("nc-valor")?.value)||0;
+  var venc=document.getElementById("nc-venc")?.value;
+  var status=document.getElementById("nc-status")?.value||"pendente";
+  var rec=document.getElementById("nc-rec")?.checked||false;
+  var freq=document.getElementById("nc-freq")?.value||"mensal";
+  if(!desc){toast("Preencha a descrição.","warning");return;}
+  var nc={id:"cp_"+Date.now(),desc,fornecedor:forn,valor,vencimento:venc,status,recorrente:rec,frequencia:rec?freq:""};
+  var ns=[...ST.contasPagar,nc];
+  save("rof_contas_pagar",ns);set({contasPagar:ns});
+  document.getElementById("nova-conta-modal")?.remove();
+  toast("Conta adicionada.","success");
+};
+window.pagarConta=function(id){
+  var ns=ST.contasPagar.map(function(c){return c.id===id?Object.assign({},c,{status:"pago"}):c;});
+  save("rof_contas_pagar",ns);set({contasPagar:ns});
+  toast("Conta marcada como paga.","success");
+};
+window.excluirConta=function(id){
+  rConfirm("Excluir esta conta?",function(){
+    var ns=ST.contasPagar.filter(function(c){return c.id!==id;});
+    save("rof_contas_pagar",ns);set({contasPagar:ns});
+    toast("Conta removida.","success");
+  },"Excluir");
+};
+
+// ═══════════════════════════════════════════════════════════════
+// LABORATÓRIOS
+// ═══════════════════════════════════════════════════════════════
+function pageLabs(){
+  var labs=ST.labs||[];
+  var filtro=ST.labsFilter||"todos";
+  var mesAtual=todayISO().slice(0,7);
+  var filtrados=filtro==="todos"?labs:labs.filter(function(l){return l.status===filtro;});
+  var emAndamento=labs.filter(function(l){return l.status!=="concluido";}).length;
+  var concluidosMes=labs.filter(function(l){return l.status==="concluido"&&(l.dtEntrega||"").slice(0,7)===mesAtual;});
+  var lucroMes=concluidosMes.reduce(function(s,l){return s+((Number(l.valorPaciente)||0)-(Number(l.custo)||0));},0);
+  var ptOpts=ST.pts.map(function(p){return`<option value="${p.name.replace(/"/g,"&quot;")}"/>`}).join("");
+  var labTipos=["Emax (dissilicato de lítio)","Zircônia","Coroa acrílica provisória","Enceramento diagnóstico","Muralha / Mockup","Table top","Inlay","Onlay","Vonlay","Overlay","Placa miorrelaxante","Placa clareamento por arcada","Coroa sob implante"];
+  function badgeLab(s){
+    if(s==="concluido")return`<span style="background:#22c55e22;color:#22c55e;border:1px solid #22c55e55;border-radius:20px;padding:2px 10px;font-size:10px;font-weight:700">✓ Concluído</span>`;
+    if(s==="andamento")return`<span style="background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b55;border-radius:20px;padding:2px 10px;font-size:10px;font-weight:700">⚙ Em Andamento</span>`;
+    return`<span style="background:#60a5fa22;color:#60a5fa;border:1px solid #60a5fa55;border-radius:20px;padding:2px 10px;font-size:10px;font-weight:700">🔵 Iniciado</span>`;
+  }
+  function nextStatus(s){return s==="iniciado"?"andamento":s==="andamento"?"concluido":null;}
+  function nextLabel(s){return s==="iniciado"?"→ Andamento":s==="andamento"?"→ Concluído":null;}
+  var rows=filtrados.map(function(l){
+    var margem=(Number(l.valorPaciente)||0)-(Number(l.custo)||0);
+    var ns=nextStatus(l.status);
+    return`<div style="padding:14px 16px;border-bottom:1px solid rgba(198,164,109,0.08)">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+            <span style="color:#E2C99A;font-weight:800;font-size:14px">${l.lab||"—"}</span>
+            ${badgeLab(l.status)}
+          </div>
+          <div style="color:#ccc;font-size:13px;margin-bottom:2px">${l.trabalho||"—"}</div>
+          <div style="color:#666;font-size:11px">👤 ${l.paciente||"—"}${l.dtInicio?" · Início: "+fmtDate(l.dtInicio):""}${l.dtEntrega?" · Entrega: "+fmtDate(l.dtEntrega):""}</div>
+          <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap">
+            <span style="color:#888;font-size:12px">Lab: <strong style="color:#ddd">R$ ${Number(l.custo||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</strong></span>
+            <span style="color:#888;font-size:12px">Paciente: <strong style="color:#ddd">R$ ${Number(l.valorPaciente||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</strong></span>
+            <span style="color:#888;font-size:12px">Margem: <strong style="color:${margem>=0?"#22c55e":"#ef4444"}">R$ ${margem.toLocaleString("pt-BR",{minimumFractionDigits:2})}</strong></span>
+          </div>
+          ${l.obs?`<div style="color:#555;font-size:11px;margin-top:4px;font-style:italic">${l.obs}</div>`:""}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;align-items:flex-end">
+          ${ns?`<button onclick="avancarLab('${l.id}')" style="background:#C6A46D22;border:1px solid #C6A46D55;color:${GL};border-radius:6px;cursor:pointer;font-size:11px;padding:4px 10px;font-family:var(--font-body);white-space:nowrap">${nextLabel(l.status)}</button>`:""}
+          <button onclick="editarLab('${l.id}')" style="background:none;border:none;color:#C6A46D;cursor:pointer;font-size:14px;padding:2px" title="Editar">✏</button>
+          <button onclick="excluirLab('${l.id}')" style="background:none;border:none;color:#555;cursor:pointer;font-size:16px;padding:2px">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+  return`<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+    <div class="card" style="flex:1;min-width:120px;padding:14px 16px">
+      <div style="color:#f59e0b;font-size:28px;font-weight:800">${emAndamento}</div>
+      <div style="color:#666;font-size:11px;margin-top:2px">Em andamento</div>
+    </div>
+    <div class="card" style="flex:1;min-width:120px;padding:14px 16px">
+      <div style="color:#22c55e;font-size:28px;font-weight:800">${concluidosMes.length}</div>
+      <div style="color:#666;font-size:11px;margin-top:2px">Concluídos este mês</div>
+    </div>
+    <div class="card" style="flex:1;min-width:120px;padding:14px 16px">
+      <div style="color:${lucroMes>=0?"#22c55e":"#ef4444"};font-size:20px;font-weight:800">R$ ${lucroMes.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
+      <div style="color:#666;font-size:11px;margin-top:2px">Margem bruta (mês)</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:14px;justify-content:space-between;flex-wrap:wrap">
+    <div style="display:flex;gap:4px;flex-wrap:wrap">
+      ${[{k:"todos",l:"Todos"},{k:"iniciado",l:"🔵 Iniciado"},{k:"andamento",l:"⚙ Andamento"},{k:"concluido",l:"✓ Concluído"}].map(function(f){return`<button onclick="set({labsFilter:'${f.k}'})" class="bg" style="padding:4px 12px;font-size:11px;background:${filtro===f.k?"#C6A46D22":"transparent"};color:${filtro===f.k?GL:"#555"}">${f.l}</button>`;}).join("")}
+    </div>
+    <button onclick="abrirNovoLabModal()" class="bp" style="padding:9px 18px;font-size:13px;font-weight:700">+ Novo Trabalho</button>
+  </div>
+  ${filtrados.length?`<div class="card" style="padding:0;overflow:hidden">${rows}</div>`
+    :`<div style="color:#444;text-align:center;padding:32px;font-size:13px">Nenhum trabalho ${filtro==="todos"?"cadastrado":"nesta fase"}.</div>`}
+  <datalist id="lab-pts-list">${ptOpts}</datalist>
+  <datalist id="lab-trabalho-list">${labTipos.map(function(t){return`<option value="${t}"/>`;}).join("")}</datalist>`;
+}
+window.abrirNovoLabModal=function(idEditar){
+  var edit=idEditar?ST.labs.find(function(l){return l.id===idEditar;}):null;
+  document.getElementById("novo-lab-modal")?.remove();
+  var m=document.createElement("div");m.className="mbg";m.id="novo-lab-modal";
+  m.innerHTML=`<div class="mbx" style="max-width:480px"><div class="mhd">
+    <div class="mhd-title">🧪 ${edit?"Editar":"Novo"} Trabalho de Laboratório</div>
+    <button onclick="document.getElementById('novo-lab-modal').remove()" style="background:none;border:none;color:#555;cursor:pointer;font-size:22px">✕</button>
+  </div><div class="mbd">
+    <div class="g2" style="margin-bottom:10px">
+      <div><label class="lbl">Laboratório *</label><input id="nl-lab" class="inp" placeholder="Nome do laboratório" value="${edit?edit.lab:""}"/></div>
+      <div><label class="lbl">Paciente</label><input id="nl-pac" class="inp" list="lab-pts-list" placeholder="Nome do paciente" value="${edit?edit.paciente:""}"/></div>
+    </div>
+    <div style="margin-bottom:10px"><label class="lbl">Tipo de trabalho *</label>
+      <input id="nl-trab" class="inp" list="lab-trabalho-list" placeholder="Ex: Emax, Zircônia..." value="${edit?edit.trabalho:""}"/>
+    </div>
+    <div class="g2" style="margin-bottom:10px">
+      <div><label class="lbl">Status</label>
+        <select id="nl-status" class="inp">
+          <option value="iniciado"${(!edit||edit.status==="iniciado")?" selected":""}>🔵 Iniciado</option>
+          <option value="andamento"${edit&&edit.status==="andamento"?" selected":""}>⚙ Em Andamento</option>
+          <option value="concluido"${edit&&edit.status==="concluido"?" selected":""}>✓ Concluído</option>
+        </select>
+      </div>
+      <div></div>
+    </div>
+    <div class="g2" style="margin-bottom:10px">
+      <div><label class="lbl">Custo Lab (R$)</label><input id="nl-custo" type="number" min="0" step="0.01" class="inp" placeholder="0,00" value="${edit?edit.custo:""}"/></div>
+      <div><label class="lbl">Valor Paciente (R$)</label><input id="nl-vpac" type="number" min="0" step="0.01" class="inp" placeholder="0,00" value="${edit?edit.valorPaciente:""}"/></div>
+    </div>
+    <div class="g2" style="margin-bottom:10px">
+      <div><label class="lbl">Data Início</label><input id="nl-dtini" type="date" class="inp" value="${edit?edit.dtInicio:""}"/></div>
+      <div><label class="lbl">Entrega Prevista</label><input id="nl-dtent" type="date" class="inp" value="${edit?edit.dtEntrega:""}"/></div>
+    </div>
+    <div style="margin-bottom:12px"><label class="lbl">Observações</label>
+      <input id="nl-obs" class="inp" placeholder="Dente(s), cor, especificações..." value="${edit?edit.obs:""}"/>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="salvarLab(${idEditar?`'${idEditar}'`:"null"})" class="bp" style="flex:1">✅ Salvar</button>
+      <button onclick="document.getElementById('novo-lab-modal').remove()" class="bg" style="color:#555">Cancelar</button>
+    </div>
+  </div></div>`;
+  document.body.appendChild(m);
+  setTimeout(function(){document.getElementById("nl-lab")?.focus();},100);
+};
+window.editarLab=function(id){abrirNovoLabModal(id);};
+window.salvarLab=function(idEditar){
+  var lab=document.getElementById("nl-lab")?.value.trim();
+  var pac=document.getElementById("nl-pac")?.value.trim();
+  var trab=document.getElementById("nl-trab")?.value.trim();
+  var status=document.getElementById("nl-status")?.value||"iniciado";
+  var custo=parseFloat(document.getElementById("nl-custo")?.value)||0;
+  var vpac=parseFloat(document.getElementById("nl-vpac")?.value)||0;
+  var dtini=document.getElementById("nl-dtini")?.value;
+  var dtent=document.getElementById("nl-dtent")?.value;
+  var obs=document.getElementById("nl-obs")?.value.trim();
+  if(!lab||!trab){toast("Preencha laboratório e tipo de trabalho.","warning");return;}
+  var item={id:idEditar||"lab_"+Date.now(),lab,paciente:pac,trabalho:trab,status,custo,valorPaciente:vpac,dtInicio:dtini,dtEntrega:dtent,obs};
+  var ns=idEditar?ST.labs.map(function(l){return l.id===idEditar?item:l;}):([...ST.labs,item]);
+  save("rof_labs",ns);set({labs:ns});
+  document.getElementById("novo-lab-modal")?.remove();
+  toast(idEditar?"Trabalho atualizado.":"Trabalho adicionado.","success");
+};
+window.avancarLab=function(id){
+  var l=ST.labs.find(function(x){return x.id===id;});if(!l)return;
+  var prox=l.status==="iniciado"?"andamento":l.status==="andamento"?"concluido":null;
+  if(!prox)return;
+  var ns=ST.labs.map(function(x){return x.id===id?Object.assign({},x,{status:prox,dtEntrega:prox==="concluido"?todayISO():x.dtEntrega}):x;});
+  save("rof_labs",ns);set({labs:ns});
+  toast("Status atualizado.","success");
+};
+window.excluirLab=function(id){
+  rConfirm("Excluir este trabalho de laboratório?",function(){
+    var ns=ST.labs.filter(function(l){return l.id!==id;});
+    save("rof_labs",ns);set({labs:ns});
+    toast("Trabalho removido.","success");
+  },"Excluir");
+};
 
 // ═══════════════════════════════════════════════════════════════
 // RELATÓRIOS
@@ -12256,7 +12226,7 @@ function render(){
   if(ST.page==="dashboard")c=pageDashboard();
   else if(ST.page==="agenda")c=pageAgenda();
   else if(ST.page==="patients")c=pagePts();
-  else if(ST.page==="stock")c=pageStock();
+  else if(ST.page==="stock")c=pageFinanceiro();
   else if(ST.page==="procs")c=pageProcs();
   else if(ST.page==="financeiro")c=pageFinanceiro();
   else if(ST.page==="relatorios")c=pageRelatorios();
