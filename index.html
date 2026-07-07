@@ -10635,10 +10635,11 @@ window.sendWhats=function(ptId,tipo,docId){
 function pageFinanceiro(){
   const finTab=ST.finTab||"caixa";
   const tabBar=`<div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid rgba(198,164,109,0.15);padding-bottom:8px">
-  ${[{k:"caixa",l:"💰 Caixa"},{k:"pagar",l:"📋 Contas a Pagar"},{k:"receber",l:"💳 A Receber"},{k:"labs",l:"🧪 Laboratórios"}].map(t=>`<button onclick="set({finTab:'${t.k}'})" style="padding:6px 14px;font-size:12px;font-weight:600;border-radius:20px;border:1px solid ${finTab===t.k?'#C6A46D':'rgba(198,164,109,0.2)'};background:${finTab===t.k?'rgba(198,164,109,0.15)':'transparent'};color:${finTab===t.k?'#C6A46D':'#666'};cursor:pointer;font-family:var(--font-body)">${t.l}</button>`).join("")}
+  ${[{k:"caixa",l:"💰 Caixa"},{k:"pagar",l:"📋 A Pagar"},{k:"receber",l:"💳 A Receber"},{k:"clinico",l:"🏥 Clínico"},{k:"labs",l:"🧪 Laboratórios"}].map(t=>`<button onclick="set({finTab:'${t.k}'})" style="padding:6px 14px;font-size:12px;font-weight:600;border-radius:20px;border:1px solid ${finTab===t.k?'#C6A46D':'rgba(198,164,109,0.2)'};background:${finTab===t.k?'rgba(198,164,109,0.15)':'transparent'};color:${finTab===t.k?'#C6A46D':'#666'};cursor:pointer;font-family:var(--font-body)">${t.l}</button>`).join("")}
 </div>`;
   if(finTab==="pagar")return stitle("Financeiro")+tabBar+pageContasPagar();
   if(finTab==="receber")return stitle("Financeiro")+tabBar+pageContasReceber();
+  if(finTab==="clinico")return stitle("Financeiro")+tabBar+pageFinClinico();
   if(finTab==="labs")return stitle("Financeiro")+tabBar+pageLabs();
   var todos=[];
   ST.pts.forEach(function(p){
@@ -10714,6 +10715,86 @@ function pageFinanceiro(){
 }
 
 // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// CLÍNICO — Laboratórios | Dentárias | Imagens
+// ═══════════════════════════════════════════════════════════════
+function pageFinClinico(){
+  setTimeout(autoGerarContasRecorrentes,0);
+  var contas=ST.contasPagar||[];
+  var tmpls=ST.contasRecorrentes||[];
+  var hoje=todayISO();
+  var mesAtual=hoje.slice(0,7);
+  var SECS=[
+    {k:"laboratorio", l:"Laboratórios",         ic:"🧪",c:"#a78bfa"},
+    {k:"dental",      l:"Materiais Dentários",   ic:"🦷",c:"#e879f9"},
+    {k:"imagens",     l:"Imagens / Radiologia",  ic:"📷",c:"#38bdf8"},
+  ];
+  var totalPendente=contas.filter(function(c){return c.status==="pendente"&&SECS.some(function(s){return s.k===c.categoria;});}).reduce(function(s,c){return s+(Number(c.valor)||0);},0);
+  var totalPagoMes=contas.filter(function(c){return c.status==="pago"&&(c.vencimento||"").slice(0,7)===mesAtual&&SECS.some(function(s){return s.k===c.categoria;});}).reduce(function(s,c){return s+(Number(c.valor)||0);},0);
+  function badge(c){
+    if(c.status==="pago")return`<span style="background:#22c55e22;color:#22c55e;border:1px solid #22c55e55;border-radius:20px;padding:2px 8px;font-size:9px;font-weight:700">✓ Pago</span>`;
+    if(c.vencimento&&c.vencimento<hoje)return`<span style="background:#ef444422;color:#ef4444;border:1px solid #ef444455;border-radius:20px;padding:2px 8px;font-size:9px;font-weight:700">⚠ Vencida</span>`;
+    return`<span style="background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b55;border-radius:20px;padding:2px 8px;font-size:9px;font-weight:700">⏳ Pendente</span>`;
+  }
+  function rowInst(c){
+    return`<div style="padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:8px">
+      <div style="flex:1;min-width:0">
+        <div style="color:#ddd;font-size:12px;font-weight:600">${c.desc||"—"}</div>
+        <div style="color:#444;font-size:10px;margin-top:1px">${c.fornecedor||""}${c.vencimento?" · "+fmtDate(c.vencimento):""}</div>
+      </div>
+      <div style="color:#C6A46D;font-weight:800;font-size:13px;white-space:nowrap">R$ ${Number(c.valor||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
+      <div style="flex-shrink:0">${badge(c)}</div>
+      <div style="display:flex;gap:2px;flex-shrink:0">
+        ${c.status==="pendente"?`<button onclick="pagarConta('${c.id}')" style="background:#22c55e22;border:1px solid #22c55e55;color:#22c55e;border-radius:6px;cursor:pointer;font-size:10px;padding:3px 7px;font-family:var(--font-body)">✓</button>`:""}
+        <button onclick="editarValorInstancia('${c.id}')" style="background:none;border:none;color:#C6A46D;cursor:pointer;font-size:13px;padding:2px 3px">✏</button>
+        <button onclick="excluirConta('${c.id}')" style="background:none;border:none;color:#444;cursor:pointer;font-size:13px;padding:2px 3px">🗑</button>
+      </div>
+    </div>`;
+  }
+  var secsHTML=SECS.map(function(sec){
+    var ct=tmpls.filter(function(t){return t.categoria===sec.k&&t.ativo!==false;});
+    var ci=contas.filter(function(c){return c.categoria===sec.k;});
+    ci.sort(function(a,b){return(b.vencimento||"").localeCompare(a.vencimento||"");});
+    var pendentes=ci.filter(function(c){return c.status!=="pago";});
+    var pagos=ci.filter(function(c){return c.status==="pago";});
+    var tmpl=ct[0];
+    var totalSec=pendentes.reduce(function(s,c){return s+(Number(c.valor)||0);},0);
+    return`<div style="border:1px solid ${sec.c}22;border-radius:10px;padding:14px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <span style="font-size:18px">${sec.ic}</span>
+        <span style="color:${sec.c};font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px">${sec.l}</span>
+        ${pendentes.length?`<span style="color:#ef4444;font-size:11px;font-weight:700">R$ ${totalSec.toLocaleString("pt-BR",{minimumFractionDigits:2})} pendente</span>`:""}
+        <div style="margin-left:auto;display:flex;gap:6px">
+          ${tmpl?`<button onclick="editarTemplateRecorrente('${tmpl.id}')" style="background:none;border:1px solid ${sec.c}44;color:${sec.c};cursor:pointer;font-size:10px;padding:3px 8px;border-radius:20px;font-family:var(--font-body)">⚙ mensal R$ ${Number(tmpl.valorBase||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</button>`:
+          `<button onclick="abrirNovaContaRecorrenteModal('consultorio','${sec.k}')" style="background:none;border:1px dashed ${sec.c}55;color:${sec.c}88;cursor:pointer;font-size:10px;padding:3px 8px;border-radius:20px;font-family:var(--font-body)">🔄 + mensal</button>`}
+          <button onclick="abrirNovaContaAvulsaModal_cat('${sec.k}')" style="background:${sec.c}22;border:1px solid ${sec.c}44;color:${sec.c};cursor:pointer;font-size:10px;padding:3px 10px;border-radius:20px;font-family:var(--font-body);font-weight:700">+ Lançar</button>
+        </div>
+      </div>
+      ${ci.length?`<div class="card" style="padding:0;overflow:hidden">${pendentes.concat(pagos).map(rowInst).join("")}</div>`:`<div style="color:#333;font-size:11px;text-align:center;padding:8px 0">Nenhum lançamento.</div>`}
+    </div>`;
+  }).join("");
+  return`<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+    <div class="card" style="flex:1;min-width:110px;padding:12px 14px">
+      <div style="color:#ef4444;font-size:18px;font-weight:800">R$ ${totalPendente.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
+      <div style="color:#666;font-size:10px;margin-top:2px">Pendente clínico</div>
+    </div>
+    <div class="card" style="flex:1;min-width:110px;padding:12px 14px">
+      <div style="color:#22c55e;font-size:18px;font-weight:800">R$ ${totalPagoMes.toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
+      <div style="color:#666;font-size:10px;margin-top:2px">Pago este mês</div>
+    </div>
+  </div>
+  ${secsHTML}`;
+}
+window.abrirNovaContaAvulsaModal_cat=function(catPresel){
+  abrirNovaContaAvulsaModal();
+  setTimeout(function(){
+    var sel=document.getElementById("av-cat");
+    if(sel)sel.value=catPresel;
+    var cons=document.getElementById("av-cons");
+    if(cons)cons.click();
+  },80);
+};
+
 // CONTAS A PAGAR — CATEGORIAS E RECORRENTES
 // ═══════════════════════════════════════════════════════════════
 var CATS_PAGAR=[
@@ -10722,7 +10803,9 @@ var CATS_PAGAR=[
   {k:"luz",        l:"Luz / Energia",        ic:"⚡",c:"#f59e0b"},
   {k:"internet",   l:"Internet",             ic:"🌐",c:"#22c55e"},
   {k:"lixo_hosp",  l:"Lixo Hospitalar",      ic:"🗑️",c:"#ef4444"},
-  {k:"dental",     l:"Materiais Dentários",  ic:"🦷",c:"#a78bfa"},
+  {k:"laboratorio",l:"Laboratórios",         ic:"🧪",c:"#a78bfa"},
+  {k:"dental",     l:"Materiais Dentários",  ic:"🦷",c:"#e879f9"},
+  {k:"imagens",    l:"Imagens / Radiologia", ic:"📷",c:"#38bdf8"},
   {k:"escola",     l:"Escola",               ic:"📚",c:"#f97316"},
   {k:"cartoes",    l:"Cartões",              ic:"💳",c:"#ec4899"},
   {k:"outras",     l:"Outras",              ic:"📦",c:"#888888"},
