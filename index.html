@@ -11764,7 +11764,7 @@ window.abrirNovoLabModal=function(idEditar){
     <button onclick="document.getElementById('novo-lab-modal').remove()" style="background:none;border:none;color:#555;cursor:pointer;font-size:22px">✕</button>
   </div><div class="mbd">
     <div class="g2" style="margin-bottom:10px">
-      <div><label class="lbl">Laboratório *</label><input id="nl-lab" class="inp" placeholder="Nome do laboratório" value="${edit?edit.lab:""}"/></div>
+      <div><label class="lbl">Laboratório *</label><input id="nl-lab" class="inp" list="lab-nome-list" placeholder="Nome do laboratório" value="${edit?edit.lab:""}"/></div>
       <div><label class="lbl">Paciente</label><input id="nl-pac" class="inp" list="lab-pts-list" placeholder="Nome do paciente" value="${edit?edit.paciente:""}"/></div>
     </div>
     <div style="margin-bottom:10px"><label class="lbl">Tipo de trabalho *</label>
@@ -11800,6 +11800,7 @@ window.abrirNovoLabModal=function(idEditar){
       <button onclick="salvarLab(${idEditar?`'${idEditar}'`:"null"})" class="bp" style="flex:1">✅ Salvar</button>
       <button onclick="document.getElementById('novo-lab-modal').remove()" class="bg" style="color:#555">Cancelar</button>
     </div>
+    <datalist id="lab-nome-list">${_fornListOpts("laboratorio")}</datalist>
   </div></div>`;
   document.body.appendChild(m);
   setTimeout(function(){document.getElementById("nl-lab")?.focus();},100);
