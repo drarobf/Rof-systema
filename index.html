@@ -10711,7 +10711,8 @@ function pageFinanceiro(){
   var pesArr=todos.filter(function(x){return x.area==="pessoal";});
   var byMonthCons=groupByMonth(consArr),byMonthPes=groupByMonth(pesArr);
   var stCons=calcSec(byMonthCons[mesAtual]||[]),stPes=calcSec(byMonthPes[mesAtual]||[]);
-  var saldoTotal=stCons.saldo+stPes.saldo;
+  var saldoMes=stCons.saldo+stPes.saldo;
+  var saldoGeral=calcSec(consArr).saldo+calcSec(pesArr).saldo;
   function rowCaixa(pg){
     var isEnt=pg.tipo==="entrada";
     var cor=isEnt?(pg.area==="pessoal"?"#06b6d4":"#22c55e"):(pg.area==="pessoal"?"#f97316":"#ef4444");
@@ -10766,9 +10767,15 @@ function pageFinanceiro(){
     +"</div>"
     +secaoCard("🏥 Consultório","#C6A46D",byMonthCons,stCons)
     +secaoCard("👤 Pessoal","#60a5fa",byMonthPes,stPes)
-    +"<div style='border:1px solid #333;border-radius:10px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px'>"
-    +"<span style='color:#888;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px'>Saldo Total</span>"
-    +"<span style='font-size:18px;font-weight:900;color:"+(saldoTotal>=0?"#E2C99A":"#ef4444")+"'>R$ "+saldoTotal.toLocaleString("pt-BR",{minimumFractionDigits:2})+"</span>"
+    +"<div style='border:1px solid #333;border-radius:10px;padding:14px 16px;margin-bottom:14px'>"
+    +"<div style='display:flex;align-items:center;justify-content:space-between'>"
+    +"<span style='color:#888;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px'>Saldo do Mês</span>"
+    +"<span style='font-size:18px;font-weight:900;color:"+(saldoMes>=0?"#E2C99A":"#ef4444")+"'>R$ "+saldoMes.toLocaleString("pt-BR",{minimumFractionDigits:2})+"</span>"
+    +"</div>"
+    +"<div style='display:flex;align-items:center;justify-content:space-between;margin-top:6px;padding-top:6px;border-top:1px solid #222'>"
+    +"<span style='color:#555;font-size:9px;text-transform:uppercase;letter-spacing:1px'>Saldo Total (todos os meses)</span>"
+    +"<span style='font-size:12px;font-weight:700;color:"+(saldoGeral>=0?"#888":"#ef4444")+"'>R$ "+saldoGeral.toLocaleString("pt-BR",{minimumFractionDigits:2})+"</span>"
+    +"</div>"
     +"</div>"
     +"<div style='display:flex;gap:8px;margin-top:4px'>"
     +"<button onclick='exportFinanceiroCSV()' class='bg' style='flex:1;padding:9px;font-size:12px;color:#C6A46D;border-color:rgba(198,164,109,0.3)'>&#11015; Exportar CSV Financeiro</button>"
