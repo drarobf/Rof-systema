@@ -1707,7 +1707,7 @@ function _applyCloudData(k,v){
     const localOnly=localPts.filter(p=>p&&p.id&&!cloudIds.has(p.id));
     const merged=localOnly.length?[...v,...localOnly]:v;
     if(localOnly.length){
-      _sb.from('rof_store').upsert({key:k,data:merged},{onConflict:'key'}).catch(()=>{});
+      Promise.resolve(_sb.from('rof_store').upsert({key:k,data:merged},{onConflict:'key'})).catch(()=>{});
     }
     localStorage.setItem(k,JSON.stringify(merged));
     ST.pts=mergePtXrays(mergePtPhotos(merged.map(normalizePt)));
@@ -1718,7 +1718,7 @@ function _applyCloudData(k,v){
     const localOnly=localApts.filter(a=>a&&a.id&&!cloudIds.has(a.id));
     const merged=localOnly.length?[...v,...localOnly]:v;
     if(localOnly.length){
-      _sb.from('rof_store').upsert({key:k,data:merged},{onConflict:'key'}).catch(()=>{});
+      Promise.resolve(_sb.from('rof_store').upsert({key:k,data:merged},{onConflict:'key'})).catch(()=>{});
     }
     localStorage.setItem(k,JSON.stringify(merged));
     ST.apts=merged;
