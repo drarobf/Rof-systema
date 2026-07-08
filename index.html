@@ -10632,6 +10632,38 @@ window.sendWhats=function(ptId,tipo,docId){
 
 // ═══════════════════════════════════════════════════════════════
 // FINANCEIRO GERAL
+function migrarAreaRecebimentos(){
+  var cr=ST.contasReceber||[];
+  if(!cr.length)return;
+  function findTipo(desc){
+    var raw=(desc||"").replace(/^Recebimento:\s*/,"");
+    var m=cr.find(function(c){return c.desc===raw;});
+    return m?(m.tipo||"consultorio"):null;
+  }
+  var caixa=load("rof_caixa",[])||[];
+  var changedCaixa=false;
+  var caixa2=caixa.map(function(e){
+    if(e.desc&&e.desc.indexOf("Recebimento:")===0&&!e.area){
+      var t=findTipo(e.desc);
+      if(t){changedCaixa=true;return Object.assign({},e,{area:t});}
+    }
+    return e;
+  });
+  if(changedCaixa)save("rof_caixa",caixa2);
+  var changedPts=false;
+  var nps=ST.pts.map(function(p){
+    var pagamentos=(p.pagamentos||[]).map(function(pg){
+      if(pg.desc&&pg.desc.indexOf("Recebimento:")===0&&!pg.area){
+        var t=findTipo(pg.desc);
+        if(t){changedPts=true;return Object.assign({},pg,{area:t});}
+      }
+      return pg;
+    });
+    return changedPts?Object.assign({},p,{pagamentos:pagamentos}):p;
+  });
+  if(changedPts)save("rof_pts",nps);
+  if(changedCaixa||changedPts)set({pts:changedPts?nps:ST.pts,finPeriodo:ST.finPeriodo||"mes"});
+}
 // ═══════════════════════════════════════════════════════════════
 function pageFinanceiro(){
   const finTab=ST.finTab||"caixa";
@@ -10642,10 +10674,11 @@ function pageFinanceiro(){
   if(finTab==="receber")return stitle("Financeiro")+tabBar+pageContasReceber();
   if(finTab==="clinico")return stitle("Financeiro")+tabBar+pageFinClinico();
   if(finTab==="labs")return stitle("Financeiro")+tabBar+pageLabs();
+  setTimeout(migrarAreaRecebimentos,0);
   var todos=[];
   ST.pts.forEach(function(p){
     (p.pagamentos||[]).forEach(function(pg){
-      todos.push(Object.assign({},pg,{paciente:p.name,area:"consultorio"}));
+      todos.push(Object.assign({},pg,{paciente:p.name,area:pg.area||"consultorio"}));
     });
   });
   (load("rof_caixa",[])||[]).forEach(function(e){
@@ -11621,15 +11654,16 @@ window.confirmarPagamentoReceber=function(id){
   });
   save("rof_contas_receber",ns);
   var conta=ns.find(function(c){return c.id===id;});
+  var area=(conta&&conta.tipo)||"consultorio";
   var pt=conta?ST.pts.find(function(p){return p.name===conta.paciente;}):null;
   if(pt){
-    var pg={id:Date.now(),desc:"Recebimento: "+conta.desc,valor:valor,date:date,forma:forma,tipo:"entrada"};
+    var pg={id:Date.now(),desc:"Recebimento: "+conta.desc,valor:valor,date:date,forma:forma,tipo:"entrada",area:area};
     var nps=ST.pts.map(function(p){return p.id===pt.id?Object.assign({},p,{pagamentos:(p.pagamentos||[]).concat([pg])}):p;});
     save("rof_pts",nps);
     set({pts:nps,contasReceber:ns});
   } else {
     var caixa=load("rof_caixa",[]);
-    var entrada={id:"cx_"+Date.now(),tipo:"entrada",valor,desc:"Recebimento: "+(conta?conta.desc:""),forma,date:date};
+    var entrada={id:"cx_"+Date.now(),tipo:"entrada",valor,desc:"Recebimento: "+(conta?conta.desc:""),forma,date:date,area:area};
     save("rof_caixa",[...caixa,entrada]);
     set({contasReceber:ns});
   }
