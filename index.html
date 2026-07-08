@@ -3602,6 +3602,12 @@ window.printRecibo=function(ptId,pgIdx){
     document.getElementById("rb-sig-section").style.display="none";
     document.getElementById("rb-hint").style.display="none";
     document.getElementById("rb-btn-print").style.display="none";
+    // position:fixed não é confiável na impressão — o app por trás (ficha do
+    // paciente, sidebar etc.) pode "vazar" para o PDF/impressão. Esconde o
+    // app inteiro durante a impressão, deixando só o recibo visível.
+    const appLayout=document.getElementById("layout");
+    const oldLayoutDisplay=appLayout?appLayout.style.display:null;
+    if(appLayout)appLayout.style.display="none";
     // window.print() precisa rodar de forma síncrona, sem atraso, senão
     // navegadores móveis (Safari/Chrome no celular) bloqueiam silenciosamente
     // por não considerar mais um gesto direto do usuário.
@@ -3611,6 +3617,7 @@ window.printRecibo=function(ptId,pgIdx){
       document.getElementById("rb-sig-section").style.display="";
       document.getElementById("rb-hint").style.display="";
       document.getElementById("rb-btn-print").style.display="";
+      if(appLayout)appLayout.style.display=oldLayoutDisplay||"";
     },600);
   };
   // Inicializa pads após o modal estar no DOM
@@ -3626,12 +3633,21 @@ function valorPorExtenso(v){
   const u=["","um","dois","três","quatro","cinco","seis","sete","oito","nove","dez","onze","doze","treze","quatorze","quinze","dezesseis","dezessete","dezoito","dezenove"];
   const d=["","","vinte","trinta","quarenta","cinquenta","sessenta","setenta","oitenta","noventa"];
   const c=["","cem","duzentos","trezentos","quatrocentos","quinhentos","seiscentos","setecentos","oitocentos","novecentos"];
-  function conv(n){
+  function conv3(n){
     if(n===0)return"";if(n===100)return"cem";
     let r="";
-    if(n>=100){r+=c[Math.floor(n/100)];n%=100;if(n>0)r+=" e ";}
+    if(n>=100){const h=Math.floor(n/100);r+=(h===1?"cento":c[h]);n%=100;if(n>0)r+=" e ";}
     if(n>=20){r+=d[Math.floor(n/10)];n%=10;if(n>0)r+=" e ";}
     if(n>0)r+=u[n];
+    return r;
+  }
+  function conv(n){
+    if(n===0)return"";
+    if(n<1000)return conv3(n);
+    const milhares=Math.floor(n/1000);
+    const resto=n%1000;
+    let r=(milhares===1?"mil":conv3(milhares)+" mil");
+    if(resto>0)r+=(resto<100?" e ":", ")+conv3(resto);
     return r;
   }
   let res="";
