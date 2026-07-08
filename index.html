@@ -1757,7 +1757,8 @@ async function syncFromCloud(opts){
   const el=document.getElementById("sync-badge");
   if(el){el.textContent="↻ Sincronizando...";el.style.color="var(--gold)";el.classList.add("sync-spin");}
   try{
-    const {data:rows,error}=await _sb.from('rof_store').select('key,data,updated_at');
+    const _timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")),12000));
+    const {data:rows,error}=await Promise.race([_sb.from('rof_store').select('key,data,updated_at'),_timeout]);
     if(error)throw error;
     (rows||[]).forEach(({key:k,data:v})=>{
       const recentLocalWrite=Date.now()-(_lastLocalWriteAt[k]||0)<5000;
