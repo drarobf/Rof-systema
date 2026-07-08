@@ -3602,16 +3602,16 @@ window.printRecibo=function(ptId,pgIdx){
     document.getElementById("rb-sig-section").style.display="none";
     document.getElementById("rb-hint").style.display="none";
     document.getElementById("rb-btn-print").style.display="none";
+    // window.print() precisa rodar de forma síncrona, sem atraso, senão
+    // navegadores móveis (Safari/Chrome no celular) bloqueiam silenciosamente
+    // por não considerar mais um gesto direto do usuário.
+    window.print();
     setTimeout(()=>{
-      window.print();
-      // Restaura após print
-      setTimeout(()=>{
-        overlay.style.cssText=oldStyle;
-        document.getElementById("rb-sig-section").style.display="";
-        document.getElementById("rb-hint").style.display="";
-        document.getElementById("rb-btn-print").style.display="";
-      },800);
-    },200);
+      overlay.style.cssText=oldStyle;
+      document.getElementById("rb-sig-section").style.display="";
+      document.getElementById("rb-hint").style.display="";
+      document.getElementById("rb-btn-print").style.display="";
+    },600);
   };
   // Inicializa pads após o modal estar no DOM
   setTimeout(()=>{rbInitPad("dra");rbInitPad("pt");},80);
