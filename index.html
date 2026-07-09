@@ -1636,7 +1636,7 @@ const _sb=(()=>{
 
 // rof_pt_xrays fica FORA do sync — RX em base64 são grandes demais para o Supabase free tier
 // rof_pt_photos retornou ao sync — fotos de perfil são comprimidas para ~15-25KB cada (seguro)
-const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_procs','rof_caixa','rof_whats_templates','rof_orientacoes','rof_bloqueios','rof_pt_photos','rof_contas_pagar','rof_labs','rof_contas_receber','rof_contas_recorrentes','rof_fornecedores','rof_recorrentes_receber']);
+const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_procs','rof_caixa','rof_whats_templates','rof_orientacoes','rof_bloqueios','rof_pt_photos','rof_contas_pagar','rof_labs','rof_contas_receber','rof_contas_recorrentes','rof_fornecedores','rof_recorrentes_receber','rof_caixa_recorrentes']);
 const _syncQ = (()=>{try{return JSON.parse(localStorage.getItem("rof_sync_q")||"[]");}catch{return[];}})();
 // Remove imediatamente quaisquer syncs de RX já enfileirados (xrays são grandes demais)
 (function(){const heavy=new Set(['rof_pt_xrays']);let c=false;for(let i=_syncQ.length-1;i>=0;i--){if(_syncQ[i]&&heavy.has(_syncQ[i].k)){_syncQ.splice(i,1);c=true;}}if(c)try{localStorage.setItem("rof_sync_q",JSON.stringify(_syncQ));}catch{}})();
@@ -1746,6 +1746,7 @@ function _applyCloudData(k,v){
     else if(k==='rof_labs'&&Array.isArray(v))ST.labs=v;
     else if(k==='rof_procs'&&Array.isArray(v))PROCS=applyDefFlags(v);
     else if(k==='rof_caixa'&&Array.isArray(v))ST.caixa=v;
+    else if(k==='rof_caixa_recorrentes'&&Array.isArray(v))ST.caixaRecorrentes=v;
     // (rof_whats_templates e rof_orientacoes são lidos sob demanda do localStorage)
   }
 }
@@ -4306,6 +4307,7 @@ const ST={
   contasRecorrentes:load("rof_contas_recorrentes",[]),
   fornecedores:load("rof_fornecedores",[]),
   recorrentesReceber:load("rof_recorrentes_receber",[]),
+  caixaRecorrentes:load("rof_caixa_recorrentes",[]),
   labs:load("rof_labs",[]),
   contasReceber:load("rof_contas_receber",[]),
   selPt:null,ptTab:"info",
@@ -10649,6 +10651,23 @@ window.sendWhats=function(ptId,tipo,docId){
 
 // ═══════════════════════════════════════════════════════════════
 // FINANCEIRO GERAL
+function autoGerarLancamentosCaixaRecorrentes(){
+  var mesAtual=todayISO().slice(0,7);
+  var tmpls=ST.caixaRecorrentes||[];
+  var caixa=load("rof_caixa",[])||[];
+  var need=tmpls.filter(function(t){
+    return t.ativo!==false&&!caixa.some(function(c){return c.templateId===t.id&&c.mesRef===mesAtual;});
+  });
+  if(!need.length)return;
+  var novos=need.map(function(t){
+    var dia=Number(t.diaVencimento)||10;
+    var venc=mesAtual+"-"+String(dia).padStart(2,"0");
+    return{id:"cx_"+t.id+"_"+mesAtual,templateId:t.id,mesRef:mesAtual,tipo:"saida",descricao:t.desc||"Despesa fixa",valor:Number(t.valorBase||0),date:venc,vencimento:venc,formaPag:t.forma||"",categoria:t.categoria||"",paciente:"",area:t.area||"consultorio",pago:false,recorrente:true,criadoEm:todayISO()};
+  });
+  var ns=caixa.concat(novos);
+  save("rof_caixa",ns);
+  set({finPeriodo:ST.finPeriodo||"mes"});
+}
 function migrarAreaRecebimentos(){
   var cr=ST.contasReceber||[];
   if(!cr.length)return;
@@ -10692,6 +10711,7 @@ function pageFinanceiro(){
   if(finTab==="clinico")return stitle("Financeiro")+tabBar+pageFinClinico();
   if(finTab==="labs")return stitle("Financeiro")+tabBar+pageLabs();
   setTimeout(migrarAreaRecebimentos,0);
+  setTimeout(autoGerarLancamentosCaixaRecorrentes,0);
   var todos=[];
   ST.pts.forEach(function(p){
     (p.pagamentos||[]).forEach(function(pg){
@@ -10699,14 +10719,14 @@ function pageFinanceiro(){
     });
   });
   (load("rof_caixa",[])||[]).forEach(function(e){
-    todos.push({id:e.id,desc:e.descricao||e.desc||"Lançamento",valor:Number(e.valor||0),date:e.date||todayISO(),forma:e.formaPag||e.forma||"",tipo:e.tipo==="despesa"?"saida":(e.tipo||"entrada"),paciente:e.paciente||"",area:e.area||"consultorio",origem:"caixa"});
+    todos.push({id:e.id,desc:e.descricao||e.desc||"Lançamento",valor:Number(e.valor||0),date:e.date||todayISO(),forma:e.formaPag||e.forma||"",tipo:e.tipo==="despesa"?"saida":(e.tipo||"entrada"),paciente:e.paciente||"",area:e.area||"consultorio",origem:"caixa",pago:e.pago});
   });
   todos.sort(function(a,b){return (b.date||"").localeCompare(a.date||"");});
   var mesAtual=todayISO().slice(0,7);
   var MESES_FULL=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
   function mesLabel(ym){var p=ym.split("-");return MESES_FULL[parseInt(p[1],10)-1]+" de "+p[0];}
   function groupByMonth(arr){var map={};arr.forEach(function(x){var ym=(x.date||"").slice(0,7)||"0000-00";(map[ym]=map[ym]||[]).push(x);});return map;}
-  function calcSec(arr){var e=arr.filter(function(x){return x.tipo==="entrada";}).reduce(function(s,x){return s+x.valor;},0);var s=arr.filter(function(x){return x.tipo!=="entrada";}).reduce(function(s,x){return s+x.valor;},0);return{e:e,s:s,saldo:e-s};}
+  function calcSec(arr){var paid=arr.filter(function(x){return x.pago!==false;});var e=paid.filter(function(x){return x.tipo==="entrada";}).reduce(function(s,x){return s+x.valor;},0);var s=paid.filter(function(x){return x.tipo!=="entrada";}).reduce(function(s,x){return s+x.valor;},0);return{e:e,s:s,saldo:e-s};}
   var consArr=todos.filter(function(x){return(x.area||"consultorio")==="consultorio";});
   var pesArr=todos.filter(function(x){return x.area==="pessoal";});
   var byMonthCons=groupByMonth(consArr),byMonthPes=groupByMonth(pesArr);
@@ -10715,19 +10735,23 @@ function pageFinanceiro(){
   var saldoGeral=calcSec(consArr).saldo+calcSec(pesArr).saldo;
   function rowCaixa(pg){
     var isEnt=pg.tipo==="entrada";
-    var cor=isEnt?(pg.area==="pessoal"?"#06b6d4":"#22c55e"):(pg.area==="pessoal"?"#f97316":"#ef4444");
+    var pendente=pg.pago===false;
+    var cor=pendente?"#f59e0b":(isEnt?(pg.area==="pessoal"?"#06b6d4":"#22c55e"):(pg.area==="pessoal"?"#f97316":"#ef4444"));
     var sinal=isEnt?"+":"−";
+    var badge=pendente?"<span style='background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b55;border-radius:20px;padding:1px 7px;font-size:9px;font-weight:700'>⏳ Pendente</span>":"";
     var sub=[pg.paciente,fmtDate(pg.date),pg.forma].filter(Boolean).join(" · ");
     var origem=pg.origem||"caixa",ptId=pg.ptId||"";
+    var pagar=(pendente&&pg.id&&origem==="caixa")?"<button onclick=\"marcarPago('"+pg.id+"')\" style='background:#22c55e22;border:1px solid #22c55e55;color:#22c55e;border-radius:6px;cursor:pointer;font-size:10px;padding:3px 8px;font-weight:700' title='Marcar como pago'>✓ Pagar</button>":"";
     var edit=pg.id?"<button onclick=\"abrirEditarLancamento('"+origem+"','"+ptId+"','"+pg.id+"')\" style='background:none;border:none;color:#C6A46D;cursor:pointer;font-size:12px;padding:2px 4px' title='Editar'>✏️</button>":"";
     var del=pg.id?"<button onclick=\"excluirLancamentoCaixa('"+origem+"','"+ptId+"','"+pg.id+"')\" style='background:none;border:none;color:#333;cursor:pointer;font-size:12px;padding:2px 4px' title='Excluir'>🗑</button>":"";
     return "<div style='display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04)'>"
       +"<div style='width:3px;align-self:stretch;border-radius:2px;background:"+cor+";flex-shrink:0'></div>"
       +"<div style='flex:1;min-width:0'>"
       +"<div style='color:#ddd;font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>"+pg.desc+"</div>"
-      +(sub?"<div style='color:#555;font-size:10px;margin-top:1px'>"+sub+"</div>":"")
+      +"<div style='color:#555;font-size:10px;margin-top:1px;display:flex;align-items:center;gap:6px;flex-wrap:wrap'>"+(sub?"<span>"+sub+"</span>":"")+badge+"</div>"
       +"</div>"
       +"<div style='color:"+cor+";font-size:14px;font-weight:800;flex-shrink:0'>"+sinal+" R$ "+pg.valor.toLocaleString("pt-BR",{minimumFractionDigits:2})+"</div>"
+      +pagar
       +edit+del+"</div>";
   }
   function secaoCard(titulo,corH,byMonth,stats){
@@ -10760,6 +10784,22 @@ function pageFinanceiro(){
       +(outrosHTML?"<div style='border-top:1px solid rgba(255,255,255,0.06)'>"+outrosHTML+"</div>":"")
       +"</div>";
   }
+  function despesasFixasSection(){
+    var tmpls=(ST.caixaRecorrentes||[]).filter(function(t){return t.ativo!==false;});
+    if(!tmpls.length)return "";
+    return "<div style='border:1px solid rgba(198,164,109,0.18);border-radius:10px;padding:10px 14px;margin-bottom:14px'>"
+      +"<div style='color:#888;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:8px'>🔄 Despesas Fixas Mensais</div>"
+      +tmpls.map(function(t){
+        var areaCor=t.area==="pessoal"?"#60a5fa":"#C6A46D";
+        return "<div style='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-top:1px solid rgba(255,255,255,0.04)'>"
+          +"<span style='color:#ccc;font-size:11px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>"+t.desc+" <span style='color:"+areaCor+";font-size:9px'>("+(t.area==="pessoal"?"Pessoal":"Consultório")+")</span></span>"
+          +"<span style='display:flex;align-items:center;gap:8px;flex-shrink:0'>"
+          +"<span style='color:#f59e0b;font-size:11px;font-weight:700'>R$ "+Number(t.valorBase||0).toLocaleString("pt-BR",{minimumFractionDigits:2})+"/mês</span>"
+          +"<button onclick=\"desativarDespesaFixaCaixa('"+t.id+"')\" style='background:none;border:none;color:#444;cursor:pointer;font-size:12px' title='Desativar recorrência'>🗑</button>"
+          +"</span></div>";
+      }).join("")
+      +"</div>";
+  }
   return stitle("Financeiro")+tabBar
     +financialChart(todos)
     +"<div style='display:flex;gap:8px;margin-bottom:14px'>"
@@ -10767,6 +10807,7 @@ function pageFinanceiro(){
     +"<button onclick='openLancamento(\"saida\",\"consultorio\")' class='bg' style='flex:1;padding:9px;font-size:12px;color:#ef4444;border-color:rgba(239,68,68,0.35)'>&#8722; Despesa Cl&#237;nica</button>"
     +"<button onclick='openLancamento(\"saida\",\"pessoal\")' class='bg' style='flex:1;padding:9px;font-size:12px;color:#f97316;border-color:rgba(249,115,22,0.35)'>&#8722; Despesa Pessoal</button>"
     +"</div>"
+    +despesasFixasSection()
     +secaoCard("🏥 Consultório","#C6A46D",byMonthCons,stCons)
     +secaoCard("👤 Pessoal","#60a5fa",byMonthPes,stPes)
     +"<div style='border:1px solid #333;border-radius:10px;padding:14px 16px;margin-bottom:14px'>"
@@ -13724,16 +13765,29 @@ window.salvarLancamento=function(tipo){
   if(!desc){toast("Preencha a descrição.","warning");return;}
   if(!valor||valor<=0){toast("Preencha o valor corretamente.","warning");return;}
   var caixa=load("rof_caixa")||[];
-  caixa.push({id:"lc"+Date.now(),tipo:tipoNorm,descricao:desc,valor:valor,
-    date:date,vencimento:isSaida?venc:null,
-    formaPag:forma==="Convênio"?"convenio":forma,
-    categoria:cat,paciente:paciente,obs:obs,area:area,
-    pago:tipoNorm==="entrada",recorrente:rec,criadoEm:todayISO()});
+  if(isSaida&&rec){
+    var tmpls=load("rof_caixa_recorrentes",[])||[];
+    var mesAtual=todayISO().slice(0,7);
+    var dia=Number((venc||date).split("-")[2])||10;
+    var tmpl={id:"cxr"+Date.now(),desc:desc,valorBase:valor,forma:forma==="Convênio"?"convenio":forma,categoria:cat,area:area,diaVencimento:dia,ativo:true,criadoEm:todayISO()};
+    tmpls.push(tmpl);
+    save("rof_caixa_recorrentes",tmpls);set({caixaRecorrentes:tmpls});
+    caixa.push({id:"cx_"+tmpl.id+"_"+mesAtual,templateId:tmpl.id,mesRef:mesAtual,tipo:"saida",descricao:desc,valor:valor,
+      date:date,vencimento:venc,formaPag:forma==="Convênio"?"convenio":forma,
+      categoria:cat,paciente:paciente,obs:obs,area:area,
+      pago:false,recorrente:true,criadoEm:todayISO()});
+  }else{
+    caixa.push({id:"lc"+Date.now(),tipo:tipoNorm,descricao:desc,valor:valor,
+      date:date,vencimento:isSaida?venc:null,
+      formaPag:forma==="Convênio"?"convenio":forma,
+      categoria:cat,paciente:paciente,obs:obs,area:area,
+      pago:tipoNorm==="entrada",recorrente:false,criadoEm:todayISO()});
+  }
   save("rof_caixa",caixa);
   document.getElementById("lanc-modal")?.remove();
   var t=document.createElement("div");
   t.setAttribute("style","position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:"+(tipo==="entrada"?"#22c55e":"#ef4444")+";color:#000;padding:10px 22px;border-radius:50px;font-size:13px;font-weight:700;z-index:9999;font-family:Inter,sans-serif;white-space:nowrap");
-  t.textContent=(tipo==="entrada"?"✓ Entrada":"✓ Despesa")+" lançada!";
+  t.textContent=(tipo==="entrada"?"✓ Entrada":isSaida&&rec?"✓ Despesa fixa criada":"✓ Despesa")+" lançada!";
   document.body.appendChild(t);setTimeout(function(){t.remove();},2500);
   set({finPeriodo:ST.finPeriodo||"mes"});
 };
@@ -13742,6 +13796,14 @@ window.marcarPago=function(id){
   var c=load("rof_caixa")||[];
   c=c.map(function(x){return x.id===id?Object.assign({},x,{pago:true,dataPagamento:todayISO()}):x;});
   save("rof_caixa",c);set({finPeriodo:ST.finPeriodo||"mes"});
+};
+
+window.desativarDespesaFixaCaixa=function(id){
+  rConfirm("Desativar esta despesa fixa mensal? As cobranças já lançadas continuam no histórico, mas ela não será mais gerada nos próximos meses.",function(){
+    var tmpls=(load("rof_caixa_recorrentes",[])||[]).map(function(t){return t.id===id?Object.assign({},t,{ativo:false}):t;});
+    save("rof_caixa_recorrentes",tmpls);set({caixaRecorrentes:tmpls});
+    toast("Despesa fixa desativada.","success");
+  },"Desativar Recorrência");
 };
 
 window.delLancamento=function(id){
