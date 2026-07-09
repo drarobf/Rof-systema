@@ -1750,9 +1750,15 @@ function _applyCloudData(k,v){
     // (rof_whats_templates e rof_orientacoes são lidos sob demanda do localStorage)
   }
 }
+var _lastAutoSyncAt=0;
+var AUTO_SYNC_MIN_INTERVAL_MS=3*60*1000; // evita puxar a tabela inteira (incl. fotos) a cada troca de aba/foco — protege a cota de egress do Supabase
 async function syncFromCloud(opts){
   opts=opts||{};
   if(!_sbEnabled||!navigator.onLine)return;
+  if(!opts.force){
+    if(Date.now()-_lastAutoSyncAt<AUTO_SYNC_MIN_INTERVAL_MS)return;
+  }
+  _lastAutoSyncAt=Date.now();
   if(opts.force)_clearAllPendingSync();
   else if(_syncQ.length)await _flushQ();
   const el=document.getElementById("sync-badge");
