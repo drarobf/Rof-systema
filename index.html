@@ -6087,6 +6087,7 @@ function renderPlanoClinicoOdontograma(p){
     const removeOnclick=it._groupIds
       ?"removerProcDoPlano(["+it._groupIds.join(",")+"])"
       :"removerProcDoPlano("+it.id+")";
+    const editBtn=it._groupIds?"":`<button onclick="editarItemPlanoClinico(${it.id})" style="background:none;border:none;color:#C6A46D;cursor:pointer;font-size:13px;padding:4px">✏️</button>`;
     return `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:${it.status==="feito"?"rgba(34,197,94,0.05)":it.status==="iniciado"?"rgba(245,158,11,0.04)":"#0a0a0a"};border-radius:6px;margin-bottom:4px;border-left:3px solid ${st.c}">
       <button onclick="ciclarStatusProc(${it.id})"
         style="background:${st.c}22;border:1px solid ${st.c}44;border-radius:8px;padding:8px 12px;color:${st.c};cursor:pointer;font-size:12px;font-family:Georgia,serif;flex-shrink:0;white-space:nowrap;min-width:44px;min-height:44px;touch-action:manipulation">${st.btn}</button>
@@ -6096,6 +6097,7 @@ function renderPlanoClinicoOdontograma(p){
         <div style="color:#555;font-size:10px">${condInfo.l} · ${dentesLabel} ${it.obs?"· "+it.obs:""}</div>
       </div>
       <div style="color:#E2C99A;font-size:12px;font-weight:700;white-space:nowrap">R$ ${Number(it.price||0).toLocaleString("pt-BR")}</div>
+      ${editBtn}
       <button onclick="${removeOnclick}" style="background:none;border:none;color:#444;cursor:pointer;font-size:14px;padding:4px">🗑</button>
     </div>`;
   };
@@ -6252,6 +6254,7 @@ window.abrirPlanoClinicoModal=function(tooth,cond,faces){
           <div style="color:#ddd;font-size:12px;font-weight:600">${pr?.n||it.name}</div>
           <div style="color:#666;font-size:10px">${it.faces?.join(", ")||""} · R$ ${(it.price||pr?.p||0).toLocaleString("pt-BR")} ${it.status==="feito"?"· ✓ Feito":""}</div>
         </div>
+        <button onclick="editarItemPlanoClinico(${it.id})" class="bg" style="padding:4px 8px;font-size:11px;color:#C6A46D;border-color:#C6A46D44">✏️</button>
         <button onclick="removerProcDoPlano(${it.id})" class="bg" style="padding:4px 8px;font-size:11px;color:#ef4444;border-color:#ef444444">🗑</button>
       </div>`;
     }).join("");
@@ -6462,6 +6465,79 @@ window.removerProcDoPlano=function(itemId){
     abrirPlanoClinicoModal(_planoCtx.tooth,_planoCtx.cond,_planoCtx.faces);
   }
   toast("Item removido do plano.","success");
+};
+
+window.editarItemPlanoClinico=function(itemId){
+  const p=ST.pts.find(x=>sameId(x.id,ST.selPt));if(!p)return;
+  const it=(p.planoClinico||[]).find(x=>x.id===itemId);if(!it)return;
+  const pr=PROCS.find(x=>x.id===it.procId);
+  const isPerArch=!!(pr&&pr.perArch);
+  document.getElementById("edit-item-plano-modal")?.remove();
+  window._eifFaces=(it.faces||[]).slice();
+  const facesHtml=FACES_LIST.map(f=>{
+    const active=window._eifFaces.includes(f.k);
+    return `<button type="button" onclick="toggleEditItemFace('${f.k}')" id="eif-${f.k}" style="padding:6px 10px;border-radius:8px;border:1px solid ${active?"#C6A46D":"#333"};background:${active?"#C6A46D22":"transparent"};color:${active?"#E2C99A":"#888"};font-size:11px;cursor:pointer;font-family:var(--font-body)">${f.k} · ${f.l}</button>`;
+  }).join("");
+  const m=document.createElement("div");
+  m.id="edit-item-plano-modal";
+  m.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:10000;display:flex;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(4px)";
+  m.innerHTML=`<div style="background:#0d0d0d;border:1px solid rgba(198,164,109,0.22);border-radius:14px;padding:18px;max-width:400px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.85)">
+    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:14px">
+      <div>
+        <div style="color:#E2C99A;font-size:14px;font-weight:900">✏️ Editar — Dente ${it.tooth||(it._teeth||[]).join(", ")}</div>
+        <div style="color:#888;font-size:11px;margin-top:2px">${pr?.n||it.name}</div>
+      </div>
+      <button onclick="document.getElementById('edit-item-plano-modal').remove()" style="background:none;border:none;color:#666;font-size:22px;cursor:pointer;line-height:1">×</button>
+    </div>
+    ${isPerArch?"":`<label class="lbl">Face(s)</label><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">${facesHtml}</div>`}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div><label class="lbl">Valor (R$)</label><input type="number" id="eif-price" class="inp" value="${it.price||""}" min="0"/></div>
+      <div><label class="lbl">Status</label>
+        <select id="eif-status" class="inp">
+          <option value="planejado"${it.status==="planejado"?" selected":""}>📋 Planejado</option>
+          <option value="iniciado"${it.status==="iniciado"?" selected":""}>▶ Iniciado</option>
+          <option value="feito"${it.status==="feito"?" selected":""}>✓ Já realizado</option>
+        </select>
+      </div>
+    </div>
+    <label class="lbl">Observações</label>
+    <textarea id="eif-obs" rows="2" class="inp" style="resize:vertical;margin-bottom:12px">${it.obs||""}</textarea>
+    <button onclick="salvarEdicaoItemPlanoClinico(${it.id})" class="bp" style="width:100%;padding:10px;font-size:13px;font-weight:800">💾 Salvar</button>
+  </div>`;
+  document.body.appendChild(m);
+  m.addEventListener("click",e=>{if(e.target===m)m.remove();});
+};
+window.toggleEditItemFace=function(f){
+  const idx=window._eifFaces.indexOf(f);
+  if(idx===-1)window._eifFaces.push(f);else window._eifFaces.splice(idx,1);
+  const btn=document.getElementById("eif-"+f);
+  if(btn){
+    const active=window._eifFaces.includes(f);
+    btn.style.border="1px solid "+(active?"#C6A46D":"#333");
+    btn.style.background=active?"#C6A46D22":"transparent";
+    btn.style.color=active?"#E2C99A":"#888";
+  }
+};
+window.salvarEdicaoItemPlanoClinico=function(itemId){
+  const price=parseFloat(document.getElementById("eif-price")?.value)||0;
+  const status=document.getElementById("eif-status")?.value||"planejado";
+  const obs=document.getElementById("eif-obs")?.value||"";
+  const faces=(window._eifFaces||[]).slice();
+  const nps=ST.pts.map(p=>{
+    if(!sameId(p.id,ST.selPt))return p;
+    return {...p,planoClinico:(p.planoClinico||[]).map(it=>{
+      if(it.id!==itemId)return it;
+      return {...it,price,status,obs,faces:faces.length?faces:it.faces,doneAt:status==="feito"?(it.doneAt||new Date().toISOString()):null};
+    })};
+  });
+  save("rof_pts",nps);set({pts:nps});
+  document.getElementById("edit-item-plano-modal")?.remove();
+  const m=document.getElementById("plano-clinico-modal");
+  if(m&&_planoCtx.tooth){
+    m.remove();
+    abrirPlanoClinicoModal(_planoCtx.tooth,_planoCtx.cond,_planoCtx.faces);
+  }
+  toast("Procedimento atualizado.","success");
 };
 
 window.marcarProcFeito=function(itemId,feito){
