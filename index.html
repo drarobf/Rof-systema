@@ -5844,6 +5844,11 @@ window.clickTooth=t=>{
   ST.pts=nps;
   save("rof_pts",nps);
   set({pts:nps});
+  if(sel==="higido"){
+    // "Hígido" é a borracha — só corrige a marcação, sem abrir modal de procedimento
+    toast("Face(s) corrigida(s) para hígido.","success");
+    return;
+  }
   // Abre modal pra adicionar procedimento ao plano clínico
   abrirPlanoClinicoModal(t,sel,faces);
 };
@@ -5867,6 +5872,11 @@ window.aplicarCondicaoGrupo=function(ptId,teeth){
   }
   const pts=ST.pts.map(x=>sameId(x.id,ptId)?{...x,odontogram:od}:x);
   ST.pts=pts;save("rof_pts",pts);set({pts});
+  if(sel==="higido"){
+    // "Hígido" é a borracha — só corrige a marcação, sem abrir modal de procedimento
+    toast("Face(s) corrigida(s) para hígido.","success");
+    return;
+  }
   // Abre modal para adicionar procedimento a todo o grupo
   abrirPlanoGrupoModal(ptId,teeth,sel,faces);
 };
