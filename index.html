@@ -4162,7 +4162,7 @@ const tMins=t=>{const[h,m]=t.split(":").map(Number);return h*60+m;};
 const minsT=m=>`${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`;
 const durLabel=d=>{const h=Math.floor(d/60),m=d%60;return h>0?(m?`${h}h${m}min`:`${h}h`):`${d}min`;};
 function badge(txt){const c={Ativo:"#22c55e",Confirmado:"#22c55e",Pendente:G,Aguardando:G,Inativo:"#ef4444",Cancelado:"#ef4444"}[txt]||G;return`<span class="bdg" style="background:${c}22;color:${c};border:1px solid ${c}44">${txt}</span>`;}
-function tipoBadge(tipo,conv){if(tipo==="convenio"){const ic=conv==="Dental Uni"?"🦷":conv==="IMPAO"?"🏛️":conv==="Care Plus"?"➕":"🏥";return`<span class="bdg" style="background:#3b82f622;color:#60a5fa;border:1px solid #3b82f644">${ic} ${conv||"Convênio"}</span>`;}return`<span class="bdg" style="background:#C6A46D22;color:#C6A46D;border:1px solid #C6A46D44">💰 Particular</span>`;}
+function tipoBadge(tipo,conv){if(tipo==="convenio"){const ic=conv==="Dental Uni"?"🦷":conv==="IMPAO"?"🏛️":conv==="Care Plus"?"➕":conv==="Sul América"?"☀️":"🏥";return`<span class="bdg" style="background:#3b82f622;color:#60a5fa;border:1px solid #3b82f644">${ic} ${conv||"Convênio"}</span>`;}return`<span class="bdg" style="background:#C6A46D22;color:#C6A46D;border:1px solid #C6A46D44">💰 Particular</span>`;}
 function stitle(t){return`<div class="stl"><div class="stl-l"></div><h2>${t}</h2><div class="stl-r"></div></div>`;}
 
 // slots
@@ -4805,7 +4805,7 @@ function pageAgenda(){
         <button onclick="set({aptTipo:'convenio'})" class="bg" style="flex:1;padding:8px 12px;font-size:12px;background:${aptTipo==="convenio"?"#3b82f622":"transparent"};color:${aptTipo==="convenio"?"#60a5fa":"#555"}">🏥 Convênio</button>
       </div>
       ${aptTipo==="convenio"?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
-        ${["Dental Uni","IMPAO","Care Plus"].map(cv=>`<button onclick="set({aptConv:'${cv}'})" class="bg" style="padding:6px 12px;font-size:11px;background:${ST.aptConv===cv?'#3b82f622':'transparent'};color:${ST.aptConv===cv?'#60a5fa':'#555'}">${cv}</button>`).join("")}
+        ${["Dental Uni","IMPAO","Care Plus","Sul América"].map(cv=>`<button onclick="set({aptConv:'${cv}'})" class="bg" style="padding:6px 12px;font-size:11px;background:${ST.aptConv===cv?'#3b82f622':'transparent'};color:${ST.aptConv===cv?'#60a5fa':'#555'}">${cv}</button>`).join("")}
       </div>
       <input id="ap-conv" value="${aptConv}" oninput="set({aptConv:this.value})" placeholder="Ou digite outro convênio..." class="inp" style="font-size:12px"/>`:""}
     </div>
@@ -5142,7 +5142,7 @@ window.openQuickReg=function(){
     +"</div>"
     +"<div id='qr-conv-row' style='display:none'>"
     +"<div style='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px'>"
-    +["Dental Uni","IMPAO","Care Plus"].map(function(c){return "<button onclick=\"document.getElementById('qr-convenio').value='"+c+"'\" class='bg' style='padding:5px 10px;font-size:10px'>"+c+"</button>";}).join("")
+    +["Dental Uni","IMPAO","Care Plus","Sul América"].map(function(c){return "<button onclick=\"document.getElementById('qr-convenio').value='"+c+"'\" class='bg' style='padding:5px 10px;font-size:10px'>"+c+"</button>";}).join("")
     +"</div>"
     +"<input id='qr-convenio' class='inp' placeholder='Ou digite o convênio...' style='margin-bottom:6px'/>"
     +"<label class='lbl'>Número da Carteirinha</label>"
@@ -5345,7 +5345,7 @@ function _openEditAptReal(aptId){
     +"</div>"
     +"<div id='ea-conv-row' style='margin-top:8px;"+(a.tipo==="convenio"?"":"display:none")+"'>"
     +"<div style='display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px'>"
-    +["Dental Uni","IMPAO","Care Plus"].map(function(c){return "<button onclick=\"document.getElementById('ea-convenio').value='"+c+"'\" class='bg' style='padding:4px 10px;font-size:10px'>"+c+"</button>";}).join("")
+    +["Dental Uni","IMPAO","Care Plus","Sul América"].map(function(c){return "<button onclick=\"document.getElementById('ea-convenio').value='"+c+"'\" class='bg' style='padding:4px 10px;font-size:10px'>"+c+"</button>";}).join("")
     +"</div>"
     +"<input id='ea-convenio' value='"+(a.conv||"").replace(/'/g,"&#39;")+"' class='inp' placeholder='Convênio...'/>"
     +"</div>"
@@ -7164,7 +7164,7 @@ function pagePts(){
           </div>
           ${p.tipo==="convenio"?`
             <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
-              ${["DentalUni","IMPAO","Plus Care"].map(cv=>`<button onclick="updPt(${p.id},'convenio','${cv}',true)" class="bg" style="padding:6px 12px;font-size:11px;background:${p.convenio===cv?'#3b82f622':'transparent'};color:${p.convenio===cv?'#60a5fa':'#555'}">${cv}</button>`).join("")}
+              ${["Dental Uni","IMPAO","Care Plus","Sul América"].map(cv=>`<button onclick="updPt(${p.id},'convenio','${cv}',true)" class="bg" style="padding:6px 12px;font-size:11px;background:${p.convenio===cv?'#3b82f622':'transparent'};color:${p.convenio===cv?'#60a5fa':'#555'}">${cv}</button>`).join("")}
             </div>
             <input value="${(p.convenio||"").replace(/"/g,"&quot;")}" oninput="updPt(${p.id},'convenio',this.value)" class="inp" placeholder="Ou digite outro convênio..." style="margin-bottom:6px"/>
             <label class="lbl">Número da Carteirinha</label>
