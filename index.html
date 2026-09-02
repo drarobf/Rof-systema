@@ -1759,8 +1759,11 @@ async function syncFromCloud(opts){
     if(Date.now()-_lastAutoSyncAt<AUTO_SYNC_MIN_INTERVAL_MS)return;
   }
   _lastAutoSyncAt=Date.now();
-  if(opts.force)_clearAllPendingSync();
-  else if(_syncQ.length)await _flushQ();
+  // NUNCA descarta alterações locais ainda não confirmadas no servidor — mesmo forçando
+  // a sincronização, primeiro tenta esvaziar a fila de escritas pendentes (push), só então puxa.
+  // (bug antigo: "force" chamava _clearAllPendingSync() e ignorava a checagem de segurança
+  // abaixo, apagando evoluções/alterações digitadas pouco antes de tocar em "Atualizar da nuvem")
+  if(_syncQ.length)await _flushQ();
   const el=document.getElementById("sync-badge");
   if(el){el.textContent="↻ Sincronizando...";el.style.color="var(--gold)";el.classList.add("sync-spin");}
   try{
@@ -1768,8 +1771,8 @@ async function syncFromCloud(opts){
     const {data:rows,error}=await Promise.race([_sb.from('rof_store').select('key,data,updated_at'),_timeout]);
     if(error)throw error;
     (rows||[]).forEach(({key:k,data:v})=>{
-      const recentLocalWrite=Date.now()-(_lastLocalWriteAt[k]||0)<5000;
-      if(!opts.force&&(_pendingCloudWrites.has(k)||_hasQueuedSync(k)||recentLocalWrite))return;
+      const recentLocalWrite=Date.now()-(_lastLocalWriteAt[k]||0)<8000;
+      if(_pendingCloudWrites.has(k)||_hasQueuedSync(k)||recentLocalWrite)return;
       _applyCloudData(k,v);
       _pendingCloudWrites.delete(k);
     });
