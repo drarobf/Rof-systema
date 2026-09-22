@@ -4903,6 +4903,18 @@ window.whatsConfirm=function(aptId){
   const hora=a.time;
   const proc=pr?.n||"consulta";
   const dia=dayLabel(a.date);
+  const isConvenio=pt?.tipo==="convenio";
+  const avisoCancelamento=isConvenio
+    ?`Os horários destinados aos atendimentos por convênio são limitados e possuem uma disponibilidade mais restrita em nossa agenda.
+
+Por isso, caso seja necessário cancelar ou alterar sua consulta, pedimos que nos avise com *no mínimo 24 horas de antecedência*.
+
+Cancelamentos realizados com menos de 24 horas de antecedência ou no dia da consulta terão o novo agendamento disponibilizado *a partir de 30 dias*, conforme as vagas disponíveis para o convênio.
+
+Pedimos que, ao reservar seu horário, procure se organizar para comparecer, evitando ao máximo cancelamentos de última hora. Esse cuidado também permite que possamos oferecer a vaga a outro paciente que esteja aguardando atendimento.
+
+Agradecemos muito pela compreensão e colaboração. 🤍`
+    :`Caso precise remarcar, pedimos que nos avise com pelo menos *24 horas de antecedência*.`;
   const msg=
 `Olá, ${nome}! 😊
 
@@ -4918,7 +4930,7 @@ ${CONSULTORIO.end}
 
 Por favor, nos confirme sua presença respondendo esta mensagem.
 
-Caso precise remarcar, pedimos que nos avise com pelo menos *24 horas de antecedência*.
+${avisoCancelamento}
 
 Te esperamos! ✨`;
 
