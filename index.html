@@ -1636,8 +1636,33 @@ const _sb=(()=>{
 
 // rof_pt_xrays fica FORA do sync — RX em base64 são grandes demais para o Supabase free tier
 // rof_pt_photos retornou ao sync — fotos de perfil são comprimidas para ~15-25KB cada (seguro)
-const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_procs','rof_caixa','rof_whats_templates','rof_orientacoes','rof_bloqueios','rof_pt_photos','rof_contas_pagar','rof_labs','rof_contas_receber','rof_contas_recorrentes','rof_fornecedores','rof_recorrentes_receber','rof_caixa_recorrentes']);
+const SYNC_KEYS = new Set(['rof_pts','rof_apts','rof_procs','rof_caixa','rof_whats_templates','rof_orientacoes','rof_bloqueios','rof_pt_photos','rof_contas_pagar','rof_labs','rof_contas_receber','rof_contas_recorrentes','rof_fornecedores','rof_recorrentes_receber','rof_caixa_recorrentes','rof_apts_deleted','rof_pts_deleted']);
 const _syncQ = (()=>{try{return JSON.parse(localStorage.getItem("rof_sync_q")||"[]");}catch{return[];}})();
+
+// ── Tombstones de exclusão (agendamentos e pacientes) ───────────
+// Evita que uma aba/aparelho com cópia desatualizada "ressuscite" um registro
+// excluído em outro aparelho ao sincronizar com a nuvem (bug: last-write-wins
+// sem controle de exclusão fazia a aba antiga reenviar o registro apagado).
+const TOMBSTONE_MAX_AGE_MS=180*24*60*60*1000; // 180 dias — depois disso o registro pode ser podado com segurança
+function _loadTombstones(storeKey){
+  let t;try{t=JSON.parse(localStorage.getItem(storeKey)||"{}");}catch{t={};}
+  if(!t||typeof t!=='object')t={};
+  const cutoff=Date.now()-TOMBSTONE_MAX_AGE_MS;
+  let pruned=false;
+  Object.keys(t).forEach(id=>{if(!t[id]||t[id]<cutoff){delete t[id];pruned=true;}});
+  if(pruned)try{localStorage.setItem(storeKey,JSON.stringify(t));}catch{}
+  return t;
+}
+function _addTombstone(storeKey,id){
+  const t=_loadTombstones(storeKey);
+  t[String(id)]=Date.now();
+  if(typeof save==="function")save(storeKey,t);
+  else try{localStorage.setItem(storeKey,JSON.stringify(t));}catch{}
+}
+const _loadAptTombstones=()=>_loadTombstones("rof_apts_deleted");
+const _addAptTombstone=(id)=>_addTombstone("rof_apts_deleted",id);
+const _loadPtTombstones=()=>_loadTombstones("rof_pts_deleted");
+const _addPtTombstone=(id)=>_addTombstone("rof_pts_deleted",id);
 // Remove imediatamente quaisquer syncs de RX já enfileirados (xrays são grandes demais)
 (function(){const heavy=new Set(['rof_pt_xrays']);let c=false;for(let i=_syncQ.length-1;i>=0;i--){if(_syncQ[i]&&heavy.has(_syncQ[i].k)){_syncQ.splice(i,1);c=true;}}if(c)try{localStorage.setItem("rof_sync_q",JSON.stringify(_syncQ));}catch{}})();
 const _pendingCloudWrites = new Set();
@@ -1705,23 +1730,45 @@ function _applyCloudData(k,v){
     const localPts=(()=>{try{return JSON.parse(localStorage.getItem(k)||"[]");}catch{return[];}})();
     const cloudIds=new Set(v.map(p=>p&&p.id).filter(Boolean));
     const localOnly=localPts.filter(p=>p&&p.id&&!cloudIds.has(p.id));
-    const merged=localOnly.length?[...v,...localOnly]:v;
-    if(localOnly.length){
+    let merged=localOnly.length?[...v,...localOnly]:v;
+    // Remove qualquer paciente já excluído (tombstone) — impede que uma aba/aparelho
+    // com cópia desatualizada "ressuscite" um paciente apagado em outro lugar
+    const tombPt=_loadPtTombstones();
+    const beforeCountPt=merged.length;
+    if(Object.keys(tombPt).length)merged=merged.filter(p=>!(p&&tombPt[String(p.id)]));
+    const changedPt=localOnly.length>0||merged.length!==beforeCountPt;
+    if(changedPt){
       Promise.resolve(_sb.from('rof_store').upsert({key:k,data:merged},{onConflict:'key'})).catch(()=>{});
     }
     localStorage.setItem(k,JSON.stringify(merged));
     ST.pts=mergePtXrays(mergePtPhotos(merged.map(normalizePt)));
+  }else if(k==='rof_pts_deleted'&&v&&typeof v==='object'&&!Array.isArray(v)){
+    // Mescla tombstones de pacientes: união local+nuvem
+    const localTombPt=_loadPtTombstones();
+    const mergedTombPt=Object.assign({},v,localTombPt);
+    localStorage.setItem(k,JSON.stringify(mergedTombPt));
   }else if(k==='rof_apts'&&Array.isArray(v)){
     // Mescla: preserva agendamentos criados localmente enquanto nuvem estava offline
     const localApts=(()=>{try{return JSON.parse(localStorage.getItem(k)||"[]");}catch{return[];}})();
     const cloudIds=new Set(v.map(a=>a&&a.id).filter(Boolean));
     const localOnly=localApts.filter(a=>a&&a.id&&!cloudIds.has(a.id));
-    const merged=localOnly.length?[...v,...localOnly]:v;
-    if(localOnly.length){
+    let merged=localOnly.length?[...v,...localOnly]:v;
+    // Remove qualquer agendamento já excluído (tombstone) — impede que uma aba/aparelho
+    // com cópia desatualizada "ressuscite" um agendamento apagado em outro lugar
+    const tomb=_loadAptTombstones();
+    const beforeCount=merged.length;
+    if(Object.keys(tomb).length)merged=merged.filter(a=>!(a&&tomb[String(a.id)]));
+    const changed=localOnly.length>0||merged.length!==beforeCount;
+    if(changed){
       Promise.resolve(_sb.from('rof_store').upsert({key:k,data:merged},{onConflict:'key'})).catch(()=>{});
     }
     localStorage.setItem(k,JSON.stringify(merged));
     ST.apts=merged;
+  }else if(k==='rof_apts_deleted'&&v&&typeof v==='object'&&!Array.isArray(v)){
+    // Mescla tombstones: união local+nuvem, nunca perde uma exclusão já registrada
+    const localTomb=_loadAptTombstones();
+    const merged=Object.assign({},v,localTomb);
+    localStorage.setItem(k,JSON.stringify(merged));
   }else if(k==='rof_pt_photos'&&v&&typeof v==='object'&&!Array.isArray(v)){
     // Mescla: fotos locais têm prioridade sobre nuvem (evita sync apagar foto recém-tirada)
     const localPh=_loadPtPhotos();
@@ -1770,6 +1817,16 @@ async function syncFromCloud(opts){
     const _timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")),12000));
     const {data:rows,error}=await Promise.race([_sb.from('rof_store').select('key,data,updated_at'),_timeout]);
     if(error)throw error;
+    // Aplica os tombstones de exclusão ANTES do resto — assim, mesmo que 'rof_apts'/'rof_pts'
+    // venham antes de seus '..._deleted' nesta mesma leitura, a filtragem já os enxerga
+    [["rof_apts_deleted",_loadAptTombstones],["rof_pts_deleted",_loadPtTombstones]].forEach(([tk,loader])=>{
+      const tombRow=(rows||[]).find(r=>r.key===tk);
+      if(tombRow&&tombRow.data&&typeof tombRow.data==='object'&&!Array.isArray(tombRow.data)){
+        const localTomb=loader();
+        const mergedTomb=Object.assign({},tombRow.data,localTomb);
+        try{localStorage.setItem(tk,JSON.stringify(mergedTomb));}catch{}
+      }
+    });
     (rows||[]).forEach(({key:k,data:v})=>{
       const recentLocalWrite=Date.now()-(_lastLocalWriteAt[k]||0)<8000;
       if(_pendingCloudWrites.has(k)||_hasQueuedSync(k)||recentLocalWrite)return;
@@ -5461,7 +5518,7 @@ window.saveApt=()=>{
   toast("✅ Consulta agendada para "+finalName+"!","success");
   setTimeout(agendarNotificacoes,300);
 };
-window.delApt=id=>{rConfirm("Excluir esta consulta?",()=>{const na=ST.apts.filter(a=>a.id!==id);save("rof_apts",na);set({apts:na});toast("Consulta excluída.","success");},"Excluir Consulta");};
+window.delApt=id=>{rConfirm("Excluir esta consulta?",()=>{const na=ST.apts.filter(a=>a.id!==id);save("rof_apts",na);_addAptTombstone(id);set({apts:na});toast("Consulta excluída.","success");},"Excluir Consulta");};
 
 // ═══════════════════════════════════════════════════════════════════
 // BLOQUEIOS DE AGENDA
@@ -8871,6 +8928,7 @@ window.delPt=function(id){
   rConfirm("Excluir paciente \""+p.name+"\"?\n\nEsta ação não pode ser desfeita.",function(){
     var nps=ST.pts.filter(function(x){return !sameId(x.id,id);});
     save("rof_pts",nps);
+    _addPtTombstone(id);
     set({pts:nps,selPt:null});
     toast("Paciente excluído.","success");
   },"Excluir Paciente");
@@ -8885,6 +8943,7 @@ window.confirmDelPt=function(id){
     function(){
       var nps=ST.pts.filter(function(x){return !sameId(x.id,id);});
       save("rof_pts",nps);
+      _addPtTombstone(id);
       set({pts:nps,selPt:null});
       toast("✓ Ficha excluída permanentemente.","success");
     },
