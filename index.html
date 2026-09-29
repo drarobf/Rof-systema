@@ -4827,6 +4827,7 @@ function pageAgenda(){
             ${alertaChipsApt(a)}
           </div>
           <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0" onclick="event.stopPropagation()">
+            <button onclick="abrirFichaDoApt(${a.id})" style="background:none;border:1px solid rgba(198,164,109,0.45);border-radius:6px;color:#E2C99A;cursor:pointer;font-size:11px;padding:4px 8px;white-space:nowrap;font-family:var(--font-body)" title="Abrir ficha clínica do paciente">📋</button>
             <button onclick="whatsConfirm(${a.id})" style="background:none;border:1px solid #22c55e44;border-radius:6px;color:#22c55e;cursor:pointer;font-size:11px;padding:4px 8px;white-space:nowrap;font-family:var(--font-body)" title="Confirmar via WhatsApp">📱</button>
             <button onclick="openEditApt(${a.id})" style="background:none;border:1px solid rgba(198,164,109,0.3);border-radius:6px;color:#C6A46D;cursor:pointer;font-size:11px;padding:4px 8px" title="Editar consulta">✏️</button>
           </div>
