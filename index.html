@@ -4698,6 +4698,49 @@ function pageDashboard(){
 // ═══════════════════════════════════════════════════════════════════
 // AGENDA COM GRADE VISUAL
 // ═══════════════════════════════════════════════════════════════════
+// ── ALERTAS DE SAÚDE NA AGENDA (chips vermelhos no card da consulta) ──
+function alertaChipsApt(a){
+  try{
+    let pt=null;
+    if(a.patientId)pt=(ST.pts||[]).find(function(x){return x.id===a.patientId;});
+    if(!pt&&a.patient){const nm=a.patient.toLowerCase().trim();pt=(ST.pts||[]).find(function(x){return (x.name||"").toLowerCase().trim()===nm;});}
+    if(!pt)return "";
+    const txt=(pt.alertaSaude&&pt.alertaSaude.trim())?pt.alertaSaude:compilarAlertaSaude(pt);
+    if(!txt||!txt.trim())return "";
+    const esc=function(t){return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");};
+    let itens=txt.split(/\s*·\s*|\n+/).map(function(t){return t.replace(/^⚠️\s*/,"").trim();}).filter(Boolean);
+    const prio=function(t){
+      const l=t.toLowerCase();
+      if(/alerg|látex|latex|abelha|anest|penicil|dipirona/.test(l))return 0;
+      if(/diabet/.test(l))return 1;
+      if(/anticoag|marca-passo|sangramento|roacutan|isotretino/.test(l))return 2;
+      if(/hipert|press|cardi|gr[aá]vid|autoimun|tireoide|quel[oó]ide|herpes/.test(l))return 3;
+      return 4;
+    };
+    const icone=function(t){
+      const l=t.toLowerCase();
+      if(/alerg|látex|latex|abelha|anest|penicil|dipirona/.test(l))return "⚠️";
+      if(/diabet/.test(l))return "🩸";
+      if(/anticoag|sangramento/.test(l))return "🩹";
+      if(/hipert|press|cardi|marca-passo/.test(l))return "❤️";
+      if(/gr[aá]vid/.test(l))return "🤰";
+      return "⚠️";
+    };
+    itens=itens.map(function(t,i){return {t:t,i:i,p:prio(t)};}).sort(function(x,y){return x.p-y.p||x.i-y.i;});
+    const MAX=3;
+    const vis=itens.slice(0,MAX);
+    const resto=itens.length-vis.length;
+    const chip=function(o){
+      const curto=o.t.length>32?o.t.slice(0,31)+"…":o.t;
+      return '<span title="'+esc(o.t)+'" style="display:inline-flex;align-items:center;gap:4px;background:rgba(239,68,68,0.14);border:1px solid rgba(239,68,68,0.45);color:#fca5a5;padding:2px 8px;border-radius:50px;font-size:10px;font-weight:700;max-width:100%;white-space:nowrap">'+icone(o.t)+' '+esc(curto)+'</span>';
+    };
+    return '<div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;align-items:center"><span style="color:#ef4444;font-size:9px;font-weight:900;letter-spacing:1px">ALERTA</span>'
+      +vis.map(chip).join("")
+      +(resto>0?'<span title="'+esc(itens.slice(MAX).map(function(o){return o.t;}).join(" · "))+'" style="color:#ef4444;font-size:10px;font-weight:700">+'+resto+'</span>':"")
+      +'</div>';
+  }catch(e){return "";}
+}
+
 function pageAgenda(){
   const{apts,agDate:date,showApt,aptTipo,aptConv,aptDur,aptCat}=ST;
   const agView=ST.agView||"dia";
@@ -4781,6 +4824,7 @@ function pageAgenda(){
               <span style="color:#555;font-size:10px">⏱ ${durLabel(a.dur||30)}</span>
               ${badge(a.status)}
             </div>
+            ${alertaChipsApt(a)}
           </div>
           <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0" onclick="event.stopPropagation()">
             <button onclick="whatsConfirm(${a.id})" style="background:none;border:1px solid #22c55e44;border-radius:6px;color:#22c55e;cursor:pointer;font-size:11px;padding:4px 8px;white-space:nowrap;font-family:var(--font-body)" title="Confirmar via WhatsApp">📱</button>
