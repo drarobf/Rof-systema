@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Funil ROF™</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Jost:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#17140f;--card:#211d16;--col:#1b1812;--line:#3a3326;--gold:#c9a45c;--beige:#efe5d3;--mute:#9b9078;--green:#6fae78;--grey:#8a857b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ink);color:var(--beige);font:15px/1.4 Jost,system-ui,sans-serif;padding:env(safe-area-inset-top) 0 0}
+header{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:end;justify-content:space-between;padding:20px 20px 12px}
+h1{font:600 30px/1 "Cormorant Garamond",serif;margin:0;letter-spacing:.3px}
+h1 small{display:block;font:400 13px Jost;color:var(--mute);margin-top:6px}
+.kpis{display:flex;gap:22px}
+.kpi b{display:block;font:600 28px/1 "Cormorant Garamond",serif;color:var(--gold)}
+.kpi span{font-size:12px;color:var(--mute)}
+.bar{display:flex;flex-wrap:wrap;gap:8px;padding:0 20px 14px}
+input,select,textarea,button{font:inherit;color:inherit}
+.bar input{flex:1 1 180px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:9px 12px}
+button{cursor:pointer;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:9px 14px}
+button:hover{border-color:var(--gold)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.pri{background:var(--gold);color:#17140f;border-color:var(--gold);font-weight:500}
+.on{border-color:var(--green);color:var(--green)}
+.board{display:flex;gap:12px;overflow-x:auto;padding:0 20px 28px;align-items:flex-start}
+.col{flex:0 0 250px;background:var(--col);border:1px solid var(--line);border-radius:10px;padding:10px;min-height:200px}
+.col.over{border-color:var(--gold)}
+.col h2{font:600 18px "Cormorant Garamond",serif;margin:2px 4px 10px;display:flex;justify-content:space-between}
+.col h2 span{color:var(--mute);font:400 13px Jost}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:8px;border-left:4px solid var(--line)}
+.card.q{border-left-color:var(--green)}.card.p{border-left-color:var(--gold)}.card.s{border-left-color:var(--grey)}
+.card strong{display:block;font-weight:500}
+.card p{margin:4px 0 0;color:var(--mute);font-size:13px}
+.tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.tag{font-size:11px;padding:2px 7px;border-radius:99px;border:1px solid}
+.t-p{color:var(--gold);border-color:var(--gold)}.t-r{color:var(--beige);border-color:var(--mute)}.t-q{color:var(--green);border-color:var(--green)}.t-s{color:var(--grey);border-color:var(--grey)}
+.acts{display:flex;gap:6px;margin-top:8px}
+.acts button{padding:5px 9px;font-size:13px}
+.acts .wa{flex:1;background:#25392a;border-color:#2f4a35}
+.empty{color:var(--mute);font-size:13px;padding:6px 4px}
+dialog{background:var(--col);color:var(--beige);border:1px solid var(--gold);border-radius:12px;width:min(460px,94vw);padding:20px}
+dialog::backdrop{background:#000a}
+label{display:block;font-size:13px;color:var(--mute);margin:10px 0 3px}
+dialog input,dialog select,dialog textarea{width:100%;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.foot{display:flex;justify-content:space-between;margin-top:18px}
+.note{padding:0 20px 8px;color:var(--mute);font-size:12px}
+@media (max-width:600px){.col{flex-basis:84vw}.kpis{gap:14px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Funil ROF™<small>Dra. Rossana Fucks</small></h1>
+  <div class="kpis" id="kpis"></div>
+</header>
+<div class="bar">
+  <input id="busca" type="search" placeholder="Buscar paciente" aria-label="Buscar paciente">
+  <button id="fQuentes">Só leads quentes</button>
+  <button id="novo" class="pri">Novo lead</button>
+</div>
+<div class="note" id="modo"></div>
+<main class="board" id="board"></main>
+
+<dialog id="dlg">
+  <h2 id="dTitulo" style="margin:0 0 4px;font:600 22px 'Cormorant Garamond',serif">Novo lead</h2>
+  <label for="f_nome">Nome</label><input id="f_nome">
+  <div class="row"><div><label for="f_tel">WhatsApp</label><input id="f_tel" inputmode="tel" placeholder="47 99999-9999"></div>
+  <div><label for="f_ig">Instagram</label><input id="f_ig" placeholder="@"></div></div>
+  <div class="row"><div><label for="f_origem">Origem</label><select id="f_origem"><option>Instagram</option><option>Indicação</option><option>Meta Ads</option><option>Paciente atual</option><option>Outro</option></select></div>
+  <div><label for="f_etapa">Etapa</label><select id="f_etapa"></select></div></div>
+  <div class="row"><div><label for="f_tipo">Tipo</label><select id="f_tipo"><option>Convênio</option><option>Particular Básico</option><option>ROF™ Premium</option></select></div>
+  <div><label for="f_pot">Potencial</label><select id="f_pot"><option value="frio">Frio</option><option value="quente">Quente</option></select></div></div>
+  <label for="f_dor">Principal dor ou desejo</label><input id="f_dor">
+  <label for="f_obs">Observações</label><textarea id="f_obs" rows="2"></textarea>
+  <div class="foot"><button id="excluir" type="button">Excluir</button><span><button id="cancelar" type="button">Cancelar</button> <button id="salvar" class="pri" type="button">Salvar</button></span></div>
+</dialog>
+
+<script>
+/* CONFIGURAÇÃO — cole aqui a chave "anon public" do Supabase (a mesma do index.html).
+   Sem a chave, o funil funciona só neste aparelho (salva no navegador). */
+const SB_URL='https://dhgfoxdxihjkhzmctaea.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRoZ2ZveGR4aWhqa2h6bWN0YWVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NDk0MDIsImV4cCI6MjA5MzQyNTQwMn0.W5sM9pIn6FfZLgeFzkkKufpFYTFXLIhKp1jSn6lJmSs';
+
+const ETAPAS=['Novo contato','Conversou no WhatsApp','Avaliação agendada','Avaliação feita','Proposta enviada','Fechado'];
+const MSG=[
+ n=>`Olá, ${n}, tudo bem? Sou da equipe da Dra. Rossana Fucks. Será um prazer entender o que você deseja melhorar no seu sorriso ou na sua harmonização facial.`,
+ n=>`${n}, me conta uma coisa… hoje o que mais te incomoda: estética, desgaste dental, envelhecimento facial ou dores?`,
+ n=>`${n}, passando para confirmar a sua avaliação com a Dra. Rossana. Se precisar ajustar o horário, é só me avisar.`,
+ n=>`${n}, foi um prazer te receber. A Dra. Rossana está finalizando o seu planejamento individualizado e em breve envio para você.`,
+ n=>`${n}, conseguiu analisar com calma o planejamento que a Dra. Rossana preparou para você?`,
+ n=>`${n}, como você está se sentindo depois do tratamento? A Dra. Rossana gostaria de acompanhar o seu resultado.`
+];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let leads=[],soQuentes=false,editId=null;
+
+async function sb(method,path,body){
+  const r=await fetch(SB_URL+'/rest/v1/crm_leads'+path,{method,headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},body:body?JSON.stringify(body):undefined});
+  if(!r.ok) throw new Error(await r.text());
+  return method==='GET'?r.json():null;
+}
+async function carregar(){
+  if(SB_KEY){try{leads=await sb('GET','?order=criado_em.desc');$('modo').textContent='Sincronizado com o Supabase.';return}catch(e){$('modo').textContent='Não consegui conectar ao Supabase. Confira a chave e a tabela crm_leads. Usando os dados deste aparelho.'}}
+  else $('modo').textContent='Modo local: os leads ficam só neste aparelho até você colar a chave do Supabase.';
+  try{leads=JSON.parse(localStorage.getItem('rof_crm')||'[]')}catch(e){leads=[]}
+}
+async function gravar(l){
+  const i=leads.findIndex(x=>x.id===l.id); if(i<0) leads.unshift(l); else leads[i]=l;
+  try{localStorage.setItem('rof_crm',JSON.stringify(leads))}catch(e){}
+  if(SB_KEY){try{await sb('POST','',l)}catch(e){alert('Não salvou no Supabase: '+e.message)}}
+  desenhar();
+}
+async function apagar(id){
+  leads=leads.filter(x=>x.id!==id);
+  try{localStorage.setItem('rof_crm',JSON.stringify(leads))}catch(e){}
+  if(SB_KEY){try{await sb('DELETE','?id=eq.'+id)}catch(e){}}
+  desenhar();
+}
+const dias=l=>Math.floor((Date.now()-new Date(l.ultimo_contato||l.criado_em))/864e5);
+const fone=t=>{let d=String(t||'').replace(/\D/g,'');return d.length<=11?'55'+d:d};
+
+function desenhar(){
+  const q=$('busca').value.toLowerCase();
+  const lista=leads.filter(l=>(!soQuentes||l.potencial==='quente')&&(!q||(l.nome+' '+l.dor+' '+l.instagram).toLowerCase().includes(q)));
+  $('board').innerHTML=ETAPAS.map((nome,i)=>{
+    const itens=lista.filter(l=>l.etapa===i);
+    return `<section class="col" data-e="${i}" aria-label="${nome}"><h2>${nome}<span>${itens.length}</span></h2>`+
+      (itens.map(card).join('')||'<div class="empty">Nenhum lead aqui.</div>')+'</section>';
+  }).join('');
+  const sem=Date.now()-7*864e5;
+  const c=i=>leads.filter(l=>l.etapa===i).length;
+  $('kpis').innerHTML=[['Novos na semana',leads.filter(l=>new Date(l.criado_em)>sem).length],['Avaliações agendadas',c(2)],['Propostas enviadas',c(4)],['Fechados',c(5)]]
+    .map(([t,n])=>`<div class="kpi"><b>${n}</b><span>${t}</span></div>`).join('');
+}
+function card(l){
+  const parado=l.etapa<5&&dias(l)>7, prem=l.tipo==='ROF™ Premium';
+  const cls=l.potencial==='quente'?'q':prem?'p':parado?'s':'';
+  const tags=[prem?'<span class="tag t-p">Premium</span>':'',l.potencial==='quente'?'<span class="tag t-q">Lead quente</span>':'',parado?`<span class="tag t-s">Sem resposta há ${dias(l)} dias</span>`:'',l.tipo==='Convênio'?'<span class="tag t-r">Convênio</span>':''].join('');
+  return `<article class="card ${cls}" draggable="true" data-id="${l.id}"><strong>${esc(l.nome)}</strong>${l.dor?`<p>${esc(l.dor)}</p>`:''}<div class="tags">${tags}</div>
+  <div class="acts"><button data-a="ant" aria-label="Etapa anterior">←</button><button class="wa" data-a="wa">WhatsApp</button><button data-a="ed" aria-label="Editar">Editar</button><button data-a="prox" aria-label="Próxima etapa">→</button></div></article>`;
+}
+function abrir(id){
+  editId=id; const l=leads.find(x=>x.id===id)||{etapa:0,origem:'Instagram',tipo:'Particular Básico',potencial:'frio'};
+  $('dTitulo').textContent=id?'Editar lead':'Novo lead';
+  $('f_etapa').innerHTML=ETAPAS.map((n,i)=>`<option value="${i}">${n}</option>`).join('');
+  $('f_nome').value=l.nome||'';$('f_tel').value=l.telefone||'';$('f_ig').value=l.instagram||'';$('f_origem').value=l.origem;$('f_etapa').value=l.etapa;
+  $('f_tipo').value=l.tipo;$('f_pot').value=l.potencial;$('f_dor').value=l.dor||'';$('f_obs').value=l.obs||'';
+  $('excluir').style.visibility=id?'visible':'hidden'; $('dlg').showModal(); $('f_nome').focus();
+}
+$('salvar').onclick=()=>{
+  const nome=$('f_nome').value.trim(); if(!nome){$('f_nome').focus();return}
+  const old=leads.find(x=>x.id===editId)||{};
+  gravar({...old,id:editId||crypto.randomUUID(),nome,telefone:$('f_tel').value,instagram:$('f_ig').value,origem:$('f_origem').value,etapa:+$('f_etapa').value,tipo:$('f_tipo').value,potencial:$('f_pot').value,dor:$('f_dor').value,obs:$('f_obs').value,criado_em:old.criado_em||new Date().toISOString(),ultimo_contato:old.ultimo_contato||new Date().toISOString()});
+  $('dlg').close();
+};
+$('cancelar').onclick=()=>$('dlg').close();
+$('excluir').onclick=()=>{if(confirm('Excluir este lead?')){apagar(editId);$('dlg').close()}};
+$('novo').onclick=()=>abrir(null);
+$('busca').oninput=desenhar;
+$('fQuentes').onclick=e=>{soQuentes=!soQuentes;e.target.classList.toggle('on',soQuentes);desenhar()};
+
+$('board').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  const l=leads.find(x=>x.id===b.closest('.card').dataset.id), a=b.dataset.a;
+  if(a==='ed') abrir(l.id);
+  if(a==='ant'&&l.etapa>0) gravar({...l,etapa:l.etapa-1});
+  if(a==='prox'&&l.etapa<5) gravar({...l,etapa:l.etapa+1,ultimo_contato:new Date().toISOString()});
+  if(a==='wa'){
+    const n=(l.nome||'').split(' ')[0];
+    window.open('https://wa.me/'+fone(l.telefone)+'?text='+encodeURIComponent(MSG[l.etapa](n)),'_blank');
+    gravar({...l,ultimo_contato:new Date().toISOString()});
+  }
+});
+let arrastando=null;
+$('board').addEventListener('dragstart',e=>{const c=e.target.closest('.card');if(c)arrastando=c.dataset.id});
+$('board').addEventListener('dragover',e=>{const c=e.target.closest('.col');if(c){e.preventDefault();c.classList.add('over')}});
+$('board').addEventListener('dragleave',e=>{const c=e.target.closest('.col');if(c)c.classList.remove('over')});
+$('board').addEventListener('drop',e=>{
+  const c=e.target.closest('.col'); if(!c||!arrastando) return; e.preventDefault();
+  const l=leads.find(x=>x.id===arrastando); arrastando=null;
+  if(l&&l.etapa!==+c.dataset.e) gravar({...l,etapa:+c.dataset.e,ultimo_contato:new Date().toISOString()}); else desenhar();
+});
+carregar().then(desenhar);
+</script>
+</body>
+</html>
