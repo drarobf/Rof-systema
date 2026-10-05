@@ -7474,29 +7474,26 @@ function pagePts(){
   var DEMO_NAMES_=["Ana Paula Ferreira","Carlos Eduardo Lima","Mariana Souza"];
   var hasDemo_=pts.some(function(p){return DEMO_NAMES_.includes(p.name);});
   var demoCount_=pts.filter(function(p){return DEMO_NAMES_.includes(p.name);}).length;
-  const _ptNames=new Set(pts.map(p=>(p.name||"").toLowerCase().trim()));
-  const _ptNamesArr=[..._ptNames];
-  const _orphans=[...new Set(ST.apts.map(a=>a.patient))].filter(n=>{
-    if(!n)return false;
-    const nl=n.toLowerCase().trim();
-    if(_ptNames.has(nl))return false;
-    if(_ptNamesArr.some(pn=>pn.startsWith(nl+' ')))return false;
-    return true;
-  }).sort((a,b)=>a.localeCompare(b,"pt-BR"));
-  const orphanBanner=_orphans.length===0?"":
-    `<div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:12px 14px;margin-bottom:12px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+  const _orphs=orphansPendentes();
+  const _orphOpen=!!ST._orphOpen;
+  const orphanBanner=_orphs.length===0?"":
+    `<div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:8px 12px;margin-bottom:12px">
+      <div onclick="set({_orphOpen:${!_orphOpen}})" style="display:flex;align-items:center;gap:8px;cursor:pointer;min-height:28px">
         <span>⚠️</span>
-        <div style="color:#ef4444;font-weight:700;font-size:12px;flex:1">${_orphans.length} paciente(s) com consulta na agenda mas sem cadastro</div>
-        <button onclick="recadastrarTodos()" style="background:#ef444422;border:1px solid #ef444455;border-radius:20px;color:#ef4444;cursor:pointer;font-size:11px;padding:5px 12px;font-family:Inter,sans-serif;white-space:nowrap">+ Re-cadastrar todos</button>
+        <div style="color:#ef4444;font-weight:600;font-size:12px;flex:1">${_orphs.length} da agenda sem cadastro</div>
+        <span style="color:#ef4444;font-size:11px">${_orphOpen?"Ocultar ▲":"Ver ▼"}</span>
+      </div>
+      ${_orphOpen?`<div style="display:flex;justify-content:flex-end;margin:8px 0 6px">
+        <button onclick="recadastrarTodos()" style="background:#ef444422;border:1px solid #ef444455;border-radius:20px;color:#ef4444;cursor:pointer;font-size:11px;padding:5px 12px;font-family:Inter,sans-serif;white-space:nowrap">+ Cadastrar todos</button>
       </div>
       <div style="display:flex;flex-direction:column;gap:5px">
-        ${_orphans.map(n=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(239,68,68,0.06);border-radius:8px">
-          <div style="width:26px;height:26px;border-radius:50%;background:#ef444433;display:flex;align-items:center;justify-content:center;color:#ef4444;font-weight:700;font-size:11px;flex-shrink:0">${n[0]}</div>
-          <span style="color:#ddd;font-size:13px;flex:1">${n}</span>
-          <button onclick="recadastrarDaAgenda('${n.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}') " style="background:none;border:1px solid #ef444455;border-radius:8px;color:#ef4444;cursor:pointer;font-size:11px;padding:4px 10px;font-family:Inter,sans-serif">+ Cadastrar</button>
+        ${_orphs.map(o=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(239,68,68,0.06);border-radius:8px">
+          <div style="width:26px;height:26px;border-radius:50%;background:#ef444433;display:flex;align-items:center;justify-content:center;color:#ef4444;font-weight:700;font-size:11px;flex-shrink:0">${o.nome[0]||"?"}</div>
+          <span style="color:#ddd;font-size:13px;flex:1;min-width:0;word-break:break-word">${o.nome}</span>
+          <button data-raw="${encodeURIComponent(o.raw)}" onclick="recadastrarDaAgenda(decodeURIComponent(this.dataset.raw))" style="background:none;border:1px solid #ef444455;border-radius:8px;color:#ef4444;cursor:pointer;font-size:11px;padding:4px 10px;font-family:Inter,sans-serif;white-space:nowrap">+ Cadastrar</button>
+          <button data-key="${encodeURIComponent(o.key)}" onclick="excluirConsultasOrfao(decodeURIComponent(this.dataset.key))" title="Excluir consultas deste paciente da agenda" style="background:rgba(239,68,68,0.1);border:1px solid #ef444455;border-radius:8px;color:#ef4444;cursor:pointer;font-size:13px;padding:3px 8px">🗑</button>
         </div>`).join("")}
-      </div>
+      </div>`:""}
     </div>`;
   return`${stitle("Pacientes")}
   ${orphanBanner}
@@ -9011,32 +9008,82 @@ window.concluirCadastroPaciente=function(ptId){
   if(typeof _showSaveIndicator==="function")_showSaveIndicator();
 };
 
-window.recadastrarTodos=function(){
-  const ptNames=new Set(ST.pts.map(p=>p.name));
-  const orphans=[...new Set(ST.apts.map(a=>a.patient))].filter(n=>n&&!ptNames.has(n));
-  if(!orphans.length){alert("Nenhum paciente pendente.");return;}
-  const nps=[...ST.pts];
-  orphans.forEach(function(nome){
-    if(nps.some(p=>p.name===nome))return;
-    nps.push({id:Date.now()+Math.random(),name:nome,phone:"",email:"",cpf:"",rg:"",birthday:"",endereco:"",
-      tipo:"particular",conv:"",obs:"",plano:{itens:[],obs:"",desconto:0,parcelas:1,validade:""},
-      evolucao:[],pagamentos:[],hof:[],fotos:[],xrays:[],docs:[],odontogram:{},
-      anamBucal:null,anamFacial:null,notes:"",photo:null,atestados:[],receitas:[],tags:[]});
-  });
-  save("rof_pts",nps);
-  toast(orphans.length+" paciente(s) re-cadastrado(s)! Complete os dados em cada ficha.","success");
-  set({pts:nps});
+ST.orphIgnored=load("rof_orphan_ignored",[]);
+window._normO=function(s){return String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();};
+// Nomes da agenda às vezes vêm com data de nascimento/endereço colados: separa o nome do resto
+window._limpaNomeAgenda=function(raw){
+  var s=String(raw||"").replace(/\s+/g," ").trim();
+  var m=s.search(/\d|\b(rua|av|avenida|travessa|alameda|rodovia)\b/i);
+  var nome=(m>0?s.slice(0,m):s).replace(/[\s:,\-\u2013\u00b7]+$/,"").trim();
+  if(nome.length<2)nome=s;
+  return{nome:nome,extra:(m>0?s.slice(m).trim():"")};
 };
-window.recadastrarDaAgenda=function(nome){
-  if(ST.pts.some(p=>p.name===nome)){toast("Paciente já existe no cadastro.","info");return;}
-  const np={id:Date.now(),name:nome,phone:"",email:"",cpf:"",rg:"",birthday:"",endereco:"",
-    tipo:"particular",conv:"",obs:"",plano:{itens:[],obs:"",desconto:0,parcelas:1,validade:""},
+window.orphansPendentes=function(){
+  // Compara de forma tolerante: ignora acento, maiúscula, espaço a mais/a menos e nome do meio
+  var reg=ST.pts.map(function(p){
+    var n=_normO(_limpaNomeAgenda(p.name).nome);
+    return{k:n,c:n.replace(/ /g,""),t:n.split(" ")};
+  });
+  var ign=ST.orphIgnored||[];
+  var seen={},out=[];
+  [...new Set(ST.apts.map(function(a){return a.patient;}))].forEach(function(raw){
+    if(!raw)return;
+    var c=_limpaNomeAgenda(raw),k=_normO(c.nome);
+    if(!k||seen[k]||ign.indexOf(k)>=0)return;
+    var kc=k.replace(/ /g,""),kt=k.split(" ");
+    var achou=reg.some(function(r){
+      return r.k===k||r.c===kc||r.k.indexOf(k+" ")===0||
+        (kt.length>=2&&kt.every(function(t){return r.t.indexOf(t)>=0;}));
+    });
+    if(achou)return;
+    seen[k]=1;out.push({raw:raw,nome:c.nome,extra:c.extra,key:k});
+  });
+  return out.sort(function(a,b){return a.nome.localeCompare(b.nome,"pt-BR");});
+};
+window.excluirConsultasOrfao=function(key){
+  var alvo=ST.apts.filter(function(a){return a.patient&&_normO(_limpaNomeAgenda(a.patient).nome)===key;});
+  if(!alvo.length)return;
+  var nome=_limpaNomeAgenda(alvo[0].patient).nome;
+  rConfirm("Excluir "+alvo.length+" consulta(s) de "+nome+" da agenda?\n\nEsse paciente não tem cadastro. As consultas serão removidas.",function(){
+    var ids=alvo.map(function(a){return a.id;});
+    var na=ST.apts.filter(function(a){return ids.indexOf(a.id)<0;});
+    save("rof_apts",na);
+    ids.forEach(function(id){_addAptTombstone(id);});
+    set({apts:na});
+    toast(alvo.length+" consulta(s) excluída(s).","success");
+  },"Excluir Consultas");
+};
+window.ignorarOrfao=function(key){
+  var l=(ST.orphIgnored||[]).slice();
+  if(l.indexOf(key)<0)l.push(key);
+  save("rof_orphan_ignored",l);
+  set({orphIgnored:l});
+};
+function _novoPacienteDaAgenda(o){
+  return{id:Date.now()+Math.random(),name:o.nome,phone:"",email:"",cpf:"",rg:"",birthday:"",endereco:"",
+    tipo:"particular",conv:"",obs:o.extra?("Dados da agenda: "+o.extra):"",plano:{itens:[],obs:"",desconto:0,parcelas:1,validade:""},
     evolucao:[],pagamentos:[],hof:[],fotos:[],xrays:[],docs:[],odontogram:{},
     anamBucal:null,anamFacial:null,notes:"",photo:null,atestados:[],receitas:[],tags:[]};
+}
+window.recadastrarTodos=function(){
+  const lista=orphansPendentes();
+  if(!lista.length){alert("Nenhum paciente pendente.");return;}
+  const nps=[...ST.pts];
+  lista.forEach(function(o){nps.push(_novoPacienteDaAgenda(o));});
+  save("rof_pts",nps);
+  toast(lista.length+" paciente(s) cadastrado(s)! Complete os dados em cada ficha.","success");
+  set({pts:nps});
+};
+window.recadastrarDaAgenda=function(raw){
+  const c=_limpaNomeAgenda(raw);
+  const k=_normO(c.nome);
+  if(ST.pts.some(p=>_normO(p.name)===k)){toast("Paciente já existe no cadastro.","info");return;}
+  const np=_novoPacienteDaAgenda({nome:c.nome,extra:c.extra});
+  np.id=Date.now();
   const nps=[...ST.pts,np];
   save("rof_pts",nps);
   document.getElementById("edit-apt-modal")?.remove();
-  toast(nome+" re-cadastrada! Complete os dados na ficha.","success");
+  toast(c.nome+" cadastrada! Complete os dados na ficha.","success");
   set({pts:nps,page:"patients",selPt:np.id,ptTab:"info"});
 };
 
