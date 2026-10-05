@@ -13846,14 +13846,9 @@ window.addEventListener("beforeinstallprompt",e=>{
 });
 window.addEventListener("appinstalled",()=>{const b=document.getElementById("ib");if(b)b.remove();});
 if("serviceWorker"in navigator){
-  navigator.serviceWorker.getRegistrations()
-    .then(regs=>regs.forEach(reg=>reg.unregister()))
-    .catch(()=>{});
-}
-if(window.caches){
-  caches.keys()
-    .then(keys=>keys.forEach(key=>caches.delete(key)))
-    .catch(()=>{});
+  window.addEventListener("load",()=>{
+    navigator.serviceWorker.register("sw.js",{scope:"./"}).catch(()=>{});
+  });
 }
 
 // INIT

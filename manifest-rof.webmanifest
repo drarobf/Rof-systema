@@ -1,6 +1,7 @@
 {
   "name": "Sistema ROF™",
   "short_name": "Sistema ROF",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
