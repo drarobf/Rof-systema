@@ -4920,7 +4920,7 @@ function pageAgenda(){
       <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">${catBtns}</div>
       <div style="position:relative">
         <input id="ap-proc-inp" class="inp" placeholder="🔍 Buscar procedimento..."
-          oninput="procSearch(this.value)" onfocus="procSearch(this.value)" onblur="setTimeout(()=>{var d=document.getElementById('ap-proc-drop');if(d)d.style.display='none';},200)" autocomplete="off"/>
+          oninput="procSearch(this.value)" onfocus="procSearch(this.value)" onblur="setTimeout(_hideProcDrop,200)" autocomplete="off"/>
         <input type="hidden" id="ap-proc" value=""/>
         <div id="ap-proc-drop" style="display:none;position:fixed;background:#11100E;border:1px solid rgba(198,164,109,0.3);border-radius:0 0 10px 10px;z-index:9999;max-height:210px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.8)"></div>
       </div>
@@ -13906,12 +13906,50 @@ window.addEventListener("resize",()=>{
 });
 
 
+// Lista de procedimentos: vive direto no <body> para não ser deslocada pelo bloco rolável da página
+window._procDrop=function(){
+  var d=document.getElementById("ap-proc-drop-body");
+  if(!d){
+    d=document.createElement("div");d.id="ap-proc-drop-body";
+    d.style.cssText="display:none;position:fixed;background:#11100E;border:1px solid rgba(198,164,109,0.3);z-index:99999;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.8);scrollbar-color:#C6A46D #11100E";
+    d.onmousedown=function(e){e.preventDefault();}; // clicar na barra de rolagem não fecha a lista
+    document.body.appendChild(d);
+  }
+  return d;
+};
+window._hideProcDrop=function(){var d=document.getElementById("ap-proc-drop-body");if(d)d.style.display="none";};
+// Posiciona abaixo do campo, ou acima se faltar espaço na tela (notebook)
+window._posProcDrop=function(){
+  var drop=_procDrop(),inp=document.getElementById("ap-proc-inp");
+  if(!inp){_hideProcDrop();return;}
+  var r=inp.getBoundingClientRect();
+  var abaixo=window.innerHeight-r.bottom-10,acima=r.top-10;
+  drop.style.left=r.left+"px";drop.style.width=r.width+"px";
+  if(abaixo<200&&acima>abaixo){
+    drop.style.top="auto";drop.style.bottom=(window.innerHeight-r.top)+"px";
+    drop.style.maxHeight=Math.max(120,Math.min(300,acima))+"px";
+    drop.style.borderRadius="10px 10px 0 0";
+  }else{
+    drop.style.bottom="auto";drop.style.top=r.bottom+"px";
+    drop.style.maxHeight=Math.max(120,Math.min(300,abaixo))+"px";
+    drop.style.borderRadius="0 0 10px 10px";
+  }
+};
+(function(){
+  function reposiciona(e){
+    var drop=document.getElementById("ap-proc-drop-body");
+    if(!drop||drop.style.display==="none")return;
+    if(e&&e.target&&(e.target===drop||(drop.contains&&drop.contains(e.target))))return;
+    _posProcDrop();
+  }
+  window.addEventListener("scroll",reposiciona,true);
+  window.addEventListener("resize",reposiciona);
+})();
 window.procSearch=function(val){
   var normVal=normBusca(val||"");
-  var drop=document.getElementById("ap-proc-drop");
-  if(!drop)return;
-  var inp=document.getElementById("ap-proc-inp");
-  if(inp){var r=inp.getBoundingClientRect();drop.style.left=r.left+"px";drop.style.top=r.bottom+"px";drop.style.width=r.width+"px";}
+  if(!document.getElementById("ap-proc-inp"))return;
+  var drop=_procDrop();
+  _posProcDrop();
   var allProcs=[...PROCS].sort(function(a,b){return(a.n||"").localeCompare(b.n||"","pt-BR");});
   var matches;
   if(normVal.length<1){
@@ -13948,10 +13986,9 @@ window.procSelect=function(el){
   var name=el.getAttribute("data-name");
   var inp=document.getElementById("ap-proc-inp");
   var hid=document.getElementById("ap-proc");
-  var drop=document.getElementById("ap-proc-drop");
   if(inp)inp.value=name;
   if(hid)hid.value=id;
-  if(drop)drop.style.display="none";
+  _hideProcDrop();
 };
 window.openLancamento=function(tipo,area){
   area=area||"consultorio";
