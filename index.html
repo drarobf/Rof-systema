@@ -8029,6 +8029,38 @@ const LP_TIPOS=[
   "Laudo para reembolso"
 ];
 
+// Modelos de texto para a justificativa técnica — trechos entre [colchetes] devem ser ajustados antes de imprimir
+const LP_MODELOS={
+  "Tratamento endodôntico":
+"O(a) paciente apresenta comprometimento pulpar e/ou periapical no(s) dente(s) [dentes], confirmado por exame clínico e radiográfico, com [sintomas: dor espontânea / dor ao frio ou ao calor / fístula / lesão periapical]. O tratamento endodôntico é indicado para eliminar o foco infeccioso, aliviar o quadro doloroso e permitir a manutenção do dente na cavidade bucal. A ausência de tratamento pode levar à progressão da infecção, ao agravamento da dor e, em última instância, à perda dentária.",
+  "Restauração protética (coroa)":
+"O(a) paciente apresenta destruição coronária extensa no(s) dente(s) [dentes], decorrente de [cárie / fratura / restauração insatisfatória / tratamento endodôntico prévio], com remanescente que não suporta restauração direta de forma duradoura. A coroa protética está indicada para devolver resistência, forma e função ao dente, proteger a estrutura remanescente e evitar fratura ou perda do elemento dentário.",
+  "Implante dentário":
+"O(a) paciente apresenta ausência do(s) elemento(s) [dentes], com prejuízo à função mastigatória [e à fonação / e à estética]. Após avaliação clínica e exames de imagem, constata-se volume ósseo [adequado / que necessita de enxerto] para a instalação de implante(s). A reabilitação sobre implante é indicada para restabelecer a mastigação, preservar o osso alveolar e evitar o desgaste de dentes vizinhos, que seria necessário em uma prótese convencional.",
+  "Reabilitação oral por bruxismo / desgaste":
+"O(a) paciente apresenta bruxismo com desgaste dentário acentuado nos dentes [dentes], com perda de estrutura em esmalte e dentina, [sensibilidade / dor muscular e articular / fraturas recorrentes] e comprometimento da função mastigatória. Após avaliação funcional (oclusão, relação cêntrica e dimensão vertical), a reabilitação oral está indicada para restabelecer função e proteger a estrutura dentária remanescente. A não intervenção tende a levar à progressão do desgaste, à necessidade de tratamentos mais complexos e ao agravamento das queixas musculares e articulares.",
+  "Tratamento periodontal":
+"O(a) paciente apresenta doença periodontal [gengivite / periodontite], com [sangramento à sondagem / bolsas periodontais de __ mm / perda óssea / mobilidade dentária] nas regiões [regiões]. O tratamento periodontal (raspagem e alisamento radicular) é indicado para controlar a infecção, interromper a perda de inserção e preservar os dentes. Sem tratamento, a doença tende a progredir, com perda óssea e risco de perda dentária.",
+  "Exodontia de terceiros molares":
+"O(a) paciente apresenta o(s) elemento(s) [dentes] [incluso(s) / semi-incluso(s) / com pericoronarite recorrente / com cárie não restaurável / com reabsorção do dente vizinho], confirmado por exame radiográfico. A exodontia está indicada para eliminar o foco infeccioso, evitar danos aos dentes adjacentes e prevenir novos episódios de dor e infecção.",
+  "Restauração de lesões cariosas":
+"O(a) paciente apresenta lesões cariosas ativas no(s) dente(s) [dentes], com [cavitação / sensibilidade / progressão evidenciada em radiografia]. A restauração é indicada para remover o tecido cariado, interromper a progressão da lesão e restabelecer forma e função do dente, evitando o comprometimento pulpar e a necessidade de tratamentos mais complexos.",
+  "Prótese removível / total":
+"O(a) paciente apresenta [edentulismo parcial / total] nas regiões [regiões], com prejuízo à mastigação, à fonação e à estética. A prótese [parcial removível / total] está indicada para restabelecer a função mastigatória, manter a dimensão vertical e prevenir a migração e a sobrecarga dos dentes remanescentes.",
+  "Recurso de negativa / glosa":
+"Venho, por meio deste, justificar tecnicamente a necessidade do(s) procedimento(s) [procedimentos] solicitado(s) para o(a) paciente, previamente negado(s) por essa operadora. O quadro clínico, descrito acima e documentado por exames [radiográficos / fotográficos], demonstra que o tratamento é indispensável para [eliminar infecção / restabelecer função mastigatória / evitar perda dentária]. Solicito a reavaliação do pedido, colocando-me à disposição para esclarecimentos adicionais e para auditoria, se necessário."
+};
+window.lpAplicarModelo=function(sel){
+  const nome=sel.value;if(!nome)return;
+  let txt=LP_MODELOS[nome];if(!txt)return;
+  const dentes=(document.getElementById("lp-dentes")?.value||"").trim();
+  if(dentes)txt=txt.split("[dentes]").join(dentes);
+  const el=document.getElementById("lp-justif");if(!el)return;
+  el.value=el.value.trim()?el.value.replace(/\s+$/,"")+"\n\n"+txt:txt;
+  sel.value="";
+  el.focus();
+  toast("Modelo inserido. Ajuste os trechos entre [colchetes].","success");
+};
 function renderLaudoPlano(p){
   const pid=p.id;
   const laudos=p.laudosPlano||[];
@@ -8087,7 +8119,13 @@ function renderLaudoPlano(p){
     </div>
 
     <div style="margin-bottom:8px">
-      <label class="lbl">Justificativa técnica da necessidade</label>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
+        <label class="lbl" style="margin:0">Justificativa técnica da necessidade</label>
+        <select onchange="lpAplicarModelo(this)" class="inp" style="width:auto;max-width:60%;font-size:11px;padding:4px 8px;color:#C6A46D">
+          <option value="">📝 Modelo de texto…</option>
+          ${Object.keys(LP_MODELOS).map(m=>`<option>${m}</option>`).join("")}
+        </select>
+      </div>
       ${ta("lp-justif","Ex: Os procedimentos são indispensáveis para restabelecer função mastigatória, eliminar foco infeccioso e evitar perda dentária...",4)}
     </div>
 
@@ -8181,6 +8219,8 @@ function _lpColetar(){
   };
 }
 function _lpValido(ld){
+  const pend=["queixa","achados","exames","diag","dentes","procs","justif"].filter(function(k){return /\[[^\]]+\]/.test(ld[k]||"");});
+  if(pend.length){toast("Ainda há trechos entre [colchetes] para preencher antes de gerar o laudo.","warning");return false;}
   if(!ld.procs.trim()){toast("Informe ao menos um procedimento solicitado.","warning");return false;}
   if(!ld.justif.trim()&&!ld.achados.trim()){toast("Preencha os achados clínicos ou a justificativa.","warning");return false;}
   return true;
