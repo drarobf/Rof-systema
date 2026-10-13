@@ -7173,7 +7173,7 @@ function pagePts(){
   const p=findPtById(selPt);
 
   if(p){
-    const tabs=[{k:"info",l:"📋 Dados"},{k:"anam",l:"📝 Anamnese"},{k:"clinic",l:"🦷 Clínica"},{k:"perio",l:"🩸 Perio"},{k:"hof",l:"✨ HOF"},{k:"plano_tto",l:"🗂️ Plano Tto."},{k:"plano",l:"💰 Orçamento"},{k:"evolucao",l:"📒 Evolução"},{k:"financeiro_pt",l:"💵 Financeiro"},{k:"receita",l:"💊 Receita"},{k:"atestado",l:"📄 Atestado"},{k:"contrato",l:"📝 Contrato"},{k:"pedidorx",l:"📋 Pedido Rx"},{k:"xray",l:"🩻 Rx"},{k:"fotos",l:"📸 Fotos"},{k:"docs",l:"📄 Docs"}];
+    const tabs=[{k:"info",l:"📋 Dados"},{k:"anam",l:"📝 Anamnese"},{k:"clinic",l:"🦷 Clínica"},{k:"perio",l:"🩸 Perio"},{k:"hof",l:"✨ HOF"},{k:"plano_tto",l:"🗂️ Plano Tto."},{k:"plano",l:"💰 Orçamento"},{k:"evolucao",l:"📒 Evolução"},{k:"financeiro_pt",l:"💵 Financeiro"},{k:"receita",l:"💊 Receita"},{k:"atestado",l:"📄 Atestado"},{k:"contrato",l:"📝 Contrato"},{k:"pedidorx",l:"📋 Pedido Rx"},{k:"laudoplano",l:"📑 Laudo p/ Plano"},{k:"xray",l:"🩻 Rx"},{k:"fotos",l:"📸 Fotos"},{k:"docs",l:"📄 Docs"}];
     const tabBtns=tabs.map(t=>`<button onclick="set({ptTab:'${t.k}'})" style="flex-shrink:0;background:none;border:none;
       border-bottom:${ptTab===t.k?`3px solid #C6A46D`:"3px solid transparent"};
       color:${ptTab===t.k?GL:"#555"};padding:10px 10px;font-size:${t.l.length>4?"11px":"18px"};cursor:pointer;
@@ -7361,6 +7361,9 @@ function pagePts(){
     }
     else if(ptTab==="pedidorx"){
       tc=renderPedidoRx(p);
+    }
+    else if(ptTab==="laudoplano"){
+      tc=renderLaudoPlano(p);
     }
     else if(ptTab==="xray"){
       const xrays=p.xrays||[];
@@ -8005,6 +8008,273 @@ ${pd.indicacao?`<div style="margin-top:18px"><div class="sec-title">Indicação 
   ___________________________________________<br/>
   Dra. Rossana Batista Fucks<br/>
   CRO/SC 21403<br/>
+  Clínica ROF™ — Itapema/SC<br/>
+  rossanafq@gmail.com
+</div>
+<script>window.onload=function(){window.print();}<\/script>
+</body></html>`);
+  w.document.close();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LAUDO ODONTOLÓGICO PARA PLANOS / CONVÊNIOS
+// ═══════════════════════════════════════════════════════════════
+function _lpEsc(t){return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function _lpHtml(t){return _lpEsc(t).replace(/\r?\n/g,"<br/>");}
+const LP_TIPOS=[
+  "Laudo para autorização de tratamento",
+  "Laudo de necessidade de procedimento",
+  "Justificativa técnica para a operadora",
+  "Laudo para recurso de negativa / glosa",
+  "Laudo para reembolso"
+];
+
+function renderLaudoPlano(p){
+  const pid=p.id;
+  const laudos=p.laudosPlano||[];
+  const hoje=new Date().toISOString().slice(0,10);
+  const v=x=>_lpEsc(x||"");
+  const ta=(id,ph,rows,extra)=>`<textarea id="${id}" rows="${rows||3}" class="inp" style="resize:vertical;font-size:13px;${extra||""}" placeholder="${ph}"></textarea>`;
+  return`
+  <div class="card" style="margin-bottom:12px;padding:14px">
+    <div style="color:#C6A46D;font-size:13px;font-weight:800;margin-bottom:4px">📑 Novo Laudo Odontológico</div>
+    <div style="color:#666;font-size:11px;margin-bottom:14px">Documento técnico para justificar procedimentos junto ao plano / convênio.</div>
+
+    <div style="margin-bottom:8px">
+      <label class="lbl">Tipo de laudo</label>
+      <select id="lp-tipo" class="inp">${LP_TIPOS.map(t=>`<option>${t}</option>`).join("")}</select>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <div><label class="lbl">Plano / Convênio</label><input id="lp-plano" class="inp" value="${v(p.convenio)}" placeholder="Nome do plano"/></div>
+      <div><label class="lbl">Nº da Carteirinha</label><input id="lp-carteirinha" class="inp" value="${v(p.carteirinha)}" placeholder="Número da carteirinha"/></div>
+    </div>
+
+    <div style="margin-bottom:8px">
+      <label class="lbl">Queixa principal / história clínica</label>
+      ${ta("lp-queixa","Ex: Paciente relata dor à mastigação e desgaste dentário progressivo há 2 anos...",3)}
+    </div>
+
+    <div style="margin-bottom:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
+        <label class="lbl" style="margin:0">Achados do exame clínico</label>
+        <button onclick='lpPuxarOdonto(${jsArg(pid)})' class="bg" style="font-size:10px;padding:4px 10px;color:#C6A46D;border-color:rgba(198,164,109,0.35)">⚡ Puxar do odontograma</button>
+      </div>
+      ${ta("lp-achados","Ex: Lesões cariosas extensas nos dentes 16 e 26; perda de dimensão vertical...",4)}
+    </div>
+
+    <div style="margin-bottom:8px">
+      <label class="lbl">Exames complementares</label>
+      ${ta("lp-exames","Ex: Radiografia panorâmica e periapicais realizadas em __/__/____, evidenciando...",2)}
+    </div>
+
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;margin-bottom:8px">
+      <div><label class="lbl">Diagnóstico</label><input id="lp-diag" class="inp" placeholder="Ex: Cárie profunda com comprometimento pulpar"/></div>
+      <div><label class="lbl">CID-10 (opcional)</label><input id="lp-cid" class="inp" placeholder="Ex: K02.1"/></div>
+    </div>
+
+    <div style="margin-bottom:8px">
+      <label class="lbl">Dentes / regiões envolvidos</label>
+      <input id="lp-dentes" class="inp" placeholder="Ex: 16, 26, 36, 46 ou região anterior superior"/>
+    </div>
+
+    <div style="margin-bottom:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
+        <label class="lbl" style="margin:0">Procedimentos solicitados (um por linha)</label>
+        <button onclick='lpPuxarProcs(${jsArg(pid)})' class="bg" style="font-size:10px;padding:4px 10px;color:#C6A46D;border-color:rgba(198,164,109,0.35)">⚡ Importar do plano / orçamento</button>
+      </div>
+      ${ta("lp-procs","Ex:\nTratamento endodôntico — dente 16\nCoroa metalocerâmica — dente 16",4)}
+    </div>
+
+    <div style="margin-bottom:8px">
+      <label class="lbl">Justificativa técnica da necessidade</label>
+      ${ta("lp-justif","Ex: Os procedimentos são indispensáveis para restabelecer função mastigatória, eliminar foco infeccioso e evitar perda dentária...",4)}
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <div><label class="lbl">Prognóstico</label>
+        <select id="lp-prog" class="inp"><option value="">— Não informar —</option><option>Favorável</option><option>Reservado</option><option>Desfavorável sem tratamento</option></select>
+      </div>
+      <div><label class="lbl">Data</label><input id="lp-data" type="date" class="inp" value="${hoje}"/></div>
+    </div>
+
+    <div style="display:flex;gap:8px">
+      <button onclick='imprimirLaudoPlano(${jsArg(pid)})' class="bp" style="flex:1;padding:10px;font-size:13px">🖨️ Gerar e Imprimir</button>
+      <button onclick='salvarLaudoPlano(${jsArg(pid)})' class="bg" style="padding:10px 16px;font-size:12px;color:#C6A46D;border-color:rgba(198,164,109,0.3)">💾 Salvar</button>
+    </div>
+  </div>
+
+  ${laudos.length>0?`
+  <div class="card" style="padding:14px;margin-bottom:12px">
+    <div style="color:#888;font-size:10px;font-weight:700;letter-spacing:1px;margin-bottom:10px">LAUDOS ANTERIORES</div>
+    ${[...laudos].reverse().map((ld,ri)=>{
+      const i=laudos.length-1-ri;
+      const dataFmt=ld.data?new Date(ld.data+"T00:00:00").toLocaleDateString("pt-BR"):"";
+      const procs=(ld.procs||"").split(/\r?\n/).filter(Boolean);
+      return`<div style="display:flex;align-items:center;gap:8px;padding:10px;background:#0a0a0a;border-radius:8px;margin-bottom:6px;border:1px solid rgba(198,164,109,0.1)">
+        <div style="flex:1;min-width:0">
+          <div style="color:#ddd;font-size:12px;font-weight:600">${_lpEsc(ld.tipo||"Laudo odontológico")}</div>
+          <div style="color:#555;font-size:10px">${dataFmt}${ld.plano?" · "+_lpEsc(ld.plano):""}${ld.diag?" · "+_lpEsc(ld.diag):""}</div>
+          ${procs.length?`<div style="color:#555;font-size:10px;margin-top:2px">${procs.length} procedimento(s): ${_lpEsc(procs.slice(0,2).join("; "))}${procs.length>2?"…":""}</div>`:""}
+        </div>
+        <button onclick='imprimirLaudoSalvo(${jsArg(pid)},${i})' class="bg" style="padding:7px 10px;font-size:11px;color:#C6A46D;border-color:rgba(198,164,109,0.3);flex-shrink:0" title="Imprimir">🖨️</button>
+        <button onclick='delLaudoPlano(${jsArg(pid)},${i})' class="bg" style="padding:7px 10px;font-size:11px;color:#ef4444;border-color:#ef444433;flex-shrink:0" title="Excluir">🗑</button>
+      </div>`;
+    }).join("")}
+  </div>`:""}
+  `;
+}
+
+// Puxa as condições do odontograma, agrupadas por condição (ex.: "Cárie — dentes 16, 26")
+window.lpPuxarOdonto=function(ptId){
+  const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p)return;
+  const od=p.odontogram||{};
+  const grupos={};
+  Object.keys(od).forEach(function(t){
+    const d=od[t]||{};const conds=new Set();
+    Object.keys(d).forEach(function(k){
+      if(k==="_overlays"){(d[k]||[]).forEach(function(c){conds.add(c);});}
+      else if(k.charAt(0)!=="_"&&d[k])conds.add(d[k]);
+    });
+    conds.forEach(function(c){
+      if(c==="higido")return;
+      const lbl=(COND[c]&&COND[c].l)||c;
+      (grupos[lbl]=grupos[lbl]||[]).push(t);
+    });
+  });
+  const linhas=Object.keys(grupos).sort().map(function(l){
+    const dentes=grupos[l].sort(function(a,b){return Number(a)-Number(b);});
+    return "• "+l+" — dente"+(dentes.length>1?"s":"")+" "+dentes.join(", ");
+  });
+  if(!linhas.length){toast("Nenhuma condição marcada no odontograma deste paciente.","warning");return;}
+  const el=document.getElementById("lp-achados");if(!el)return;
+  el.value=(el.value?el.value.replace(/\s+$/,"")+"\n":"")+linhas.join("\n");
+  const de=document.getElementById("lp-dentes");
+  if(de&&!de.value){
+    const todos=[...new Set(Object.values(grupos).flat())].sort(function(a,b){return Number(a)-Number(b);});
+    de.value=todos.join(", ");
+  }
+  toast("Achados importados do odontograma ✓","success");
+};
+
+// Importa os procedimentos do Plano de Tratamento (ou, na falta dele, do Orçamento)
+window.lpPuxarProcs=function(ptId){
+  const p=ST.pts.find(x=>sameId(x.id,ptId));if(!p)return;
+  let linhas=(p.planoTto||[]).filter(function(e){return e.proc&&e.status!=="Cancelado";}).map(function(e){return "• "+e.proc;});
+  if(!linhas.length){
+    linhas=((p.plano&&p.plano.itens)||[]).filter(function(i){return i.name;}).map(function(i){return "• "+(Number(i.qty)>1?i.qty+"x ":"")+i.name;});
+  }
+  if(!linhas.length){toast("Nenhum procedimento no Plano de Tratamento ou no Orçamento.","warning");return;}
+  const el=document.getElementById("lp-procs");if(!el)return;
+  el.value=linhas.join("\n");
+  toast(linhas.length+" procedimento(s) importado(s) ✓","success");
+};
+
+function _lpColetar(){
+  const g=function(id){return document.getElementById(id)?.value||"";};
+  return{
+    tipo:g("lp-tipo"),plano:g("lp-plano"),carteirinha:g("lp-carteirinha"),
+    queixa:g("lp-queixa"),achados:g("lp-achados"),exames:g("lp-exames"),
+    diag:g("lp-diag"),cid:g("lp-cid"),dentes:g("lp-dentes"),procs:g("lp-procs"),
+    justif:g("lp-justif"),prog:g("lp-prog"),
+    data:g("lp-data")||new Date().toISOString().slice(0,10)
+  };
+}
+function _lpValido(ld){
+  if(!ld.procs.trim()){toast("Informe ao menos um procedimento solicitado.","warning");return false;}
+  if(!ld.justif.trim()&&!ld.achados.trim()){toast("Preencha os achados clínicos ou a justificativa.","warning");return false;}
+  return true;
+}
+
+window.salvarLaudoPlano=function(ptId){
+  const ld=_lpColetar();if(!_lpValido(ld))return;
+  ld.id=Date.now();
+  const nps=ST.pts.map(function(p){
+    if(!sameId(p.id,ptId))return p;
+    return{...p,laudosPlano:[...(p.laudosPlano||[]),ld]};
+  });
+  save("rof_pts",nps);set({pts:nps});
+  toast("Laudo salvo ✓","success");
+};
+window.delLaudoPlano=function(ptId,idx){
+  rConfirm("Excluir este laudo?",function(){
+    const nps=ST.pts.map(function(p){
+      if(!sameId(p.id,ptId))return p;
+      const arr=[...(p.laudosPlano||[])];arr.splice(idx,1);
+      return{...p,laudosPlano:arr};
+    });
+    save("rof_pts",nps);set({pts:nps});
+    toast("Laudo removido","info");
+  },"Excluir Laudo");
+};
+window.imprimirLaudoPlano=function(ptId){
+  const pt=ST.pts.find(p=>sameId(p.id,ptId));if(!pt)return;
+  const ld=_lpColetar();if(!_lpValido(ld))return;
+  _abrirImpressaoLaudo(pt,ld);
+};
+window.imprimirLaudoSalvo=function(ptId,idx){
+  const pt=ST.pts.find(p=>sameId(p.id,ptId));if(!pt)return;
+  const ld=(pt.laudosPlano||[])[idx];if(!ld)return;
+  _abrirImpressaoLaudo(pt,ld);
+};
+
+function _abrirImpressaoLaudo(pt,ld){
+  const dataFmt=ld.data?new Date(ld.data+"T00:00:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"}):"";
+  const sec=function(titulo,conteudo){
+    return conteudo&&String(conteudo).trim()?`<div class="sec"><div class="sec-title">${titulo}</div><div class="txt">${_lpHtml(conteudo)}</div></div>`:"";
+  };
+  const procs=(ld.procs||"").split(/\r?\n/).map(function(l){return l.replace(/^\s*[•\-\*]\s*/,"").trim();}).filter(Boolean);
+  const procsHtml=procs.length?`<div class="sec"><div class="sec-title">Procedimentos solicitados</div><ol class="procs">${procs.map(function(x){return "<li>"+_lpEsc(x)+"</li>";}).join("")}</ol></div>`:"";
+  const dados=[
+    ["Paciente",pt.name],
+    ["Data",dataFmt],
+    ld.plano?["Plano / Convênio",ld.plano]:null,
+    ld.carteirinha?["Nº da Carteirinha",ld.carteirinha]:null,
+    pt.birthday?["Nascimento",(function(b){try{return new Date(b+"T00:00:00").toLocaleDateString("pt-BR");}catch(e){return b;}})(pt.birthday)]:null,
+    pt.cpf?["CPF",pt.cpf]:null
+  ].filter(Boolean);
+  const diagLinha=ld.diag?`<div class="sec"><div class="sec-title">Diagnóstico</div><div class="txt"><b>${_lpEsc(ld.diag)}</b>${ld.cid?` &nbsp;·&nbsp; CID-10: <b>${_lpEsc(ld.cid)}</b>`:""}</div></div>`:(ld.cid?`<div class="sec"><div class="sec-title">CID-10</div><div class="txt"><b>${_lpEsc(ld.cid)}</b></div></div>`:"");
+  const w=window.open("","_blank","width=800,height=900");
+  if(!w){toast("O navegador bloqueou a janela. Libere pop-ups para imprimir.","warning");return;}
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${_lpEsc(ld.tipo||"Laudo Odontológico")} — ${_lpEsc(pt.name)}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,Helvetica,sans-serif;max-width:700px;margin:36px auto;color:#111;font-size:13.5px;padding:0 18px;line-height:1.55}
+  h1{font-size:21px;margin-bottom:2px;color:#111}
+  .sub{font-size:12px;color:#777;margin-bottom:10px;text-transform:uppercase;letter-spacing:1.2px}
+  .clinic{color:#666;font-size:12px;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid #111}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 20px;margin-bottom:6px}
+  .sec{margin-top:16px;page-break-inside:avoid}
+  .sec-title{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#888;margin-bottom:4px;font-weight:700}
+  .val{font-size:14px;font-weight:700;color:#111}
+  .txt{font-size:13.5px;color:#222}
+  .procs{margin-left:20px;color:#222}
+  .procs li{margin-bottom:3px}
+  .decl{margin-top:22px;font-size:12px;color:#444;border-left:3px solid #ccc;padding-left:10px}
+  .assinatura{margin-top:56px;border-top:1px solid #ccc;padding-top:12px;font-size:12px;color:#555;line-height:1.7;page-break-inside:avoid}
+  @media print{body{margin:18px}}
+</style></head><body>
+<h1>${_lpEsc(ld.tipo||"Laudo Odontológico")}</h1>
+<div class="sub">Laudo Odontológico</div>
+<div class="clinic">Dra. Rossana Batista Fucks — CRO/SC 21403 &nbsp;|&nbsp; Clínica ROF™ — Itapema/SC &nbsp;|&nbsp; rossanafq@gmail.com</div>
+
+<div class="grid">${dados.map(function(d){return `<div><div class="sec-title">${d[0]}</div><div class="val">${_lpEsc(d[1])}</div></div>`;}).join("")}</div>
+
+${sec("Queixa principal / história clínica",ld.queixa)}
+${sec("Achados do exame clínico",ld.achados)}
+${sec("Exames complementares",ld.exames)}
+${diagLinha}
+${ld.dentes?`<div class="sec"><div class="sec-title">Dentes / regiões envolvidos</div><div class="txt">${_lpEsc(ld.dentes)}</div></div>`:""}
+${procsHtml}
+${sec("Justificativa técnica da necessidade",ld.justif)}
+${ld.prog?`<div class="sec"><div class="sec-title">Prognóstico</div><div class="txt">${_lpEsc(ld.prog)}</div></div>`:""}
+
+<div class="decl">Declaro, sob responsabilidade profissional, que as informações acima refletem o exame clínico e os exames complementares realizados no paciente, e que os procedimentos solicitados são necessários ao seu tratamento.</div>
+
+<div class="assinatura">
+  ___________________________________________<br/>
+  Dra. Rossana Batista Fucks<br/>
+  Cirurgiã-Dentista — CRO/SC 21403<br/>
   Clínica ROF™ — Itapema/SC<br/>
   rossanafq@gmail.com
 </div>
